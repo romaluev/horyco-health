@@ -18,6 +18,7 @@ import { orderActionKeyboard, orderCardText } from './order-card';
 @Injectable()
 export class TelegramNotifier implements INotifier {
   private readonly logger = new Logger(TelegramNotifier.name);
+  private readonly groupLang = 'ru' as Lang;
 
   constructor(
     @InjectBot() private readonly bot: Telegraf,
@@ -37,22 +38,89 @@ export class TelegramNotifier implements INotifier {
     await this.send(chatId, message);
   }
 
-  async notifyGroupOrder(group: NotifyGroup, order: OrderResponseDto, role: Role): Promise<void> {
+  async notifyGroupOrder(
+    group: NotifyGroup,
+    order: OrderResponseDto,
+    role: Role,
+    header?: string,
+  ): Promise<string | null> {
     const chatId = this.resolveGroup(group);
     if (!chatId) {
       this.logger.debug(`Группа ${group} не настроена — уведомление пропущено`);
-      return;
+      return null;
     }
-    // Рабочие группы — персонал; язык карточки ru (статусы/подписи локализованы).
-    const lang = 'ru' as Lang;
     try {
-      await this.bot.telegram.sendMessage(chatId, orderCardText(lang, order), {
-        parse_mode: 'HTML',
-        ...orderActionKeyboard(lang, order, role),
-      });
+      const sent = await this.bot.telegram.sendMessage(
+        chatId,
+        this.cardText(order, header),
+        {
+          parse_mode: 'HTML',
+          ...orderActionKeyboard(this.groupLang, order, role),
+        },
+      );
+      return String(sent.message_id);
     } catch (err) {
       this.logger.warn(`Не удалось отправить заказ в ${chatId}: ${(err as Error).message}`);
+      return null;
     }
+  }
+
+  async updateGroupOrder(
+    group: NotifyGroup,
+    messageId: string,
+    order: OrderResponseDto,
+    role: Role,
+    header?: string,
+  ): Promise<boolean> {
+    const chatId = this.resolveGroup(group);
+    if (!chatId) return false;
+    try {
+      await this.bot.telegram.editMessageText(
+        chatId,
+        Number(messageId),
+        undefined,
+        this.cardText(order, header),
+        {
+          parse_mode: 'HTML',
+          ...orderActionKeyboard(this.groupLang, order, role),
+        },
+      );
+      return true;
+    } catch (err) {
+      this.logger.warn(
+        `Не удалось обновить карточку ${messageId} в ${chatId}: ${(err as Error).message}`,
+      );
+      return false;
+    }
+  }
+
+  async clearGroupOrderButtons(
+    group: NotifyGroup,
+    messageId: string,
+    order: OrderResponseDto,
+    header?: string,
+  ): Promise<boolean> {
+    const chatId = this.resolveGroup(group);
+    if (!chatId) return false;
+    try {
+      await this.bot.telegram.editMessageText(
+        chatId,
+        Number(messageId),
+        undefined,
+        this.cardText(order, header),
+        { parse_mode: 'HTML' },
+      );
+      return true;
+    } catch (err) {
+      this.logger.warn(
+        `Не удалось очистить кнопки ${messageId} в ${chatId}: ${(err as Error).message}`,
+      );
+      return false;
+    }
+  }
+
+  private cardText(order: OrderResponseDto, header?: string): string {
+    return orderCardText(this.groupLang, order, header);
   }
 
   private resolveGroup(group: NotifyGroup): string | undefined {

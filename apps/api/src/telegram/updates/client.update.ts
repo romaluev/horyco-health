@@ -373,6 +373,7 @@ export class ClientUpdate {
     if (!action && session?.flow === 'profile_edit') return void (await this.profileEditStep(ctx, session.step, text));
     if (!action && session?.flow === 'settings_edit') return void (await this.settingsEditStep(ctx, session.step, text));
     if (!action && session?.flow === 'deposit') return void (await this.depositStep(ctx, session.step, text));
+    if (!action && session?.flow === 'withdraw') return void (await this.withdrawStep(ctx, session.step, text));
     if (!action && (session?.flow === 'menu_add' || session?.flow === 'menu_edit')) {
       return void (await this.menuFlowText(ctx, session.flow, session.step, session.data.dishId as string | undefined, text));
     }
@@ -559,6 +560,62 @@ export class ClientUpdate {
         const res = await this.deposits.adminDeposit({ clientId, amount });
         await ctx.reply(
           `${t(lang, 'deposit_done')}\n${t(lang, 'profile_balance')}: ${formatMoney(res.balance)} ${t(lang, 'currency')}`,
+        );
+      } catch (err) {
+        await ctx.reply(this.errText(err, lang));
+      }
+    }
+  }
+
+  /** Списание с баланса (админ-FSM): поиск клиента → сумма → DepositsService.adminWithdraw. */
+  private async withdrawStep(ctx: Context, step: string, text: string): Promise<void> {
+    const from = ctx.from!;
+    const client = await this.clients.findByTelegramId(String(from.id));
+    if (!client || !this.ui.isAdmin(client)) {
+      this.state.clearSession(from.id);
+      return;
+    }
+    const lang = this.ui.langOf(client);
+
+    if (step === 'client') {
+      const found = await this.clients.search(text.trim());
+      if (!found.length) {
+        await ctx.reply(t(lang, 'user_not_found'));
+        return;
+      }
+      if (found.length > 1) {
+        const rows = found.slice(0, 8).map((c) => [
+          Markup.button.callback(
+            `${c.name} · ${c.phone ?? c.telegramId}`,
+            `wdr:pick:${c.id}`,
+          ),
+        ]);
+        await ctx.reply(t(lang, 'deposit_choose_client'), Markup.inlineKeyboard(rows));
+        return;
+      }
+      const target = found[0];
+      this.state.updateSession(from.id, { step: 'amount', data: { clientId: target.id } });
+      await ctx.reply(
+        `${esc(t(lang, 'deposit_client_found'))}: <b>${esc(target.name)}</b> (${esc(target.phone ?? target.telegramId)})`,
+        { parse_mode: 'HTML' },
+      );
+      await ctx.reply(t(lang, 'withdraw_ask_amount'));
+      return;
+    }
+
+    if (step === 'amount') {
+      const amount = this.parseAmount(text);
+      if (amount === null) {
+        await ctx.reply(t(lang, 'invalid_price'));
+        return;
+      }
+      const clientId = this.state.getSession(from.id)?.data.clientId as string | undefined;
+      this.state.clearSession(from.id);
+      if (!clientId) return;
+      try {
+        const res = await this.deposits.adminWithdraw({ clientId, amount });
+        await ctx.reply(
+          `${t(lang, 'withdraw_done')}\n${t(lang, 'profile_balance')}: ${formatMoney(res.balance)} ${t(lang, 'currency')}`,
         );
       } catch (err) {
         await ctx.reply(this.errText(err, lang));

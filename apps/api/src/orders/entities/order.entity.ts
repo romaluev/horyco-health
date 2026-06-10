@@ -37,7 +37,13 @@ export class Order extends BaseEntity {
   @Column({ type: 'enum', enum: PaymentMethod })
   paymentMethod!: PaymentMethod;
 
-  // id сообщения админ-карточки заказа для live-обновления (FR-O5).
+  // id сообщений карточек заказа в группах для live-обновления (FR-O5).
   @Column({ type: 'bigint', nullable: true })
   adminMsgId!: string | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  cookMsgId!: string | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  courierMsgId!: string | null;
 }

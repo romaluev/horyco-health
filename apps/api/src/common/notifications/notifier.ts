@@ -4,6 +4,8 @@ import type { OrderResponseDto } from '../../orders/dto/order-response.dto';
 /**
  * Абстракция уведомлений (DIP): доменные сервисы зависят от INotifier, не от Telegram.
  * Конкретная реализация (Telegram) поставляется в эпике бота.
+ *
+ * Сообщения с parse_mode HTML должны экранировать пользовательский ввод (см. escapeHtml).
  */
 export const NOTIFIER = Symbol('NOTIFIER');
 
@@ -20,8 +22,27 @@ export interface INotifier {
   notifyGroup(group: NotifyGroup, message: string): Promise<void>;
   /**
    * Карточка заказа в рабочую группу с inline-кнопками переходов для роли.
-   * Группа поваров — роль Cook; группа курьеров — роль Courier. Нажатие обрабатывает
-   * StaffUpdate (ord:set:*), права проверяет домен по роли нажавшего, не callback_data.
+   * Возвращает message_id для live-обновлений (FR-O5).
    */
-  notifyGroupOrder(group: NotifyGroup, order: OrderResponseDto, role: Role): Promise<void>;
+  notifyGroupOrder(
+    group: NotifyGroup,
+    order: OrderResponseDto,
+    role: Role,
+    header?: string,
+  ): Promise<string | null>;
+  /** Обновить текст и клавиатуру существующей карточки. false — сообщение недоступно (удалено). */
+  updateGroupOrder(
+    group: NotifyGroup,
+    messageId: string,
+    order: OrderResponseDto,
+    role: Role,
+    header?: string,
+  ): Promise<boolean>;
+  /** Обновить текст карточки и убрать inline-кнопки (финальный/отменённый заказ). */
+  clearGroupOrderButtons(
+    group: NotifyGroup,
+    messageId: string,
+    order: OrderResponseDto,
+    header?: string,
+  ): Promise<boolean>;
 }

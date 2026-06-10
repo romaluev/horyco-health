@@ -13,10 +13,12 @@ import { Lang, t, esc, pick, formatMoney, statusText } from './i18n/bot-i18n';
  */
 
 /** Карточка заказа для персонала: позиции, адрес, сумма, комментарий. */
-export function orderCardText(lang: Lang, order: OrderResponseDto): string {
-  const lines = [
+export function orderCardText(lang: Lang, order: OrderResponseDto, header?: string): string {
+  const lines: string[] = [];
+  if (header) lines.push(`<b>${esc(header)}</b>`);
+  lines.push(
     `<b>${esc(t(lang, 'order_label'))} #${esc(order.number)}</b> — ${esc(statusText(lang, order.status))}`,
-  ];
+  );
   for (const it of order.items) {
     const w = it.weightGrams ? ` (${it.weightGrams} ${lang === Language.Uz ? 'g' : 'г'})` : '';
     lines.push(`• ${esc(pick(lang, it.nameRu, it.nameUz))}${esc(w)} ×${it.quantity}`);

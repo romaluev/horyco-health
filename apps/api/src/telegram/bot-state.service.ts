@@ -17,6 +17,7 @@ export interface BotSession {
 export class BotStateService {
   private readonly sessions = new Map<string, BotSession>();
   private readonly processedCallbacks = new Map<string, number>();
+  private static readonly CALLBACK_DEDUP_TTL_MS = 120_000;
   // id сообщений показанной витрины (карточки блюд + промпт) — удаляются при оформлении.
   private readonly menuMessages = new Map<string, number[]>();
 
@@ -61,7 +62,9 @@ export class BotStateService {
    */
   isDuplicateCallback(callbackId: string, now: number): boolean {
     for (const [id, ts] of this.processedCallbacks) {
-      if (now - ts > 60_000) this.processedCallbacks.delete(id);
+      if (now - ts > BotStateService.CALLBACK_DEDUP_TTL_MS) {
+        this.processedCallbacks.delete(id);
+      }
     }
     if (this.processedCallbacks.has(callbackId)) return true;
     this.processedCallbacks.set(callbackId, now);

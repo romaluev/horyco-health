@@ -18,6 +18,7 @@ interface DayRange {
  * Итоги дня (FR-R, AR-12): текст-сводка по заказам/выручке/топу блюд/пополнениям/клиентам.
  * Шлётся в админ-группу по расписанию (DAILY_REPORT_HOUR в TZ_OFFSET_HOURS) и по требованию
  * из бота. Планировщик — @nestjs/schedule (динамический CronJob, т.к. время из конфига).
+ * Cron регистрируется на каждом инстансе API (не привязан к BOT_ENABLED).
  */
 @Injectable()
 export class ReportsService implements OnModuleInit {
@@ -31,9 +32,6 @@ export class ReportsService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    // Cron держит тот же инстанс, что владеет ботом (иначе реплики дублировали бы отчёт).
-    if (this.config.get<boolean>('bot.enabled') === false) return;
-
     const offset = this.config.get<number>('reports.tzOffsetHours') ?? 5;
     const hour = this.config.get<number>('reports.dailyReportHour') ?? 19;
     const utcHour = (((hour - offset) % 24) + 24) % 24;
@@ -46,7 +44,9 @@ export class ReportsService implements OnModuleInit {
       'UTC',
     );
     this.scheduler.addCronJob('daily-report', job);
-    this.logger.log(`Планировщик итогов дня: ${hour}:00 (UTC+${offset}) = ${utcHour}:00 UTC`);
+    this.logger.log(
+      `Планировщик итогов дня: ${hour}:00 (UTC+${offset}) = ${utcHour}:00 UTC (на каждом инстансе API)`,
+    );
   }
 
   /** Отправить отчёт за сегодня в админ-группу. */

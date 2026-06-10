@@ -1,29 +1,20 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { Language, OrderStatus, PaymentMethod, Role, orderStatusLabel } from '@eatfit/shared';
+import { OrderStatus, PaymentMethod } from '@eatfit/shared';
 import { ActorContextService } from '../common/cls/actor-context.service';
 import { ConflictError, NotFoundError } from '../common/errors/domain-error';
 import { Money } from '../common/money/money';
-import { INotifier, NOTIFIER, NotifyGroup } from '../common/notifications/notifier';
 import { ClientRepository } from '../clients/clients.repository';
 import { BalanceService } from '../clients/balance/balance.service';
 import { MenuRepository } from '../menu/menu.repository';
 import { CART_STORE, ICartStore } from './cart/cart-store';
 import { OrderRepository } from './orders.repository';
-import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { assertTransition } from './order-status.machine';
-
-/**
- * При входе заказа в статус — какой группе уходит карточка с кнопками (data-driven, как FSM).
- * Новое правило «статус → группа» добавляется записью здесь, без правки тела сервиса (OCP).
- */
-const STATUS_AUDIENCE: Partial<Record<OrderStatus, { group: NotifyGroup; role: Role }>> = {
-  [OrderStatus.Pending]: { group: NotifyGroup.Cooks, role: Role.Cook },
-  [OrderStatus.Ready]: { group: NotifyGroup.Couriers, role: Role.Courier },
-};
+import { OrderNotificationService } from './order-notification.service';
+import { Order } from './entities/order.entity';
 
 @Injectable()
 export class OrdersService {
@@ -33,16 +24,24 @@ export class OrdersService {
     private readonly clients: ClientRepository,
     private readonly balance: BalanceService,
     private readonly actorCtx: ActorContextService,
+    private readonly orderNotifications: OrderNotificationService,
     @Inject(CART_STORE) private readonly cart: ICartStore,
-    @Optional() @Inject(NOTIFIER) private readonly notifier?: INotifier,
   ) {}
+
+  async create(dto: CreateOrderDto): Promise<OrderResponseDto> {
+    const { response, orderId, status } = await this.createInTransaction(dto);
+    await this.orderNotifications.dispatch(orderId, response, status);
+    return response;
+  }
 
   /**
    * Создание заказа атомарно: цены берутся из БД (не от клиента), баланс списывается
    * в той же транзакции (FOR UPDATE). Ошибка (нет адреса/баланса/блюда) → полный откат.
    */
   @Transactional()
-  async create(dto: CreateOrderDto): Promise<OrderResponseDto> {
+  private async createInTransaction(
+    dto: CreateOrderDto,
+  ): Promise<{ response: OrderResponseDto; orderId: string; status: OrderStatus }> {
     const clientId = this.actorCtx.getOrThrow().userId;
     const lines = this.cart.get(clientId);
     if (lines.length === 0) {
@@ -65,7 +64,6 @@ export class OrdersService {
       if (!item || !item.isActive) {
         throw new ConflictError('Одно из блюд недоступно — обновите корзину');
       }
-      // Цена и вес — по выбранной порции (2 — вторая порция со своей ценой).
       const price = line.portion === 2 ? item.price2 : item.price;
       if (price === null) {
         throw new ConflictError('Одно из блюд недоступно — обновите корзину');
@@ -100,9 +98,7 @@ export class OrdersService {
     this.cart.clear(clientId);
 
     const response = await this.buildResponse(order.id);
-    await this.notifyAudience(response); // новый заказ (Pending) → группа поваров
-
-    return response;
+    return { response, orderId: order.id, status: OrderStatus.Pending };
   }
 
   async listMy(): Promise<OrderResponseDto[]> {
@@ -114,14 +110,11 @@ export class OrdersService {
   async getMy(id: string): Promise<OrderResponseDto> {
     const clientId = this.actorCtx.getOrThrow().userId;
     const order = await this.orders.findById(id);
-    // 404 (не 403) при чужом заказе — не раскрываем существование.
     if (!order || order.clientId !== clientId) {
       throw new NotFoundError('Заказ не найден');
     }
     return this.buildResponse(order.id);
   }
-
-  // --- staff / admin ---
 
   async listAll(status?: OrderStatus): Promise<OrderResponseDto[]> {
     const list = await this.orders.findAll(status);
@@ -132,11 +125,20 @@ export class OrdersService {
     return this.buildResponse(id);
   }
 
+  async transition(id: string, to: OrderStatus): Promise<OrderResponseDto> {
+    const { response, orderId, status } = await this.transitionInTransaction(id, to);
+    await this.orderNotifications.dispatch(orderId, response, status);
+    return response;
+  }
+
   /** Смена статуса с проверкой FSM×роль; возврат денег при отмене (если оплачено балансом). */
   @Transactional()
-  async transition(id: string, to: OrderStatus): Promise<OrderResponseDto> {
+  private async transitionInTransaction(
+    id: string,
+    to: OrderStatus,
+  ): Promise<{ response: OrderResponseDto; orderId: string; status: OrderStatus }> {
     const actor = this.actorCtx.getOrThrow();
-    const order = await this.loadOrThrow(id);
+    const order = await this.loadForUpdateOrThrow(id);
 
     assertTransition(order.status, to, actor.role);
 
@@ -147,33 +149,12 @@ export class OrdersService {
     order.status = to;
     await this.orders.save(order);
 
-    const num = order.orderNumber;
-    const client = await this.clients.findById(order.clientId);
-    if (client?.telegramId) {
-      const label = orderStatusLabel(client.language, to);
-      const message =
-        client.language === Language.Uz
-          ? `Buyurtmangiz #${num} holati: ${label}.`
-          : `Статус вашего заказа #${num}: ${label}.`;
-      await this.notifier?.notifyUser(client.telegramId, message);
-    }
-
     const response = await this.buildResponse(order.id);
-    await this.notifyAudience(response); // напр. Ready → группа курьеров (data-driven)
-
-    return response;
+    return { response, orderId: order.id, status: to };
   }
 
-  /** Карточка заказа с кнопками — группе, отвечающей за новый статус (см. STATUS_AUDIENCE). */
-  private async notifyAudience(order: OrderResponseDto): Promise<void> {
-    const audience = STATUS_AUDIENCE[order.status];
-    if (audience) {
-      await this.notifier?.notifyGroupOrder(audience.group, order, audience.role);
-    }
-  }
-
-  private async loadOrThrow(id: string): Promise<Order> {
-    const order = await this.orders.findById(id);
+  private async loadForUpdateOrThrow(id: string): Promise<Order> {
+    const order = await this.orders.findByIdForUpdate(id);
     if (!order) {
       throw new NotFoundError('Заказ не найден');
     }
@@ -181,7 +162,10 @@ export class OrdersService {
   }
 
   private async buildResponse(id: string): Promise<OrderResponseDto> {
-    const order = await this.loadOrThrow(id);
+    const order = await this.orders.findById(id);
+    if (!order) {
+      throw new NotFoundError('Заказ не найден');
+    }
     const items = await this.orders.getItems(id);
     const client = await this.clients.findById(order.clientId);
     return new OrderResponseDto(

@@ -269,6 +269,10 @@ const dict = {
   deposit_choose_client: { ru: 'Найдено несколько — выберите клиента:', uz: 'Bir nechta topildi — mijozni tanlang:' },
   deposit_done: { ru: 'Баланс пополнен ✅', uz: 'Balans to‘ldirildi ✅' },
   deposit_history: { ru: 'История пополнений:', uz: 'To‘ldirishlar tarixi:' },
+  withdraw_add: { ru: '➖ Списать с баланса', uz: '➖ Balansdan yechish' },
+  withdraw_ask_client: { ru: 'Введите telegram_id или телефон клиента для списания:', uz: 'Yechish uchun mijozning telegram_id yoki telefonini kiriting:' },
+  withdraw_ask_amount: { ru: 'Введите сумму списания:', uz: 'Yechish summasini kiriting:' },
+  withdraw_done: { ru: 'Списание выполнено ✅', uz: 'Yechish bajarildi ✅' },
 
   // ---- Посты в канал (FR-B4) ----
   admin_gen_post: { ru: '📢 Пост в канал', uz: '📢 Kanalga post' },

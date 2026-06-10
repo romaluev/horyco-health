@@ -36,6 +36,14 @@ export class OrderRepository extends TransactionalRepository<Order> {
     return this.repo.findOne({ where: { id } });
   }
 
+  findByIdForUpdate(id: string): Promise<Order | null> {
+    return this.repo
+      .createQueryBuilder('order')
+      .setLock('pessimistic_write')
+      .where('order.id = :id', { id })
+      .getOne();
+  }
+
   findByClient(clientId: string): Promise<Order[]> {
     return this.repo.find({ where: { clientId }, order: { createdAt: 'DESC' } });
   }

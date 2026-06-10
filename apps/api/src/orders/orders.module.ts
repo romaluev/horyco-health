@@ -3,6 +3,7 @@ import { MenuModule } from '../menu/menu.module';
 import { ClientsModule } from '../clients/clients.module';
 import { OrderRepository } from './orders.repository';
 import { OrdersService } from './orders.service';
+import { OrderNotificationService } from './order-notification.service';
 import { OrdersController } from './orders.controller';
 import { OrdersAdminController } from './admin/orders-admin.controller';
 import { CartService } from './cart/cart.service';
@@ -14,6 +15,7 @@ import { CART_STORE, InMemoryCartStore } from './cart/cart-store';
   controllers: [CartController, OrdersController, OrdersAdminController],
   providers: [
     OrderRepository,
+    OrderNotificationService,
     OrdersService,
     CartService,
     { provide: CART_STORE, useClass: InMemoryCartStore },

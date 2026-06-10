@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Update, Action, Command, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import type { Context } from 'telegraf';
-import { Category, OrderStatus, Role } from '@eatfit/shared';
+import { Category, OrderStatus } from '@eatfit/shared';
 import { ClientRepository } from '../../clients/clients.repository';
 import { Client } from '../../clients/entities/client.entity';
 import { MenuRepository } from '../../menu/menu.repository';
@@ -186,6 +186,16 @@ export class StaffUpdate {
     await ctx.reply(t(client.language, 'deposit_ask_client'));
   }
 
+  @Action('admin:withdraw')
+  async onWithdraw(@Ctx() ctx: Context): Promise<void> {
+    const from = ctx.from;
+    const client = await this.requireAdmin(ctx);
+    if (!from || !client) return;
+    await ctx.answerCbQuery();
+    this.state.setSession(from.id, 'withdraw', 'client');
+    await ctx.reply(t(client.language, 'withdraw_ask_client'));
+  }
+
   /** Выбор клиента из списка совпадений (FR-D1, L5) — переводит FSM депозита к вводу суммы. */
   @Action(/^dep:pick:(.+)$/)
   async onDepositPick(@Ctx() ctx: Context): Promise<void> {
@@ -206,6 +216,27 @@ export class StaffUpdate {
       { parse_mode: 'HTML' },
     );
     await ctx.reply(t(lang, 'deposit_ask_amount'));
+  }
+
+  @Action(/^wdr:pick:(.+)$/)
+  async onWithdrawPick(@Ctx() ctx: Context): Promise<void> {
+    const from = ctx.from;
+    const admin = await this.requireAdmin(ctx);
+    if (!from || !admin) return;
+    await ctx.answerCbQuery();
+    const lang = admin.language;
+    const clientId = this.cbArg(ctx, 1);
+    const target = await this.clients.findById(clientId);
+    if (!target) {
+      await ctx.reply(t(lang, 'user_not_found'));
+      return;
+    }
+    this.state.setSession(from.id, 'withdraw', 'amount', { clientId: target.id });
+    await ctx.reply(
+      `${esc(t(lang, 'deposit_client_found'))}: <b>${esc(target.name)}</b> (${esc(target.phone ?? target.telegramId)})`,
+      { parse_mode: 'HTML' },
+    );
+    await ctx.reply(t(lang, 'withdraw_ask_amount'));
   }
 
   // ───────────────────────────── посты в канал (FR-B4) ─────────────────────────────
@@ -381,7 +412,6 @@ export class StaffUpdate {
     const match = (ctx as Context & { match?: RegExpExecArray }).match;
     const orderId = match?.[1] ?? '';
     const target = match?.[2] ?? '';
-    const viewRoleStr = match?.[3];
 
     const client = await this.clients.findByTelegramId(String(ctx.from?.id));
     const lang: Lang = client?.language ?? ('ru' as Lang);
@@ -391,25 +421,9 @@ export class StaffUpdate {
       return;
     }
 
-    // Роль-аудитория карточки (из callback): по ней перестраиваем кнопки, чтобы у поваров
-    // они пропадали после «Готово». Фолбэк — роль нажавшего (для старых сообщений/панелей).
-    const viewRole: Role | undefined =
-      viewRoleStr && Object.values(Role).includes(viewRoleStr as Role)
-        ? (viewRoleStr as Role)
-        : client?.role;
-
     try {
       const updated = await this.orders.transition(orderId, target as OrderStatus);
       await ctx.answerCbQuery(statusText(lang, updated.status));
-      // Перестраиваем кнопки под новый статус для роли карточки (нет переходов — убираем).
-      const buttons = viewRole ? this.staff.actionButtons(lang, updated, viewRole) : [];
-      try {
-        await ctx.editMessageReplyMarkup(
-          buttons.length ? { inline_keyboard: [buttons] } : undefined,
-        );
-      } catch {
-        /* сообщение могло не измениться / без прав на edit — игнор */
-      }
     } catch (err) {
       if (err instanceof DomainError) {
         await ctx.answerCbQuery(err.message);
