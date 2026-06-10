@@ -1,0 +1,532 @@
+/*
+ * Темизация (FR-F5/NFR-15): берём переменные темы Telegram WebApp, с фолбэками для
+ * браузера. Переключение светлая/тёмная — через data-theme на <html> (ставит JS).
+ */
+:root {
+  --bg: var(--tg-theme-bg-color, #ffffff);
+  --text: var(--tg-theme-text-color, #1a1a1a);
+  --hint: var(--tg-theme-hint-color, #8a8a8e);
+  --link: var(--tg-theme-link-color, #2b7cff);
+  --button: var(--tg-theme-button-color, #2b7cff);
+  --button-text: var(--tg-theme-button-text-color, #ffffff);
+  --secondary-bg: var(--tg-theme-secondary-bg-color, #f1f1f4);
+  --card: var(--tg-theme-section-bg-color, #ffffff);
+  --danger: #e0394f;
+  --radius: 12px;
+}
+
+html[data-theme='dark'] {
+  --bg: #17181a;
+  --text: #f0f0f2;
+  --hint: #9a9aa0;
+  --link: #6ab3ff;
+  --button: #3a82f7;
+  --button-text: #ffffff;
+  --secondary-bg: #1f2023;
+  --card: #1f2023;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: var(--link);
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+/* ───────── layout ───────── */
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: 72px;
+}
+.screen {
+  padding: 16px;
+}
+.screen h2 {
+  margin: 8px 0 16px;
+  font-size: 20px;
+}
+.cat-title {
+  margin: 20px 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--hint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.muted {
+  color: var(--hint);
+}
+.center {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--hint);
+}
+
+/* ───────── card ───────── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.dish {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dish-photo {
+  width: 100%; /* на всю ширину карточки/div (в т.ч. на ПК) */
+  aspect-ratio: 4 / 3;
+  height: auto;
+  border-radius: 10px;
+  object-fit: contain; /* фото целиком вписывается в контейнер, без обрезки (поля — фон карточки) */
+  background: var(--secondary-bg);
+  display: block;
+}
+.dish-body {
+  flex: 1;
+  min-width: 0;
+}
+.dish-name {
+  font-weight: 600;
+}
+.dish-desc {
+  font-size: 13px;
+  color: var(--hint);
+  margin: 2px 0;
+  white-space: pre-line; /* сохраняем переносы строк из описания блюда */
+}
+.dish-price {
+  font-weight: 600;
+  margin-top: 4px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ───────── buttons ───────── */
+.btn {
+  background: var(--secondary-bg);
+  color: var(--text);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 500;
+}
+.btn-primary {
+  background: var(--button);
+  color: var(--button-text);
+}
+.btn-block {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  border-radius: 12px;
+}
+.btn:disabled {
+  opacity: 0.5;
+}
+
+/* stepper */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.stepper button {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: var(--button);
+  color: var(--button-text);
+  font-size: 18px;
+  line-height: 1;
+}
+.stepper .qty {
+  min-width: 20px;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* ───────── forms ───────── */
+.field {
+  margin-bottom: 14px;
+}
+.field label {
+  display: block;
+  font-size: 13px;
+  color: var(--hint);
+  margin-bottom: 4px;
+}
+.input,
+.textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--secondary-bg);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+}
+.textarea {
+  min-height: 72px;
+  resize: vertical;
+  font: inherit;
+}
+.err {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.seg {
+  display: flex;
+  gap: 8px;
+}
+.seg button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--secondary-bg);
+  background: var(--card);
+  color: var(--text);
+}
+.seg button.active {
+  background: var(--button);
+  color: var(--button-text);
+  border-color: var(--button);
+}
+
+/* ───────── модалка выбора порции ───────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+}
+.modal-sheet {
+  width: 100%;
+  max-width: 640px;
+  background: var(--card);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.2);
+}
+.modal-title {
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.modal-portions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ───────── bottom nav ───────── */
+.nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  background: var(--card);
+  border-top: 1px solid var(--secondary-bg);
+}
+.nav button {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 10px 4px;
+  font-size: 11px;
+  color: var(--hint);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.nav button.active {
+  color: var(--link);
+}
+.nav .ico {
+  font-size: 20px;
+}
+.badge {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* ───────── карточка меню: открыть деталь ───────── */
+.dish-tap {
+  cursor: pointer;
+}
+.dish-more {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--link);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ───────── детальная карточка блюда (раскладка по референсу, цвета — тема) ───────── */
+.dd {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  max-width: 640px;
+  margin: 0 auto;
+  background: var(--bg);
+  overflow-y: auto;
+  padding-bottom: 96px;
+}
+.dd-head {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--secondary-bg);
+}
+.dd-back {
+  background: none;
+  border: none;
+  color: var(--link);
+  font-weight: 600;
+  padding: 0;
+}
+.dd-logo {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+.dd-logo span {
+  color: var(--link);
+}
+.dd-img {
+  width: 100%; /* на всю ширину сайта */
+  height: auto; /* полная высота изображения, без обрезки */
+  display: block;
+  background: var(--secondary-bg);
+}
+.dd-img-empty {
+  min-height: 220px; /* у плейсхолдера нет собственной высоты картинки */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hint);
+  font-size: 14px;
+}
+.dd-name-block {
+  padding: 16px;
+  background: var(--secondary-bg);
+}
+.dd-name {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.dd-name-2 {
+  font-size: 14px;
+  color: var(--hint);
+  font-style: italic;
+  margin-top: 2px;
+}
+.dd-desc {
+  font-size: 14px;
+  color: var(--text);
+  margin-top: 8px;
+  white-space: pre-line;
+}
+.dd-body {
+  padding: 16px;
+}
+.dd-portions {
+  margin-bottom: 14px;
+}
+.dd-portions-title {
+  font-size: 13px;
+  color: var(--hint);
+  margin-bottom: 6px;
+}
+.dd-portions .seg button {
+  font-size: 13px;
+  line-height: 1.2;
+}
+.dd-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--secondary-bg);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+.dd-price {
+  font-size: 22px;
+  font-weight: 800;
+}
+.dd-weight {
+  font-size: 12px;
+  color: var(--hint);
+  margin-top: 2px;
+}
+.dd-deadline {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--secondary-bg);
+  border-radius: 50px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+.dd-acc {
+  background: var(--card);
+  border: 1px solid var(--secondary-bg);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.dd-acc-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 14px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 14px;
+  text-align: left;
+}
+.dd-acc-sign {
+  color: var(--hint);
+  font-size: 18px;
+}
+.dd-acc-body {
+  padding: 0 14px 14px;
+}
+.dd-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.dd-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hint);
+  font-weight: 600;
+  text-align: left;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--secondary-bg);
+}
+.dd-table th:last-child,
+.dd-table td:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+.dd-table td {
+  font-size: 13px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--secondary-bg);
+}
+.dd-table tr:last-child td {
+  border-bottom: none;
+}
+.dd-allergen {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.dd-allergen strong {
+  color: var(--text);
+}
+.dd-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 640px;
+  z-index: 510;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--secondary-bg);
+  display: flex;
+  justify-content: center;
+}
+.dd-bottom .btn-primary,
+.dd-bottom .stepper {
+  width: 100%;
+}
+.dd-bottom .stepper {
+  justify-content: center;
+}
+
+/* ───────── админ: состав + КБЖУ ───────── */
+.ing-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 64px 36px;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.ing-row .input {
+  padding: 8px;
+}
+.ing-grams {
+  text-align: center;
+}
+.ing-del {
+  padding: 8px;
+}
+.nut-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}

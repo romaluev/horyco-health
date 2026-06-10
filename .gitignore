@@ -1,0 +1,50 @@
+# зависимости
+node_modules/
+
+# сборка монорепо
+dist/
+**/dist/
+.next/
+out/
+**/out/
+*.tsbuildinfo
+
+# секреты / окружение
+.env
+.env.bak
+.env*.local
+
+# логи
+*.log
+npm-debug.log*
+
+# IDE / редакторы
+.idea/
+.vscode/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.claude/
+
+# ОС
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# временные / личное
+*.tmp
+REFACTOR-PROGRESS.md
+txt.txt
+TXT.TXT
+
+# BMad: артефакты не трекаем, КРОМЕ чек-листа приёмки
+_bmad/
+_bmad-output/*
+!_bmad-output/implementation-artifacts/
+_bmad-output/implementation-artifacts/*
+!_bmad-output/implementation-artifacts/refactor-parity-checklist.md
+!_bmad-output/implementation-artifacts/refactor-parity-checklist.html
+!_bmad-output/implementation-artifacts/checklist-markers.mjs
+!_bmad-output/implementation-artifacts/build-checklist-html.mjs
