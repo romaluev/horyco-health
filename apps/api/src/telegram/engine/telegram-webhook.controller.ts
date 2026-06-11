@@ -5,7 +5,6 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
-  ServiceUnavailableException,
   UnauthorizedException,
   ForbiddenException,
   Body,
@@ -20,7 +19,7 @@ import type { Update } from 'telegraf/types';
 
 /**
  * POST /api/tg/wh/:businessId — вход вебхуков Telegram.
- * Секрет проверяется синхронно → слот обработчика → 200 или 503 (Telegram retry).
+ * 401/403 до ответа; иначе сразу 200 и async-очередь (Telegram не ждёт handler).
  */
 @Controller('tg/wh')
 @SkipThrottle()
@@ -33,17 +32,13 @@ export class TelegramWebhookController {
   @Public()
   @Post(':businessId')
   @HttpCode(200)
-  async webhook(
+  webhook(
     @Param('businessId', ParseUUIDPipe) businessId: string,
     @Headers('x-telegram-bot-api-secret-token') secretHeader: string | undefined,
     @Body() update: Update,
-  ): Promise<{ ok: true }> {
+  ): { ok: true } {
     assertWebhookAuth(this.registry.get(businessId), secretHeader);
-    const acquired = await this.dispatch.acquireSlot();
-    if (!acquired) {
-      throw new ServiceUnavailableException('Webhook handlers busy');
-    }
-    this.dispatch.dispatch(businessId, update);
+    this.dispatch.enqueue(businessId, update);
     return { ok: true };
   }
 }

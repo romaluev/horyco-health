@@ -598,14 +598,19 @@ export class ClientUpdate {
       case 'language':
         await ctx.reply(t(lang, 'choose_language'), languageKeyboard());
         return;
-      case 'full_name':
-        // Legacy session from older bots — skip name, continue to phone.
-        this.syncNameFromTelegram(client, from);
+      case 'full_name': {
+        // Legacy session — сохраняем введённое имя или профиль Telegram.
+        if (text.trim()) {
+          client.name = text.replace(/\s+/g, ' ');
+        } else {
+          this.syncNameFromTelegram(client, from);
+        }
         await this.clients.save(client);
         invalidateActorCache(this.actorCtx.getBusinessIdOrThrow(), from.id);
         this.state.updateSession(from.id, { step: 'phone' });
         await ctx.reply(t(lang, 'ask_phone'), shareContactKeyboard(lang));
         return;
+      }
       case 'phone': {
         const phone = this.parsePhone(text);
         if (!phone) {
@@ -624,6 +629,11 @@ export class ClientUpdate {
         await this.clients.save(client);
         await this.finishRegistration(ctx, client, session.data);
         return;
+      }
+      default: {
+        this.logger.warn(`Unknown registration step "${session.step}" for ${from.id}, resetting to phone`);
+        this.state.updateSession(from.id, { step: 'phone' });
+        await ctx.reply(t(lang, 'ask_phone'), shareContactKeyboard(lang));
       }
     }
   }
