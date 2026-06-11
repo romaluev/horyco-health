@@ -92,6 +92,13 @@ curl -s https://health.horyco.com/api/health
 curl -s "https://health.horyco.com/api/config?biz=eatfit"
 ```
 
+Local full API lifecycle smoke (requires running API + Postgres):
+
+```bash
+npm run build && npm start   # or BOT_ENABLED=false npm start
+cd apps/api && npm run e2e:smoke
+```
+
 ---
 
 ## 3. Post-deploy setup (Business #1)

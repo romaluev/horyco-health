@@ -8,6 +8,7 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
     "test": "npm run build && node scripts/tenancy-audit.mjs && node --test --test-reporter spec \"dist/**/*.test.js\"",
+    "e2e:smoke": "node scripts/e2e-smoke.mjs",
     "migration:generate": "npm run build && typeorm -d dist/database/data-source.js migration:generate",
     "migration:run": "npm run build && typeorm -d dist/database/data-source.js migration:run",
     "migration:revert": "npm run build && typeorm -d dist/database/data-source.js migration:revert",

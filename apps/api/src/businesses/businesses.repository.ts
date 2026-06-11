@@ -134,12 +134,12 @@ export class BusinessesRepository extends TransactionalRepository<Business> {
    * строки — без гонок; вызывается внутри транзакции создания заказа.
    */
   async allocateOrderNumber(businessId: string): Promise<number> {
-    const rows: { last_order_no: number }[] = await this.txHost.tx.query(
+    const [rows]: [{ last_order_no: number }[], number] = await this.txHost.tx.query(
       `UPDATE businesses SET last_order_no = last_order_no + 1, updated_at = now()
        WHERE id = $1 RETURNING last_order_no`,
       [businessId],
     );
-    if (rows.length === 0) {
+    if (!rows?.length) {
       throw new Error(`Бизнес ${businessId} не найден при выдаче номера заказа`);
     }
     return Number(rows[0].last_order_no);
