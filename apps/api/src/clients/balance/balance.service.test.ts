@@ -83,8 +83,8 @@ class FakeBalanceRepository {
     return data;
   }
 
-  async findByIdempotencyKey(key: string) {
-    return this.ledger.find((r) => r.idempotencyKey === key) ?? null;
+  async findByIdempotencyKey(businessId: string, key: string) {
+    return this.ledger.find((r) => r.idempotencyKey === key && r.businessId === businessId) ?? null;
   }
 }
 
@@ -175,7 +175,7 @@ describe('BalanceService', () => {
 
   it('(c) duplicate idempotency key returns applied:false and unchanged balance', async () => {
     const amount = Money.fromMajor(200);
-    const key = 'deposit:idem-key-1';
+    const key = `deposit:${BIZ_A}:idem-key-1`;
 
     const first = await deposit(svc, C1, BIZ_A, amount, key);
     assert.equal(first.applied, true);

@@ -1,8 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { OrderStatus, PaymentMethod } from '@eatfit/shared';
+import { BusinessStatus, OrderStatus, PaymentMethod } from '@eatfit/shared';
 import { ActorContextService } from '../common/cls/actor-context.service';
-import { ConflictError, NotFoundError } from '../common/errors/domain-error';
+import {
+  ConflictError,
+  ForbiddenError,
+  InsufficientBalanceError,
+  NotFoundError,
+} from '../common/errors/domain-error';
 import { ClientRepository } from '../clients/clients.repository';
 import { BalanceService } from '../clients/balance/balance.service';
 import { BusinessesRepository } from '../businesses/businesses.repository';
@@ -38,7 +43,11 @@ export class OrdersService {
   ) {}
 
   async create(dto: CreateOrderDto, opts: CreateOrderOptions = {}): Promise<OrderResponseDto> {
-    const { response, orderId, status, businessId } = await this.createInTransaction(dto, opts);
+    const { response, orderId, status, businessId, cartKey, skipCartClear } =
+      await this.createInTransaction(dto, opts);
+    if (!skipCartClear) {
+      this.cart.clear(cartKey);
+    }
     await this.orderNotifications.dispatch(businessId, orderId, response, status);
     return response;
   }
@@ -50,6 +59,7 @@ export class OrdersService {
     lines: CompositionLine[],
     dto: Pick<CreateOrderDto, 'address' | 'comment' | 'paymentMethod'>,
     offerId?: string,
+    opts: Pick<CreateOrderOptions, 'skipCartClear'> = {},
   ): Promise<OrderResponseDto> {
     const actor = this.actorCtx.getOrThrow();
     if (actor.businessId !== businessId || actor.userId !== clientId) {
@@ -61,7 +71,7 @@ export class OrdersService {
         comment: dto.comment,
         address: dto.address,
       },
-      { lines, offerId },
+      { lines, offerId, skipCartClear: opts.skipCartClear },
     );
   }
 
@@ -69,13 +79,30 @@ export class OrdersService {
   private async createInTransaction(
     dto: CreateOrderDto,
     opts: CreateOrderOptions = {},
-  ): Promise<{ response: OrderResponseDto; orderId: string; status: OrderStatus; businessId: string }> {
+  ): Promise<{
+    response: OrderResponseDto;
+    orderId: string;
+    status: OrderStatus;
+    businessId: string;
+    cartKey: string;
+    skipCartClear: boolean;
+  }> {
     const actor = this.actorCtx.getOrThrow();
     const clientId = actor.userId;
     const businessId = actor.businessId;
     const cartKey = `${businessId}:${clientId}`;
 
-    const lines = opts.lines ?? this.cart.get(cartKey);
+    const business = await this.businesses.findById(businessId);
+    if (!business || business.status === BusinessStatus.Suspended) {
+      throw new ForbiddenError('Бизнес приостановлен');
+    }
+
+    let lines = opts.lines ?? this.cart.get(cartKey);
+    if (!opts.lines && lines.length > 0) {
+      const views = await this.linePricing.buildCartViews(businessId, lines);
+      const keptIds = new Set(views.map((v) => v.lineId));
+      lines = lines.filter((l) => keptIds.has(l.lineId));
+    }
     if (lines.length === 0) {
       throw new ConflictError('Корзина пуста');
     }
@@ -90,6 +117,13 @@ export class OrdersService {
     }
 
     const { items, total } = await this.linePricing.buildOrderItems(businessId, lines);
+
+    if (dto.paymentMethod === PaymentMethod.Balance) {
+      const wallet = await this.businessCustomers.findForUpdateOrCreate(businessId, clientId);
+      if (!wallet.balance.gte(total)) {
+        throw new InsufficientBalanceError();
+      }
+    }
 
     const orderNumber = await this.businesses.allocateOrderNumber(businessId);
 
@@ -108,18 +142,22 @@ export class OrdersService {
       items.map((i) => ({ ...toOrderItemPartial(i), orderId: order.id })),
     );
 
+    await this.businessCustomers.ensureExists(businessId, clientId);
     await this.businessCustomers.bumpOrderStats(businessId, clientId);
 
     if (dto.paymentMethod === PaymentMethod.Balance) {
       await this.balance.charge(clientId, businessId, total, order.id);
     }
 
-    if (!opts.skipCartClear) {
-      this.cart.clear(cartKey);
-    }
-
     const response = await this.buildResponse(businessId, order.id);
-    return { response, orderId: order.id, status: OrderStatus.Pending, businessId };
+    return {
+      response,
+      orderId: order.id,
+      status: OrderStatus.Pending,
+      businessId,
+      cartKey,
+      skipCartClear: opts.skipCartClear ?? false,
+    };
   }
 
   async listMy(): Promise<OrderResponseDto[]> {

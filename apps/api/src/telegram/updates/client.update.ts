@@ -20,6 +20,7 @@ import { BalanceService } from '../../clients/balance/balance.service';
 import { SettingsService, SettingKey } from '../../settings/settings.service';
 import { hashPassword } from '../../auth/password';
 import { DomainError, InsufficientBalanceError } from '../../common/errors/domain-error';
+import { Money } from '../../common/money/money';
 import { BotStateService } from '../bot-state.service';
 import { BotUiService } from '../bot-ui.service';
 import { BotStaffService } from '../bot-staff.service';
@@ -250,10 +251,10 @@ export class ClientUpdate {
     }
     await this.ui.deleteMenu(ctx, client.telegramId!); // витрина исчезает
     const businessId = this.actorCtx.getBusinessIdOrThrow();
-    const balance = Number((await this.balance.balanceOf(client.id, businessId)).toString());
-    const total = Number(cart.total);
+    const balance = await this.balance.balanceOf(client.id, businessId);
+    const total = Money.fromMajor(cart.total);
     const rows: InlineKeyboardButton[][] = [];
-    if (balance >= total) rows.push([{ text: t(lang, 'btn_pay_balance'), callback_data: 'checkout:pay:balance' }]);
+    if (balance.gte(total)) rows.push([{ text: t(lang, 'btn_pay_balance'), callback_data: 'checkout:pay:balance' }]);
     rows.push([{ text: t(lang, 'btn_pay_cash'), callback_data: 'checkout:pay:cash' }]);
     rows.push([{ text: t(lang, 'btn_cancel'), callback_data: 'checkout:cancel' }]);
     await ctx.reply(this.cartSummary(lang, cart, client.address), {
@@ -771,6 +772,7 @@ export class ClientUpdate {
 
   /** One-tap accept CRM offer (offer:accept:recipientId). */
   async onOfferAccept(ctx: Context): Promise<void> {
+    if (await this.dupCallback(ctx)) return;
     const from = ctx.from;
     if (!from) return;
     const client = await this.clients.findByTelegramId(String(from.id));

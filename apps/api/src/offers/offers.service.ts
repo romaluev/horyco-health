@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { CronJob } from 'cron';
 import { PaymentMethod } from '@eatfit/shared';
 import { Transactional } from '@nestjs-cls/transactional';
 import { ActorContextService } from '../common/cls/actor-context.service';
@@ -6,7 +8,6 @@ import { ConflictError, NotFoundError } from '../common/errors/domain-error';
 import { Money } from '../common/money/money';
 import { ClientRepository } from '../clients/clients.repository';
 import { BusinessCustomersRepository } from '../businesses/business-customers.repository';
-import { BalanceService } from '../clients/balance/balance.service';
 import { CartService } from '../orders/cart/cart.service';
 import { OrdersService } from '../orders/orders.service';
 import { LinePricingService } from '../orders/pricing/build-order-items';
@@ -22,19 +23,37 @@ import { OffersRepository } from './offers.repository';
 import { BroadcastService } from '../telegram/broadcast.service';
 import { CreateOfferDto, UpdateOfferDto } from './dto/offer.dto';
 
+/** Default offer TTL from send time (days). */
+const OFFER_TTL_DAYS = 7;
+
 @Injectable()
-export class OffersService {
+export class OffersService implements OnModuleInit {
+  private readonly logger = new Logger(OffersService.name);
+
   constructor(
     private readonly offers: OffersRepository,
     private readonly actorCtx: ActorContextService,
     private readonly linePricing: LinePricingService,
     private readonly clients: ClientRepository,
     private readonly businessCustomers: BusinessCustomersRepository,
-    private readonly balance: BalanceService,
     private readonly orders: OrdersService,
     private readonly cart: CartService,
     private readonly broadcast: BroadcastService,
+    private readonly scheduler: SchedulerRegistry,
   ) {}
+
+  onModuleInit(): void {
+    const job = new CronJob('0 0 0 * * *', () => void this.expireOfferRecipients(), null, true, 'UTC');
+    this.scheduler.addCronJob('offer-expiry', job);
+    this.logger.log('Планировщик истечения офферов: ежедневно 00:00 UTC');
+  }
+
+  async expireOfferRecipients(): Promise<void> {
+    const count = await this.offers.expireRecipientsPastTtl();
+    if (count > 0) {
+      this.logger.log(`Помечено истёкших получателей офферов: ${count}`);
+    }
+  }
 
   async create(dto: CreateOfferDto): Promise<Offer> {
     const actor = this.actorCtx.getOrThrow();
@@ -77,10 +96,17 @@ export class OffersService {
     if (existing.length > 0) {
       await this.offers.clearRecipients(actor.businessId, offer.id);
     }
-    return this.offers.saveRecipients(
-      actor.businessId,
-      clientIds.map((clientId) => ({ offerId: offer.id, clientId })),
-    );
+    try {
+      return await this.offers.saveRecipients(
+        actor.businessId,
+        clientIds.map((clientId) => ({ offerId: offer.id, clientId })),
+      );
+    } catch (e) {
+      if (e instanceof Error && e.message === 'OFFER_RECIPIENTS_NOT_CUSTOMERS') {
+        throw new ConflictError('Выберите клиентов этого бизнеса');
+      }
+      throw e;
+    }
   }
 
   async send(id: string): Promise<{ offerId: string; queued: number }> {
@@ -98,8 +124,10 @@ export class OffersService {
       throw new ConflictError('Состав заказа пуст');
     }
 
+    const sentAt = new Date();
     offer.status = OfferStatus.Sending;
-    offer.sentAt = new Date();
+    offer.sentAt = sentAt;
+    offer.expiresAt = new Date(sentAt.getTime() + OFFER_TTL_DAYS * 24 * 60 * 60 * 1000);
     await this.offers.save(offer);
 
     void this.broadcast.enqueueOffer(actor.businessId, offer.id);
@@ -146,6 +174,18 @@ export class OffersService {
     orderId?: string;
     priceNotice?: string;
   }> {
+    return this.acceptOfferInTransaction(recipientId, businessId);
+  }
+
+  @Transactional()
+  private async acceptOfferInTransaction(
+    recipientId: string,
+    businessId: string,
+  ): Promise<{
+    alreadyOrdered: boolean;
+    orderId?: string;
+    priceNotice?: string;
+  }> {
     const recipient = await this.offers.findRecipientById(businessId, recipientId);
     if (!recipient || recipient.offer.businessId !== businessId) {
       throw new NotFoundError('Предложение не найдено');
@@ -155,6 +195,10 @@ export class OffersService {
       return { alreadyOrdered: true, orderId: recipient.orderId ?? undefined };
     }
 
+    if (recipient.status === OfferRecipientStatus.Expired) {
+      throw new ConflictError('Предложение истекло');
+    }
+
     if (
       recipient.status !== OfferRecipientStatus.Sent &&
       recipient.status !== OfferRecipientStatus.Opened
@@ -162,35 +206,48 @@ export class OffersService {
       throw new ConflictError('Предложение недоступно');
     }
 
+    const offer = recipient.offer;
+    if (offer.expiresAt && offer.expiresAt < new Date()) {
+      throw new ConflictError('Предложение истекло');
+    }
+
     const client = recipient.client;
     if (!client.address) {
-      await this.offers.setRecipientStatus(businessId, recipient.id, OfferRecipientStatus.Opened);
+      await this.offers.setRecipientStatus(businessId, recipient.id, OfferRecipientStatus.Opened, {
+        openedAt: new Date(),
+      });
       throw new ConflictError('NEED_ADDRESS');
     }
 
-    const lines = compositionToCartLines(recipient.offer.composition);
+    const claimed = await this.offers.claimRecipientForOrder(businessId, recipientId);
+    if (!claimed) {
+      const current = await this.offers.findRecipientById(businessId, recipientId);
+      if (current?.status === OfferRecipientStatus.Ordered) {
+        return { alreadyOrdered: true, orderId: current.orderId ?? undefined };
+      }
+      throw new ConflictError('Предложение недоступно');
+    }
+
+    const lines = compositionToCartLines(offer.composition);
     const { total } = await this.linePricing.buildOrderItems(businessId, lines);
     const priceNotice =
-      recipient.offer.estimatedTotal.toString() !== total.toString()
-        ? `${recipient.offer.estimatedTotal.toString()}→${total.toString()}`
+      offer.estimatedTotal.toString() !== total.toString()
+        ? `${offer.estimatedTotal.toString()}→${total.toString()}`
         : undefined;
 
-    const bc = await this.businessCustomers.find(businessId, client.id);
-    const balance = bc?.balance ?? Money.zero();
-    const paymentMethod = balance.gte(total) ? PaymentMethod.Balance : PaymentMethod.OnDelivery;
+    const wallet = await this.businessCustomers.findForUpdateOrCreate(businessId, client.id);
+    const paymentMethod = wallet.balance.gte(total) ? PaymentMethod.Balance : PaymentMethod.OnDelivery;
 
     const order = await this.orders.createFromComposition(
       businessId,
       client.id,
       lines,
       { paymentMethod, address: client.address, comment: undefined },
-      recipient.offer.id,
+      offer.id,
+      { skipCartClear: true },
     );
 
-    await this.offers.setRecipientStatus(businessId, recipient.id, OfferRecipientStatus.Ordered, {
-      orderId: order.id,
-      orderedAt: new Date(),
-    });
+    await this.offers.setRecipientOrderId(businessId, recipientId, order.id);
 
     return { alreadyOrdered: false, orderId: order.id, priceNotice };
   }

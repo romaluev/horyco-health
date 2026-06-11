@@ -18,6 +18,7 @@ export enum OfferRecipientStatus {
   Sent = 'sent',
   Opened = 'opened',
   Ordered = 'ordered',
+  Expired = 'expired',
   Failed = 'failed',
   SkippedNoTelegram = 'skipped_no_telegram',
 }
@@ -67,6 +68,9 @@ export class Offer extends BaseEntity {
 
   @Column({ type: 'timestamptz', nullable: true })
   sentAt!: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  expiresAt!: Date | null;
 }
 
 @Entity('offer_recipients')

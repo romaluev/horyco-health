@@ -63,7 +63,7 @@ export class DepositsService {
     }
 
     const amount = Money.fromMajor(dto.amount);
-    const key = `deposit:${dto.idempotencyKey ?? randomUUID()}`;
+    const key = `deposit:${businessId}:${dto.idempotencyKey ?? randomUUID()}`;
 
     const { balance: newBalance, applied } = await this.balance.deposit(target.id, businessId, amount, key);
     if (!applied) {
@@ -108,7 +108,7 @@ export class DepositsService {
     }
 
     const amount = Money.fromMajor(dto.amount);
-    const key = `debit:${dto.idempotencyKey ?? randomUUID()}`;
+    const key = `debit:${businessId}:${dto.idempotencyKey ?? randomUUID()}`;
 
     const { balance: newBalance, applied } = await this.balance.adminDebit(target.id, businessId, amount, key);
     if (!applied) {

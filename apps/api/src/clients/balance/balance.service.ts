@@ -95,7 +95,7 @@ export class BalanceService {
     // Идемпотентность: проверка под блокировкой кошелька — повторная команда с тем же
     // ключом не применяется второй раз; возвращаем уже зафиксированный баланс.
     if (idempotencyKey) {
-      const existing = await this.ledger.findByIdempotencyKey(idempotencyKey);
+      const existing = await this.ledger.findByIdempotencyKey(businessId, idempotencyKey);
       if (existing) {
         return { balance: wallet.balance, applied: false };
       }

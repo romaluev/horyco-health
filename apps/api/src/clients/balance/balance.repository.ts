@@ -21,9 +21,8 @@ export class BalanceRepository extends TransactionalRepository<BalanceTransactio
     return this.repo.find({ where: { clientId, businessId }, order: { createdAt: 'DESC' } });
   }
 
-  /** Проводка по ключу идемпотентности (для дедупа повторных денежных команд).
-   * Ключ глобально уникален (unique index без фильтра по businessId) — businessId здесь не нужен. */
-  findByIdempotencyKey(key: string): Promise<BalanceTransaction | null> {
-    return this.repo.findOne({ where: { idempotencyKey: key } });
+  /** Проводка по ключу идемпотентности (scoped by business for tenant safety). */
+  findByIdempotencyKey(businessId: string, key: string): Promise<BalanceTransaction | null> {
+    return this.repo.findOne({ where: { idempotencyKey: key, businessId } });
   }
 }
