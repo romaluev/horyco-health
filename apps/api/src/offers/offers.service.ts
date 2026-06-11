@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleInit } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { PaymentMethod } from '@eatfit/shared';
@@ -20,7 +20,7 @@ import {
   OfferStatus,
 } from './entities/offer.entity';
 import { OffersRepository } from './offers.repository';
-import { BroadcastService } from '../telegram/broadcast.service';
+import { OFFER_BROADCASTER, type IOfferBroadcaster } from '../common/offers/offer-broadcaster';
 import { CreateOfferDto, UpdateOfferDto } from './dto/offer.dto';
 
 /** Default offer TTL from send time (days). */
@@ -38,7 +38,7 @@ export class OffersService implements OnModuleInit {
     private readonly businessCustomers: BusinessCustomersRepository,
     private readonly orders: OrdersService,
     private readonly cart: CartService,
-    private readonly broadcast: BroadcastService,
+    @Inject(OFFER_BROADCASTER) private readonly broadcast: IOfferBroadcaster,
     private readonly scheduler: SchedulerRegistry,
   ) {}
 

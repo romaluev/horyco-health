@@ -1,5 +1,6 @@
 import { Global, Module, forwardRef } from '@nestjs/common';
 import { NOTIFIER } from '../common/notifications/notifier';
+import { OFFER_BROADCASTER } from '../common/offers/offer-broadcaster';
 import { ClientsModule } from '../clients/clients.module';
 import { MenuModule } from '../menu/menu.module';
 import { OrdersModule } from '../orders/orders.module';
@@ -31,7 +32,7 @@ import { BroadcastService } from './broadcast.service';
   imports: [
     ClientsModule,
     MenuModule,
-    OrdersModule,
+    forwardRef(() => OrdersModule),
     ModifiersModule,
     CombosModule,
     forwardRef(() => OffersModule),
@@ -43,6 +44,7 @@ import { BroadcastService } from './broadcast.service';
   providers: [
     TelegramNotifier,
     { provide: NOTIFIER, useExisting: TelegramNotifier },
+    { provide: OFFER_BROADCASTER, useExisting: BroadcastService },
     MenuPublishService,
     BotStateService,
     BotUiService,
@@ -57,6 +59,6 @@ import { BroadcastService } from './broadcast.service';
     UpdateDedupeService,
     BroadcastService,
   ],
-  exports: [NOTIFIER, BotRegistryService, BotHealthService, BotLifecycleService, BroadcastService],
+  exports: [NOTIFIER, OFFER_BROADCASTER, BotRegistryService, BotHealthService, BotLifecycleService, BroadcastService],
 })
 export class TelegramModule {}
