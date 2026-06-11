@@ -105,7 +105,7 @@ cd apps/api && npm run e2e:smoke
 
 ### 3.1 Platform admin
 
-1. Send `/start` to your Eat&fit bot from the Telegram account in `ADMIN_TELEGRAM_IDS`.
+1. Send `/start` to your Eat&fit bot from the Telegram account in `ADMIN_TELEGRAM_IDS` — complete registration (language → name → phone → **share location pin** → optional landmark).
 2. Set web password in **Mini App → Профиль → «Пароль для сайта»** (optional for ordering; required for `/platform` and `/b` login from browser).
 3. Log in at `https://health.horyco.com/platform` with **phone + password** from step 2.
 
@@ -150,7 +150,9 @@ If needed manually in BotFather: set Mini App URL to `https://health.horyco.com/
 
 ## 4. Production E2E smoke (~30 min)
 
-- [ ] Customer: `/start` → menu → add dish → checkout (cash + balance deposit test)
+- [ ] Customer: `/start` → registration (location pin) → menu → add dish → checkout (cash + balance deposit test)
+- [ ] Customer receives order status DMs with **«Мои заказы»** button (pending → confirmed → …)
+- [ ] Courier group card has **«Открыть на карте»** link
 - [ ] Kitchen: order card in cook group → statuses to **ready**
 - [ ] Courier: card → **delivered**
 - [ ] Admin: cancel + refund (balance order)

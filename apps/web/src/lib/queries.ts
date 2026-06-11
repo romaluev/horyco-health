@@ -109,6 +109,8 @@ export type ProfilePatch = Partial<{
   name: string;
   phone: string;
   address: string;
+  deliveryLat: number;
+  deliveryLng: number;
   language: Language;
   password: string;
 }>;

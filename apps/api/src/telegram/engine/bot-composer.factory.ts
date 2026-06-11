@@ -33,11 +33,14 @@ export class BotComposerFactory {
     composer.action('checkout:cancel', (ctx) => c.onCheckoutCancel(ctx));
     composer.action(/^checkout:pay:(balance|cash)$/, (ctx) => c.onCheckoutPay(ctx));
     composer.action('profile:edit', (ctx) => c.onProfileEdit(ctx));
-    composer.action(/^pedit:(name|phone|address|lang|password)$/, (ctx) => c.onProfileEditField(ctx));
+    composer.action(/^pedit:(name|phone|address|location|lang|password)$/, (ctx) => c.onProfileEditField(ctx));
     composer.action('topup', (ctx) => c.onTopup(ctx));
     composer.action(/^lang:(ru|uz)$/, (ctx) => c.onLanguage(ctx));
+    composer.action('nav:orders', (ctx) => c.onNavOrders(ctx));
+    composer.action('reg:skip_landmark', (ctx) => c.onSkipLandmark(ctx));
 
     composer.on('contact', (ctx) => c.onContact(ctx));
+    composer.on('location', (ctx) => c.onLocation(ctx));
     composer.on('photo', (ctx) => c.onPhoto(ctx));
     composer.on('text', (ctx, next) => c.onText(ctx, next));
 

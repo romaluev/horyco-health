@@ -3,6 +3,7 @@ import { MenuModule } from '../menu/menu.module';
 import { ModifiersModule } from '../modifiers/modifiers.module';
 import { CombosModule } from '../combos/combos.module';
 import { ClientsModule } from '../clients/clients.module';
+import { BusinessesModule } from '../businesses/businesses.module';
 import { OffersModule } from '../offers/offers.module';
 import { OrderRepository } from './orders.repository';
 import { OrdersService } from './orders.service';
@@ -15,7 +16,7 @@ import { CART_STORE, InMemoryCartStore } from './cart/cart-store';
 import { LinePricingService } from './pricing/build-order-items';
 
 @Module({
-  imports: [MenuModule, ModifiersModule, CombosModule, ClientsModule, forwardRef(() => OffersModule)],
+  imports: [MenuModule, ModifiersModule, CombosModule, ClientsModule, BusinessesModule, forwardRef(() => OffersModule)],
   controllers: [CartController, OrdersController, OrdersAdminController],
   providers: [
     OrderRepository,

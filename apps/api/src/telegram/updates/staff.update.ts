@@ -1,13 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Markup } from 'telegraf';
 import type { Context } from 'telegraf';
-import { Category, ChatKind, OrderStatus } from '@eatfit/shared';
+import { Category, ChatKind, Language, OrderStatus } from '@eatfit/shared';
 import { ClientRepository } from '../../clients/clients.repository';
 import { Client } from '../../clients/entities/client.entity';
 import { MenuRepository } from '../../menu/menu.repository';
 import { MenuItem } from '../../menu/entities/menu-item.entity';
 import { ActorContextService } from '../../common/cls/actor-context.service';
 import { BusinessChatsRepository } from '../../businesses/business-chats.repository';
+import { BusinessesRepository } from '../../businesses/businesses.repository';
 import { BusinessMembersRepository } from '../../businesses/business-members.repository';
 import { isOwnerOrManager } from '../../businesses/membership.util';
 import { OrdersService } from '../../orders/orders.service';
@@ -40,6 +41,7 @@ export class StaffUpdate {
     private readonly menuAdmin: BotMenuAdminService,
     private readonly actorCtx: ActorContextService,
     private readonly chats: BusinessChatsRepository,
+    private readonly businesses: BusinessesRepository,
     private readonly members: BusinessMembersRepository,
   ) {}
 
@@ -410,11 +412,9 @@ export class StaffUpdate {
       (oldStatus === 'left' || oldStatus === 'kicked') &&
       (newStatus === 'member' || newStatus === 'administrator')
     ) {
-      await ctx.telegram.sendMessage(
-        chatId,
-        '👋 Бот добавлен в группу.\n\nВладелец или менеджер: выполните команду\n<code>/bind cook</code>, <code>/bind courier</code> или <code>/bind admin</code>',
-        { parse_mode: 'HTML' },
-      );
+      const business = await this.businesses.findById(businessId);
+      const lang = (business?.languageDefault ?? Language.Ru) as import('../i18n/bot-i18n').Lang;
+      await ctx.telegram.sendMessage(chatId, t(lang, 'bind_bot_added_hint'));
     }
   }
 
@@ -424,21 +424,24 @@ export class StaffUpdate {
     const chat = ctx.chat;
     if (!from || !chat) return;
     if (chat.type !== 'group' && chat.type !== 'supergroup') {
-      await ctx.reply('Привязка работает только в группах.');
+      const client = await this.clients.findByTelegramId(String(from.id));
+      const lang = client?.language ?? Language.Ru;
+      await ctx.reply(t(lang as import('../i18n/bot-i18n').Lang, 'bind_groups_only'));
       return;
     }
 
     const client = await this.clients.findByTelegramId(String(from.id));
     if (!client) {
-      await ctx.reply('Сначала напишите боту в личку /start');
+      await ctx.reply(t(Language.Ru as import('../i18n/bot-i18n').Lang, 'bind_start_first'));
       return;
     }
+    const lang = client.language as import('../i18n/bot-i18n').Lang;
 
     const businessId = this.actorCtx.getBusinessIdOrThrow();
     const membership = await this.members.findActive(businessId, client.id);
     if (!membership || !isOwnerOrManager(membership.role)) {
       if (!client.isPlatformAdmin) {
-        await ctx.reply('Только владелец или менеджер может привязать группу.');
+        await ctx.reply(t(lang, 'bind_owner_only'));
         return;
       }
     }
@@ -453,13 +456,13 @@ export class StaffUpdate {
     };
     const kind = arg ? kindMap[arg] : undefined;
     if (!kind) {
-      await ctx.reply('Использование: /bind cook | courier | admin');
+      await ctx.reply(t(lang, 'bind_usage'));
       return;
     }
 
     const title = 'title' in chat ? chat.title : null;
     await this.chats.bind(businessId, kind, String(chat.id), title);
-    await ctx.reply(`✅ Группа привязана как <b>${esc(arg!)}</b>`, { parse_mode: 'HTML' });
+    await ctx.reply(t(lang, 'bind_success'));
   }
 
   async onTransition(ctx: Context): Promise<void> {

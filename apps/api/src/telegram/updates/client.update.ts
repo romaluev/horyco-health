@@ -25,6 +25,7 @@ import { BotStateService } from '../bot-state.service';
 import { BotUiService } from '../bot-ui.service';
 import { BotStaffService } from '../bot-staff.service';
 import { BotMenuAdminService } from '../bot-menu-admin.service';
+import { BotWelcomeService } from '../bot-welcome.service';
 import {
   Lang,
   t,
@@ -33,7 +34,7 @@ import {
   formatMoney,
   statusText,
 } from '../i18n/bot-i18n';
-import { languageKeyboard, shareContactKeyboard } from '../telegram-keyboards';
+import { languageKeyboard, shareContactKeyboard, shareLocationKeyboard, skipLandmarkKeyboard } from '../telegram-keyboards';
 import { extractActorFromClient } from '../bot-actor.util';
 import { MEMBER_TO_ROLE } from '../../businesses/membership.util';
 
@@ -63,6 +64,7 @@ export class ClientUpdate {
     private readonly members: BusinessMembersRepository,
     private readonly modifiers: ModifiersRepository,
     private readonly offers: OffersService,
+    private readonly welcome: BotWelcomeService,
   ) {}
 
   // ─────────────────────────── /start + deep link ───────────────────────────
@@ -109,7 +111,28 @@ export class ClientUpdate {
 
     await this.customers.ensureExists(businessId, client.id);
 
-    // B2C: меню сразу, регистрация только при checkout в Mini App.
+    const business = this.actorCtx.getBotBusiness();
+    const bizName = business?.name ?? 'Eat&fit';
+    const lang = this.ui.langOf(client);
+    const welcomeBiz = business ?? {
+      name: bizName,
+      welcomeMessageRu: null,
+      welcomeMessageUz: null,
+    };
+
+    if (!this.isRegistered(client)) {
+      await ctx.reply(this.welcome.welcomeNew(lang, welcomeBiz));
+      await ctx.reply(t(lang, 'registration_intro'));
+      this.state.setSession(from.id, 'register', 'language', {
+        deepItemId,
+        deepDetailId,
+        deepComboId,
+      });
+      await ctx.reply(t(lang, 'choose_language'), languageKeyboard());
+      return;
+    }
+
+    await ctx.reply(this.welcome.welcomeBack(lang, bizName));
     await this.ui.showMainMenu(ctx, client);
     if (deepItemId) await this.openDish(ctx, client, deepItemId);
     else if (deepDetailId) await this.openDishDetail(ctx, client, deepDetailId);
@@ -137,7 +160,7 @@ export class ClientUpdate {
     if (member.clientId !== client.id) {
       const invited = await this.clients.findById(member.clientId);
       if (invited?.telegramId && invited.telegramId !== telegramId) {
-        await ctx.reply('Это приглашение предназначено другому аккаунту.');
+        await ctx.reply(t(lang, 'staff_invite_wrong_account'));
         return;
       }
       member.clientId = client.id;
@@ -146,7 +169,7 @@ export class ClientUpdate {
     member.inviteToken = null;
     await this.members.save(member);
     this.actorCtx.set(extractActorFromClient(client, businessId, telegramId, member));
-    await ctx.reply('✅ Вы приняли приглашение в команду!');
+    await ctx.reply(t(lang, 'staff_invite_accepted'));
     await this.ui.showMainMenu(ctx, client);
   }
 
@@ -174,6 +197,63 @@ export class ClientUpdate {
     // Смена языка вне регистрации
     await ctx.reply(t(lang, 'language_set'));
     await this.ui.showMainMenu(ctx, client);
+  }
+
+  async onNavOrders(ctx: Context): Promise<void> {
+    await ctx.answerCbQuery();
+    const client = await this.clients.findByTelegramId(String(ctx.from?.id));
+    if (!client) return;
+    if (!this.isRegistered(client)) {
+      await ctx.reply(t(this.ui.langOf(client), 'not_registered'));
+      return;
+    }
+    await this.showMyOrders(ctx, client);
+  }
+
+  async onSkipLandmark(ctx: Context): Promise<void> {
+    await ctx.answerCbQuery();
+    const from = ctx.from;
+    if (!from) return;
+    const session = this.state.getSession(from.id);
+    if (session?.flow !== 'register' || session.step !== 'landmark') return;
+    const client = await this.clients.findByTelegramId(String(from.id));
+    if (!client) return;
+    client.address = null;
+    await this.clients.save(client);
+    await this.finishRegistration(ctx, client, session.data);
+  }
+
+  async onLocation(ctx: Context): Promise<void> {
+    const from = ctx.from;
+    if (!from) return;
+    const session = this.state.getSession(from.id);
+    if (!session) return;
+    const loc = (ctx.message as Message.LocationMessage | undefined)?.location;
+    if (!loc) return;
+
+    const client = await this.clients.findByTelegramId(String(from.id));
+    if (!client) return;
+    const lang = this.ui.langOf(client);
+
+    if (session.flow === 'register' && session.step === 'location') {
+      client.deliveryLat = String(loc.latitude);
+      client.deliveryLng = String(loc.longitude);
+      await this.clients.save(client);
+      this.state.updateSession(from.id, { step: 'landmark' });
+      await ctx.reply(t(lang, 'location_saved'), { reply_markup: { remove_keyboard: true } });
+      await ctx.reply(t(lang, 'ask_landmark'), skipLandmarkKeyboard(lang));
+      return;
+    }
+
+    if (session.flow === 'profile_edit' && session.step === 'location') {
+      client.deliveryLat = String(loc.latitude);
+      client.deliveryLng = String(loc.longitude);
+      await this.clients.save(client);
+      this.state.clearSession(from.id);
+      await ctx.reply(t(lang, 'location_saved'), { reply_markup: { remove_keyboard: true } });
+      await ctx.reply(t(lang, 'profile_saved'));
+      await this.showProfile(ctx, client);
+    }
   }
 
   // ───────────────────────────── команды/кнопки ─────────────────────────────
@@ -248,12 +328,12 @@ export class ClientUpdate {
     const lang = this.ui.langOf(client);
     const cart = await this.cart.getCart();
     if (!cart.items.length) {
-      await ctx.reply(t(lang, 'cart_empty'));
+      await ctx.reply(`${t(lang, 'cart_empty')}\n${t(lang, 'hint_use_menu_button')}`);
       return;
     }
-    if (!client.address) {
-      this.state.setSession(client.telegramId!, 'profile_edit', 'address');
-      await ctx.reply(t(lang, 'ask_address'));
+    if (!this.hasDeliveryLocation(client)) {
+      this.state.setSession(client.telegramId!, 'profile_edit', 'location');
+      await ctx.reply(t(lang, 'ask_location'), shareLocationKeyboard(lang));
       return;
     }
     await this.ui.deleteMenu(ctx, client.telegramId!); // витрина исчезает
@@ -264,7 +344,7 @@ export class ClientUpdate {
     if (balance.gte(total)) rows.push([{ text: t(lang, 'btn_pay_balance'), callback_data: 'checkout:pay:balance' }]);
     rows.push([{ text: t(lang, 'btn_pay_cash'), callback_data: 'checkout:pay:cash' }]);
     rows.push([{ text: t(lang, 'btn_cancel'), callback_data: 'checkout:cancel' }]);
-    await ctx.reply(this.cartSummary(lang, cart, client.address), {
+    await ctx.reply(this.cartSummary(lang, cart, client), {
       parse_mode: 'HTML',
       reply_markup: { inline_keyboard: rows },
     });
@@ -287,9 +367,15 @@ export class ClientUpdate {
     if (!client) return;
     const lang = this.ui.langOf(client);
     const method = this.match(ctx, 1) === 'balance' ? PaymentMethod.Balance : PaymentMethod.OnDelivery;
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
     try {
+      const customerBefore = await this.customers.find(businessId, client.id);
       const order = await this.orders.create({ paymentMethod: method });
       await this.editOrReply(ctx, `${t(lang, 'order_created')} #${order.number} ✅`);
+      const customerAfter = await this.customers.find(businessId, client.id);
+      if ((customerBefore?.ordersCount ?? 0) === 0 && (customerAfter?.ordersCount ?? 0) === 1) {
+        await ctx.reply(t(lang, 'first_order_congrats'));
+      }
     } catch (err) {
       if (err instanceof InsufficientBalanceError) {
         await this.editOrReply(ctx, t(lang, 'balance_insufficient'));
@@ -312,6 +398,7 @@ export class ClientUpdate {
         [Markup.button.callback(t(lang, 'pf_name'), 'pedit:name')],
         [Markup.button.callback(t(lang, 'pf_phone'), 'pedit:phone')],
         [Markup.button.callback(t(lang, 'pf_address'), 'pedit:address')],
+        [Markup.button.callback(t(lang, 'pf_location'), 'pedit:location')],
         [Markup.button.callback(t(lang, 'pf_language'), 'pedit:lang')],
         [Markup.button.callback(t(lang, 'pf_password'), 'pedit:password')],
       ]),
@@ -335,7 +422,8 @@ export class ClientUpdate {
     if (field === 'name') await ctx.reply(t(lang, 'profile_ask_name'));
     else if (field === 'phone') await ctx.reply(t(lang, 'ask_phone'), shareContactKeyboard(lang));
     else if (field === 'password') await ctx.reply(t(lang, 'ask_password'));
-    else await ctx.reply(t(lang, 'profile_ask_address'));
+    else if (field === 'location') await ctx.reply(t(lang, 'ask_location'), shareLocationKeyboard(lang));
+    else await ctx.reply(t(lang, 'ask_landmark'));
   }
 
   async onTopup(ctx: Context): Promise<void> {
@@ -412,7 +500,9 @@ export class ClientUpdate {
     const session = this.state.getSession(from.id);
     const action = this.matchMenuButton(text);
     if (session?.flow === 'register') return void (await this.registrationStep(ctx, text));
-    if (!action && session?.flow === 'profile_edit') return void (await this.profileEditStep(ctx, session.step, text));
+    if (!action && session?.flow === 'profile_edit' && session.step !== 'location') {
+      return void (await this.profileEditStep(ctx, session.step, text));
+    }
     if (!action && session?.flow === 'settings_edit') return void (await this.settingsEditStep(ctx, session.step, text));
     if (!action && session?.flow === 'deposit') return void (await this.depositStep(ctx, session.step, text));
     if (!action && session?.flow === 'withdraw') return void (await this.withdrawStep(ctx, session.step, text));
@@ -423,7 +513,21 @@ export class ClientUpdate {
     // 2) Кнопки главного меню (учёт обоих языков) — отменяют незавершённый диалог.
     if (!action) return;
     if (session) this.state.clearSession(from.id);
-    const client = await this.requireRegistered(ctx);
+
+    let client = await this.clients.findByTelegramId(String(from.id));
+    if (!client) return;
+    if (!this.isRegistered(client)) {
+      const lang = this.ui.langOf(client);
+      const business = this.actorCtx.getBotBusiness();
+      const welcomeBiz = business ?? { name: 'Eat&fit', welcomeMessageRu: null, welcomeMessageUz: null };
+      await ctx.reply(this.welcome.welcomeNew(lang, welcomeBiz));
+      await ctx.reply(t(lang, 'registration_intro'));
+      this.state.setSession(from.id, 'register', 'language', {});
+      await ctx.reply(t(lang, 'choose_language'), languageKeyboard());
+      return;
+    }
+
+    client = (await this.requireRegistered(ctx))!;
     if (!client) return;
 
     switch (action) {
@@ -489,19 +593,35 @@ export class ClientUpdate {
         await this.applyPhone(ctx, 'register', phone);
         return;
       }
-      case 'address': {
-        client.address = text;
+      case 'location': {
+        await ctx.reply(t(lang, 'invalid_location'), shareLocationKeyboard(lang));
+        return;
+      }
+      case 'landmark': {
+        client.address = text.trim() || null;
         await this.clients.save(client);
-        const deepItemId = session.data.deepItemId as string | null | undefined;
-        const deepDetailId = session.data.deepDetailId as string | null | undefined;
-        this.state.clearSession(from.id);
-        await ctx.reply(t(lang, 'registration_done'), { reply_markup: { remove_keyboard: true } });
-        await this.ui.showMainMenu(ctx, client);
-        if (deepItemId) await this.openDish(ctx, client, deepItemId);
-        else if (deepDetailId) await this.openDishDetail(ctx, client, deepDetailId);
+        await this.finishRegistration(ctx, client, session.data);
         return;
       }
     }
+  }
+
+  private async finishRegistration(
+    ctx: Context,
+    client: Client,
+    data: Record<string, unknown>,
+  ): Promise<void> {
+    const from = ctx.from!;
+    const lang = this.ui.langOf(client);
+    const deepItemId = data.deepItemId as string | null | undefined;
+    const deepDetailId = data.deepDetailId as string | null | undefined;
+    const deepComboId = data.deepComboId as string | null | undefined;
+    this.state.clearSession(from.id);
+    await ctx.reply(t(lang, 'registration_done'), { reply_markup: { remove_keyboard: true } });
+    await this.ui.showMainMenu(ctx, client);
+    if (deepItemId) await this.openDish(ctx, client, deepItemId);
+    else if (deepDetailId) await this.openDishDetail(ctx, client, deepDetailId);
+    else if (deepComboId) await this.openComboDetail(ctx, client, deepComboId);
   }
 
   private async applyPhone(ctx: Context, flow: string, phone: string): Promise<void> {
@@ -513,8 +633,8 @@ export class ClientUpdate {
     await this.clients.save(client);
 
     if (flow === 'register') {
-      this.state.updateSession(from.id, { step: 'address' });
-      await ctx.reply(t(lang, 'ask_address'), { reply_markup: { remove_keyboard: true } });
+      this.state.updateSession(from.id, { step: 'location' });
+      await ctx.reply(t(lang, 'ask_location'), shareLocationKeyboard(lang));
     } else {
       this.state.clearSession(from.id);
       await ctx.reply(t(lang, 'profile_saved'), { reply_markup: { remove_keyboard: true } });
@@ -549,7 +669,7 @@ export class ClientUpdate {
       return;
     }
     if (step === 'name') client.name = text.replace(/\s+/g, ' ');
-    if (step === 'address') client.address = text;
+    if (step === 'address') client.address = text.trim() || null;
     await this.clients.save(client);
     this.state.clearSession(from.id);
     await ctx.reply(t(lang, 'profile_saved'));
@@ -701,11 +821,15 @@ export class ClientUpdate {
     const dash = '—';
     const businessId = this.actorCtx.getBusinessIdOrThrow();
     const bal = await this.balance.balanceOf(client.id, businessId);
+    const locLabel = this.hasDeliveryLocation(client)
+      ? t(lang, 'profile_location_set')
+      : t(lang, 'profile_location_missing');
     const lines = [
       `<b>${esc(t(lang, 'profile_title'))}</b>`,
       `${esc(t(lang, 'profile_name'))}: ${esc(client.name || dash)}`,
       `${esc(t(lang, 'profile_phone'))}: ${esc(client.phone || dash)}`,
-      `${esc(t(lang, 'profile_address'))}: ${esc(client.address || dash)}`,
+      `${esc(t(lang, 'profile_landmark'))}: ${esc(client.address || dash)}`,
+      `📍 ${esc(locLabel)}`,
       `${esc(t(lang, 'profile_balance'))}: ${esc(formatMoney(bal.toString()))} ${esc(t(lang, 'currency'))}`,
     ];
     await ctx.reply(lines.join('\n'), {
@@ -796,12 +920,12 @@ export class ClientUpdate {
     try {
       const result = await this.offers.acceptOffer(m[1], businessId);
       if (result.alreadyOrdered) {
-        await ctx.answerCbQuery('Уже оформлен');
+        await ctx.answerCbQuery(t(lang, 'offer_accept_ok'));
         return;
       }
-      let msg = `✅ Заказ принят`;
+      let msg = t(lang, 'offer_accept_ok');
       if (result.priceNotice) {
-        msg += `\nЦена изменилась: ${result.priceNotice}`;
+        msg += `\n${result.priceNotice}`;
       }
       await ctx.answerCbQuery();
       await ctx.reply(msg);
@@ -809,10 +933,12 @@ export class ClientUpdate {
       const err = e as DomainError;
       if (err.message === 'NEED_ADDRESS') {
         await ctx.answerCbQuery();
+        await ctx.reply(t(lang, 'offer_accept_need_profile'));
         await this.ui.sendProfileLink(ctx, client);
         return;
       }
       await ctx.answerCbQuery(this.errText(e, lang));
+      await ctx.reply(t(lang, 'offer_accept_failed'));
     }
   }
 
@@ -871,8 +997,8 @@ export class ClientUpdate {
     }
   }
 
-  /** Сводка корзины (позиции, итого, адрес). */
-  private cartSummary(lang: Lang, cart: CartResponseDto, address: string): string {
+  /** Сводка корзины (позиции, итого, доставка). */
+  private cartSummary(lang: Lang, cart: CartResponseDto, client: Client): string {
     const lines = [`<b>${esc(t(lang, 'cart_title'))}</b>`];
     for (const it of cart.items) {
       // Вес порции в строке — чтобы две порции одного блюда (1️⃣/2️⃣) различались.
@@ -887,14 +1013,21 @@ export class ClientUpdate {
         `🔥 ${esc(t(lang, 'total_calories'))}: ${esc(formatMoney(cart.totalCalories))} ${esc(t(lang, 'unit_kcal'))}`,
       );
     }
-    lines.push(`${esc(t(lang, 'cart_address'))}: ${esc(address)}`);
+    if (client.address) {
+      lines.push(`${esc(t(lang, 'profile_landmark'))}: ${esc(client.address)}`);
+    }
+    lines.push(`📍 ${esc(t(lang, 'profile_location_set'))}`);
     return lines.join('\n');
   }
 
   // ───────────────────────────── утилиты ─────────────────────────────
 
-  private isRegistered(client: { phone: string | null; address: string | null }): boolean {
-    return Boolean(client.phone && client.address);
+  private hasDeliveryLocation(client: { deliveryLat: string | null; deliveryLng: string | null }): boolean {
+    return parseCoord(client.deliveryLat) != null && parseCoord(client.deliveryLng) != null;
+  }
+
+  private isRegistered(client: { phone: string | null; deliveryLat: string | null; deliveryLng: string | null }): boolean {
+    return Boolean(client.phone && this.hasDeliveryLocation(client));
   }
 
   /** Возвращает клиента, если зарегистрирован; иначе подсказывает /start и возвращает null. */
@@ -957,4 +1090,10 @@ export class ClientUpdate {
     this.logger.error(`Ошибка хендлера: ${(err as Error).message}`);
     return t(lang, 'error_generic');
   }
+}
+
+function parseCoord(v: string | null | undefined): number | null {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }

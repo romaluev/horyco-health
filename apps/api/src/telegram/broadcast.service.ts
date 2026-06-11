@@ -4,11 +4,12 @@ import { Cron } from '@nestjs/schedule';
 import { Markup } from 'telegraf';
 import { OffersRepository } from '../offers/offers.repository';
 import { OfferRecipientStatus, OfferStatus } from '../offers/entities/offer.entity';
+import { Language } from '@eatfit/shared';
 import { BotRegistryService } from './engine/bot-registry.service';
 import { BusinessesRepository } from '../businesses/businesses.repository';
 import { LinePricingService } from '../orders/pricing/build-order-items';
 import { newLineId, normalizeCartLine } from '../orders/cart/cart-line.types';
-import { esc, formatMoney } from './i18n/bot-i18n';
+import { esc, formatMoney, t, Lang } from './i18n/bot-i18n';
 
 /** FIFO broadcast ~28 msg/s per bot with 429 retry. */
 @Injectable()
@@ -105,12 +106,13 @@ export class BroadcastService implements OnModuleInit {
           continue;
         }
 
-        const text = await this.buildOfferText(businessId, offer.composition, offer.descriptionRu, offer.descriptionUz);
+        const lang = (recipient.client?.language ?? Language.Ru) as import('./i18n/bot-i18n').Lang;
+        const text = await this.buildOfferText(businessId, offer.composition, offer.descriptionRu, offer.descriptionUz, lang);
         const editUrl = this.offerWebAppUrl(slug, recipient.id);
         const keyboard = Markup.inlineKeyboard([
           [
-            Markup.button.callback('✅ Оформить', `offer:accept:${recipient.id}`),
-            Markup.button.webApp('✏️ Изменить', editUrl),
+            Markup.button.callback(t(lang, 'broadcast_btn_accept'), `offer:accept:${recipient.id}`),
+            Markup.button.webApp(t(lang, 'broadcast_btn_customize'), editUrl),
           ],
         ]);
 
@@ -186,6 +188,7 @@ export class BroadcastService implements OnModuleInit {
     composition: import('../offers/entities/offer.entity').OfferCompositionLine[],
     descRu: string | null,
     descUz: string | null,
+    lang: Lang,
   ): Promise<string> {
     const lines = composition.map((c) =>
       normalizeCartLine({
@@ -200,7 +203,7 @@ export class BroadcastService implements OnModuleInit {
       }),
     );
     const { total } = await this.linePricing.buildOrderItems(businessId, lines);
-    const parts: string[] = ['<b>Специальное предложение</b>'];
+    const parts: string[] = [`<b>${esc(t(lang, 'broadcast_offer_title'))}</b>`];
     const ru = descRu?.trim();
     const uz = descUz?.trim();
     if (ru && uz && ru !== uz) {

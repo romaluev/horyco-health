@@ -33,6 +33,8 @@ export class ClientsService {
     if (dto.name !== undefined) client.name = dto.name;
     if (dto.phone !== undefined) client.phone = dto.phone;
     if (dto.address !== undefined) client.address = dto.address;
+    if (dto.deliveryLat !== undefined) client.deliveryLat = String(dto.deliveryLat);
+    if (dto.deliveryLng !== undefined) client.deliveryLng = String(dto.deliveryLng);
     if (dto.language !== undefined) client.language = dto.language;
     if (dto.password !== undefined) client.passwordHash = hashPassword(dto.password);
     const saved = await this.clients.save(client);

@@ -17,6 +17,7 @@ import { BotStateService } from './bot-state.service';
 import { BotUiService } from './bot-ui.service';
 import { BotStaffService } from './bot-staff.service';
 import { BotMenuAdminService } from './bot-menu-admin.service';
+import { BotWelcomeService } from './bot-welcome.service';
 import { ClientUpdate } from './updates/client.update';
 import { StaffUpdate } from './updates/staff.update';
 import { BotRegistryService } from './engine/bot-registry.service';
@@ -51,6 +52,7 @@ import { BotConnectorService } from './bot-connector.service';
     BotUiService,
     BotStaffService,
     BotMenuAdminService,
+    BotWelcomeService,
     ClientUpdate,
     StaffUpdate,
     BotComposerFactory,

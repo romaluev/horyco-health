@@ -9,6 +9,7 @@ import { useT } from '@/lib/i18n';
 import { formatMoney, pick } from '@/lib/format';
 import { Stepper } from '@/components/Stepper';
 import { RegistrationForm } from '@/components/RegistrationForm';
+import { hasDeliveryLocation } from '@/components/DeliveryLocationFields';
 import { ApiError } from '@/lib/api';
 
 export function CartScreen() {
@@ -16,7 +17,7 @@ export function CartScreen() {
   const client = useAuthStore((s) => s.client);
   const lang = client?.language ?? Language.Ru;
   const balance = Number(client?.balance ?? '0');
-  const needsRegistration = !client?.phone || !client?.address;
+  const needsRegistration = !client?.phone || !hasDeliveryLocation(client ?? {});
   const { data: cart, isLoading } = useCart();
   const patchLine = usePatchCartLine();
   const checkout = useCheckout();

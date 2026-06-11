@@ -34,6 +34,8 @@ export function BackofficeSettings() {
     supportContact: '',
     tzOffsetHours: 5,
     dailyReportHour: 19,
+    welcomeMessageRu: '',
+    welcomeMessageUz: '',
   });
   const [token, setToken] = useState('');
   const [inviteForm, setInviteForm] = useState({ name: '', phone: '', role: MemberRole.Cook });
@@ -46,6 +48,8 @@ export function BackofficeSettings() {
         supportContact: settings.supportContact ?? '',
         tzOffsetHours: settings.tzOffsetHours,
         dailyReportHour: settings.dailyReportHour,
+        welcomeMessageRu: settings.welcomeMessageRu ?? '',
+        welcomeMessageUz: settings.welcomeMessageUz ?? '',
       });
     }
   }, [settings]);
@@ -150,6 +154,27 @@ export function BackofficeSettings() {
           value={form.dailyReportHour}
           onChange={(e) => setForm({ ...form, dailyReportHour: Number(e.target.value) })}
         />
+      </div>
+      <div className="field">
+        <label>{t('bo_welcome_ru')}</label>
+        <textarea
+          className="input"
+          rows={3}
+          value={form.welcomeMessageRu}
+          onChange={(e) => setForm({ ...form, welcomeMessageRu: e.target.value })}
+        />
+      </div>
+      <div className="field">
+        <label>{t('bo_welcome_uz')}</label>
+        <textarea
+          className="input"
+          rows={3}
+          value={form.welcomeMessageUz}
+          onChange={(e) => setForm({ ...form, welcomeMessageUz: e.target.value })}
+        />
+        <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+          {t('bo_welcome_hint')}
+        </p>
       </div>
       <div className="field">
         <label>{t('set_topup_tg')}</label>

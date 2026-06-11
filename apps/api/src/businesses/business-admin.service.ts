@@ -66,6 +66,8 @@ export class BusinessAdminService {
     if (dto.languageDefault !== undefined) business.languageDefault = dto.languageDefault;
     if (dto.tzOffsetHours !== undefined) business.tzOffsetHours = dto.tzOffsetHours;
     if (dto.dailyReportHour !== undefined) business.dailyReportHour = dto.dailyReportHour;
+    if (dto.welcomeMessageRu !== undefined) business.welcomeMessageRu = dto.welcomeMessageRu.trim() || null;
+    if (dto.welcomeMessageUz !== undefined) business.welcomeMessageUz = dto.welcomeMessageUz.trim() || null;
     await this.businesses.save(business);
     return this.toSettingsDto(business);
   }
@@ -328,6 +330,8 @@ export class BusinessAdminService {
     languageDefault: import('@eatfit/shared').Language;
     tzOffsetHours: number;
     dailyReportHour: number;
+    welcomeMessageRu: string | null;
+    welcomeMessageUz: string | null;
   }): BusinessSettingsResponseDto {
     return {
       name: business.name,
@@ -342,6 +346,8 @@ export class BusinessAdminService {
       languageDefault: business.languageDefault,
       tzOffsetHours: business.tzOffsetHours,
       dailyReportHour: business.dailyReportHour,
+      welcomeMessageRu: business.welcomeMessageRu,
+      welcomeMessageUz: business.welcomeMessageUz,
     };
   }
 }

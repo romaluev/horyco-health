@@ -60,6 +60,23 @@ const dict = {
   name: { ru: 'Имя', uz: 'Ism' },
   phone: { ru: 'Телефон', uz: 'Telefon' },
   address: { ru: 'Адрес', uz: 'Manzil' },
+  landmark: { ru: 'Ориентир (подъезд, квартира)', uz: 'Mo‘ljal (kirish, kvartira)' },
+  landmark_placeholder: {
+    ru: 'Например: подъезд 2, кв. 15',
+    uz: 'Masalan: 2-kirish, 15-xonadon',
+  },
+  delivery_location: { ru: 'Точка доставки на карте', uz: 'Xaritadagi yetkazish nuqtasi' },
+  use_my_location: { ru: '📍 Определить моё местоположение', uz: '📍 Joylashuvimni aniqlash' },
+  location_saved: { ru: 'Координаты сохранены', uz: 'Koordinatalar saqlandi' },
+  location_required: { ru: 'Укажите точку на карте', uz: 'Xaritadagi nuqtani ko‘rsating' },
+  location_unavailable: {
+    ru: 'Геолокация недоступна в этом браузере',
+    uz: 'Geolokatsiya bu brauzerda mavjud emas',
+  },
+  location_denied: {
+    ru: 'Не удалось получить геолокацию. Разрешите доступ или используйте бота в Telegram.',
+    uz: 'Geolokatsiyani olib bo‘lmadi. Ruxsat bering yoki Telegram botidan foydalaning.',
+  },
   balance: { ru: 'Баланс', uz: 'Balans' },
   language: { ru: 'Язык', uz: 'Til' },
   save: { ru: 'Сохранить', uz: 'Saqlash' },
@@ -71,7 +88,10 @@ const dict = {
   },
   profile_password_saved: { ru: 'Пароль сохранён', uz: 'Parol saqlandi' },
   register_title: { ru: 'Регистрация', uz: 'Ro‘yxatdan o‘tish' },
-  register_hint: { ru: 'Заполните профиль, чтобы заказывать', uz: 'Buyurtma berish uchun profilni to‘ldiring' },
+  register_hint: {
+    ru: 'Укажите телефон и точку доставки на карте, чтобы заказывать',
+    uz: 'Buyurtma berish uchun telefon va xaritadagi yetkazish nuqtasini ko‘rsating',
+  },
   required: { ru: 'Обязательное поле', uz: 'Majburiy maydon' },
 
   // ── вход/регистрация на сайте (вне Telegram) ──
@@ -211,6 +231,12 @@ const dict = {
   bo_disconnect_bot: { ru: 'Отключить бота', uz: 'Botni uzish' },
   bo_ready: { ru: 'Готово к работе!', uz: 'Ishga tayyor!' },
   bo_bind_hint: { ru: 'Привяжите группы через Telegram:', uz: 'Telegram orqali guruhlarni ulang:' },
+  bo_welcome_ru: { ru: 'Приветствие в боте (RU)', uz: 'Bot salomlashuvi (RU)' },
+  bo_welcome_uz: { ru: 'Приветствие в боте (UZ)', uz: 'Bot salomlashuvi (UZ)' },
+  bo_welcome_hint: {
+    ru: 'Показывается при первой регистрации. Пусто — текст по умолчанию. Можно использовать {businessName}.',
+    uz: 'Birinchi ro‘yxatdan o‘tishda ko‘rsatiladi. Bo‘sh — standart matn. {businessName} ishlatish mumkin.',
+  },
   bo_bind_step1: { ru: 'Добавьте бота в группу поваров', uz: 'Botni oshpazlar guruhiga qo‘shing' },
   bo_bind_step2: { ru: 'Выполните /bind cook (и admin для админ-группы)', uz: '/bind cook va /bind admin' },
   bo_bind_step3: { ru: 'Пригласите повара по ссылке ниже', uz: 'Oshpazni havola orqali taklif qiling' },

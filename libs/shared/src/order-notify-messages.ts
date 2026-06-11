@@ -1,7 +1,17 @@
-import { Language, OrderStatus } from './enums';
+import { Language, OrderStatus, PaymentMethod } from './enums';
 
-/** Дружелюбные уведомления клиенту о смене статуса (FR-O5, RU/UZ). */
+export interface OrderNotifyContext {
+  orderNumber: number;
+  total?: string;
+  paymentMethod?: PaymentMethod;
+  refundAmount?: string;
+}
+
 const ORDER_NOTIFY_MESSAGES: Partial<Record<OrderStatus, Record<Language, string>>> = {
+  [OrderStatus.Pending]: {
+    ru: 'Заказ принят! Скоро подтвердим и начнём готовить 📝',
+    uz: 'Buyurtma qabul qilindi! Tez orada tasdiqlab tayyorlashni boshlaymiz 📝',
+  },
   [OrderStatus.Confirmed]: {
     ru: 'Ваш заказ принят, готовим! 🍳',
     uz: 'Buyurtmangiz qabul qilindi, tayyorlayapmiz! 🍳',
@@ -28,15 +38,38 @@ const ORDER_NOTIFY_MESSAGES: Partial<Record<OrderStatus, Record<Language, string
   },
 };
 
+const PAYMENT_LABEL: Record<PaymentMethod, Record<Language, string>> = {
+  [PaymentMethod.Balance]: { ru: 'с баланса', uz: 'balansdan' },
+  [PaymentMethod.OnDelivery]: { ru: 'при получении', uz: 'yetkazib berishda' },
+};
+
 /** Текст уведомления клиенту при переходе в статус; null — не уведомляем. */
 export function orderClientNotifyMessage(
   lang: Language,
   status: OrderStatus,
-  orderNumber: number,
+  ctx: OrderNotifyContext,
 ): string | null {
   const body = ORDER_NOTIFY_MESSAGES[status]?.[lang];
   if (!body) return null;
+
   const prefix =
-    lang === Language.Uz ? `Buyurtma #${orderNumber}: ` : `Заказ #${orderNumber}: `;
-  return `${prefix}${body}`;
+    lang === Language.Uz ? `Buyurtma #${ctx.orderNumber}: ` : `Заказ #${ctx.orderNumber}: `;
+  const parts = [`${prefix}${body}`];
+
+  if (ctx.total) {
+    parts.push(lang === Language.Uz ? `Jami: ${ctx.total} so‘m` : `Итого: ${ctx.total} сум`);
+  }
+  if (ctx.paymentMethod) {
+    const pay = PAYMENT_LABEL[ctx.paymentMethod][lang];
+    parts.push(lang === Language.Uz ? `To‘lov: ${pay}` : `Оплата: ${pay}`);
+  }
+  if (status === OrderStatus.Cancelled && ctx.refundAmount) {
+    parts.push(
+      lang === Language.Uz
+        ? `Balansga qaytarildi: ${ctx.refundAmount} so‘m`
+        : `Возврат на баланс: ${ctx.refundAmount} сум`,
+    );
+  }
+
+  return parts.join('\n');
 }

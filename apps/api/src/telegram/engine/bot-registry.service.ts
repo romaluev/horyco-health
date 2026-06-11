@@ -91,6 +91,9 @@ export class BotRegistryService implements OnModuleDestroy {
       id: business.id,
       slug: business.slug,
       botUsername: business.botUsername,
+      name: business.name,
+      welcomeMessageRu: business.welcomeMessageRu,
+      welcomeMessageUz: business.welcomeMessageUz,
     });
     telegraf.use(middleware);
     telegraf.use(this.composerFactory.create());

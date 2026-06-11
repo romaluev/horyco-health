@@ -18,6 +18,8 @@ export interface ClientDto {
   username: string | null;
   phone: string | null;
   address: string | null;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
   language: Language;
   role: Role;
   balance: string;
@@ -106,6 +108,8 @@ export interface OrderDto {
   status: OrderStatus;
   total: string;
   address: string;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
   comment: string | null;
   paymentMethod: PaymentMethod;
   createdAt: string;

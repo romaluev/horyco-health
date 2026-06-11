@@ -212,7 +212,7 @@ export class OffersService implements OnModuleInit {
     }
 
     const client = recipient.client;
-    if (!client.address) {
+    if (!client.deliveryLat || !client.deliveryLng || !client.phone) {
       await this.offers.setRecipientStatus(businessId, recipient.id, OfferRecipientStatus.Opened, {
         openedAt: new Date(),
       });
@@ -242,7 +242,7 @@ export class OffersService implements OnModuleInit {
       businessId,
       client.id,
       lines,
-      { paymentMethod, address: client.address, comment: undefined },
+      { paymentMethod, address: client.address ?? undefined, comment: undefined },
       offer.id,
       { skipCartClear: true },
     );

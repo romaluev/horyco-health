@@ -35,8 +35,16 @@ export class Order extends BaseEntity {
   @Column({ type: 'numeric', precision: 12, scale: 2, transformer: moneyTransformer })
   total!: Money;
 
-  @Column({ type: 'varchar' })
+  /** Снимок ориентира (подъезд, квартира) на момент заказа. */
+  @Column({ type: 'varchar', default: '' })
   address!: string;
+
+  /** Снимок координат доставки на момент заказа. */
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  deliveryLat!: string | null;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  deliveryLng!: string | null;
 
   @Column({ type: 'text', nullable: true })
   comment!: string | null;

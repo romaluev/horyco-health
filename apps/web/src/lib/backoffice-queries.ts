@@ -15,6 +15,8 @@ export interface BusinessSettings {
   languageDefault: string;
   tzOffsetHours: number;
   dailyReportHour: number;
+  welcomeMessageRu: string | null;
+  welcomeMessageUz: string | null;
 }
 
 export interface ChecklistItem {

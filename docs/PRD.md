@@ -19,7 +19,7 @@
 - Автоматизацию кухни/курьера через группы Telegram
 - Кошелёк клиента и отчёты
 
-B2C-клиент: `/start` → меню сразу, one-tap офферы, кастомизация только когда нужна.
+B2C-клиент: `/start` → регистрация (язык → имя → телефон → локация → ориентир) → меню; one-tap офферы после регистрации.
 
 ---
 
@@ -118,7 +118,7 @@ Platform-admin seed: `ADMIN_TELEGRAM_IDS` (env). Остальные роли —
 - **DishDetail** — KBJU, аллергены, порции, **ModifierPicker** → `POST /cart/lines`
 - **ComboDetail** — slot pickers
 - **CartScreen** — sub-lines модификаторов, calorie total
-- **ProfileScreen** — имя, телефон, адрес; опциональный **пароль для сайта** (заказы в Telegram без пароля)
+- **ProfileScreen** — имя, телефон, **точка на карте** (browser geolocation), ориентир; опциональный **пароль для сайта**
 - **AppGate** — friendly screen без `?biz=`
 
 ### 5.2 Back office `/b`
@@ -143,7 +143,10 @@ Businesses table with **botStatus badge**, create/suspend/activate, GMV per busi
 ## 6. Бот
 
 - Multi-bot engine: registry, composer, per-business webhook
-- `/start` → menu immediately; deep links: `item_`, `detail_`, `combo_`
+- `/start` → **регистрация** (язык → имя → телефон → **Telegram location pin** → опциональный ориентир) → главное меню; returning users — welcome back + меню
+- Deep links после регистрации: `item_`, `detail_`, `combo_`
+- Кастомное приветствие per-business в `/b` → Settings (`welcome_message_ru/uz`, placeholder `{businessName}`)
+- Push-уведомления клиенту по заказу (все статусы incl. `pending`) с inline «Мои заказы»
 - Required modifiers → web_app «Выбрать →»
 - `/bind cook|courier|admin` in group
 - Daily report: orders + revenue + top + **offer funnel line**

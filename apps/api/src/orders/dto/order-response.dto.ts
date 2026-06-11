@@ -26,6 +26,8 @@ export class OrderResponseDto {
   status: OrderStatus;
   total: string;
   address: string;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
   comment: string | null;
   paymentMethod: PaymentMethod;
   createdAt: Date;
@@ -45,6 +47,8 @@ export class OrderResponseDto {
     this.status = order.status;
     this.total = order.total.toString();
     this.address = order.address;
+    this.deliveryLat = parseCoord(order.deliveryLat);
+    this.deliveryLng = parseCoord(order.deliveryLng);
     this.comment = order.comment;
     this.paymentMethod = order.paymentMethod;
     this.createdAt = order.createdAt;
@@ -87,6 +91,12 @@ function sumCalories(items: OrderItemView[]): number | null {
     }
   }
   return any ? sum : null;
+}
+
+function parseCoord(v: string | null | undefined): number | null {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 /** Текст позиции для kitchen/telegram cards с sub-lines. */

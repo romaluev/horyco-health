@@ -26,8 +26,17 @@ export class Client extends BaseEntity {
   @Column({ type: 'varchar', nullable: true })
   phone!: string | null;
 
+  /** Ориентир: подъезд, квартира, комментарий к точке на карте. */
   @Column({ type: 'varchar', nullable: true })
   address!: string | null;
+
+  /** Широта точки доставки (Telegram location / browser geolocation). */
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  deliveryLat!: string | null;
+
+  /** Долгота точки доставки. */
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  deliveryLng!: string | null;
 
   @Column({ type: 'enum', enum: Language, default: Language.Ru })
   language!: Language;

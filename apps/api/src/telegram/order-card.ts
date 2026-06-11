@@ -4,12 +4,13 @@ import { Language, OrderStatus, Role } from '@eatfit/shared';
 import { OrderResponseDto, formatOrderItemLines } from '../orders/dto/order-response.dto';
 import { allowedTargets } from '../orders/order-status.machine';
 import { Lang, t, esc, pick, formatMoney, statusText } from './i18n/bot-i18n';
+import { mapsLinkButton } from './telegram-keyboards';
 
 /** Карточка заказа для персонала: позиции (+ модификаторы/слоты), адрес, сумма. */
 export function orderCardText(lang: Lang, order: OrderResponseDto, header?: string): string {
   const lines: string[] = [];
   if (header) lines.push(`<b>${esc(header)}</b>`);
-  const offerTag = order.offerId != null ? ` · рассылка` : '';
+  const offerTag = order.offerId != null ? ` · ${esc(t(lang, 'broadcast_offer_title'))}` : '';
   lines.push(
     `<b>${esc(t(lang, 'order_label'))} #${esc(order.number)}</b> — ${esc(statusText(lang, order.status))}${offerTag}`,
   );
@@ -19,7 +20,14 @@ export function orderCardText(lang: Lang, order: OrderResponseDto, header?: stri
       lines.push(esc(line));
     }
   }
-  lines.push(`${esc(t(lang, 'group_address'))}: ${esc(order.address)}`);
+  if (order.address) {
+    lines.push(`${esc(t(lang, 'profile_landmark'))}: ${esc(order.address)}`);
+  }
+  if (order.deliveryLat != null && order.deliveryLng != null) {
+    lines.push(`📍 ${esc(order.deliveryLat)}, ${esc(order.deliveryLng)}`);
+  } else if (order.address) {
+    lines.push(`${esc(t(lang, 'group_address'))}: ${esc(order.address)}`);
+  }
   if (order.customerPhone) {
     lines.push(`${esc(t(lang, 'group_phone'))}: ${esc(order.customerPhone)}`);
   }
@@ -48,5 +56,11 @@ export function orderActionButtons(
 }
 
 export function orderActionKeyboard(lang: Lang, order: OrderResponseDto, role: Role) {
-  return Markup.inlineKeyboard([orderActionButtons(lang, order, role)]);
+  const rows: InlineKeyboardButton[][] = [];
+  if (order.deliveryLat != null && order.deliveryLng != null) {
+    rows.push([mapsLinkButton(lang, order.deliveryLat, order.deliveryLng)]);
+  }
+  const actions = orderActionButtons(lang, order, role);
+  if (actions.length) rows.push(actions);
+  return Markup.inlineKeyboard(rows);
 }

@@ -1,12 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ChatKind, Role } from '@eatfit/shared';
+import { ConfigService } from '@nestjs/config';
+import { ChatKind, Language, Role } from '@eatfit/shared';
 import type { Telegraf } from 'telegraf';
 import { BusinessChatsRepository } from '../businesses/business-chats.repository';
+import { BusinessesRepository } from '../businesses/businesses.repository';
 import { INotifier, NotifyGroup } from '../common/notifications/notifier';
 import { OrderResponseDto } from '../orders/dto/order-response.dto';
-import { Lang } from './i18n/bot-i18n';
+import { Lang, t } from './i18n/bot-i18n';
 import { orderActionKeyboard, orderCardText } from './order-card';
 import { BotRegistryService } from './engine/bot-registry.service';
+import { orderNotifyKeyboard } from './telegram-keyboards';
 
 /**
  * Реализация порта INotifier поверх per-business Telegraf (DIP).
@@ -15,15 +18,35 @@ import { BotRegistryService } from './engine/bot-registry.service';
 @Injectable()
 export class TelegramNotifier implements INotifier {
   private readonly logger = new Logger(TelegramNotifier.name);
-  private readonly groupLang = 'ru' as Lang;
+  private readonly webAppBase?: string;
 
   constructor(
     private readonly registry: BotRegistryService,
     private readonly chats: BusinessChatsRepository,
-  ) {}
+    private readonly businesses: BusinessesRepository,
+    private readonly config: ConfigService,
+  ) {
+    this.webAppBase = this.config.get<string>('bot.webAppUrl');
+  }
 
-  async notifyUser(businessId: string, telegramId: string, message: string): Promise<void> {
-    await this.send(businessId, telegramId, message);
+  async notifyUser(
+    businessId: string,
+    telegramId: string,
+    message: string,
+    options?: { replyMarkup?: { inline_keyboard: import('telegraf/typings/core/types/typegram').InlineKeyboardButton[][] } },
+  ): Promise<void> {
+    await this.send(businessId, telegramId, message, options?.replyMarkup);
+  }
+
+  async notifyOrderClient(
+    businessId: string,
+    telegramId: string,
+    message: string,
+    lang: Language,
+  ): Promise<void> {
+    const webAppUrl = await this.webAppUrlFor(businessId);
+    const keyboard = orderNotifyKeyboard(lang as Lang, webAppUrl);
+    await this.send(businessId, telegramId, message, keyboard.reply_markup);
   }
 
   async notifyGroup(businessId: string, group: NotifyGroup, message: string): Promise<void> {
@@ -49,10 +72,11 @@ export class TelegramNotifier implements INotifier {
     }
     const tg = this.telegramApi(businessId);
     if (!tg) return null;
+    const lang = await this.groupLang(businessId);
     try {
-      const sent = await tg.sendMessage(chatId, this.cardText(order, header), {
+      const sent = await tg.sendMessage(chatId, this.cardText(lang, order, header), {
         parse_mode: 'HTML',
-        ...orderActionKeyboard(this.groupLang, order, role),
+        ...orderActionKeyboard(lang, order, role),
       });
       return String(sent.message_id);
     } catch (err) {
@@ -73,10 +97,11 @@ export class TelegramNotifier implements INotifier {
     if (!chatId) return false;
     const tg = this.telegramApi(businessId);
     if (!tg) return false;
+    const lang = await this.groupLang(businessId);
     try {
-      await tg.editMessageText(chatId, Number(messageId), undefined, this.cardText(order, header), {
+      await tg.editMessageText(chatId, Number(messageId), undefined, this.cardText(lang, order, header), {
         parse_mode: 'HTML',
-        ...orderActionKeyboard(this.groupLang, order, role),
+        ...orderActionKeyboard(lang, order, role),
       });
       return true;
     } catch (err) {
@@ -98,8 +123,9 @@ export class TelegramNotifier implements INotifier {
     if (!chatId) return false;
     const tg = this.telegramApi(businessId);
     if (!tg) return false;
+    const lang = await this.groupLang(businessId);
     try {
-      await tg.editMessageText(chatId, Number(messageId), undefined, this.cardText(order, header), {
+      await tg.editMessageText(chatId, Number(messageId), undefined, this.cardText(lang, order, header), {
         parse_mode: 'HTML',
       });
       return true;
@@ -111,8 +137,22 @@ export class TelegramNotifier implements INotifier {
     }
   }
 
-  private cardText(order: OrderResponseDto, header?: string): string {
-    return orderCardText(this.groupLang, order, header);
+  private cardText(lang: Lang, order: OrderResponseDto, header?: string): string {
+    return orderCardText(lang, order, header);
+  }
+
+  private async groupLang(businessId: string): Promise<Lang> {
+    const business = await this.businesses.findById(businessId);
+    return (business?.languageDefault ?? Language.Ru) as Lang;
+  }
+
+  private async webAppUrlFor(businessId: string): Promise<string | undefined> {
+    const base = this.webAppBase;
+    if (!base?.startsWith('https://')) return undefined;
+    const business = await this.businesses.findById(businessId);
+    if (!business?.slug) return base;
+    const sep = base.includes('?') ? '&' : '?';
+    return `${base}${sep}biz=${encodeURIComponent(business.slug)}`;
   }
 
   private async resolveGroup(businessId: string, group: NotifyGroup): Promise<string | undefined> {
@@ -148,11 +188,19 @@ export class TelegramNotifier implements INotifier {
     return bot.telegraf.telegram;
   }
 
-  private async send(businessId: string, chatId: string, message: string): Promise<void> {
+  private async send(
+    businessId: string,
+    chatId: string,
+    message: string,
+    replyMarkup?: { inline_keyboard: import('telegraf/typings/core/types/typegram').InlineKeyboardButton[][] },
+  ): Promise<void> {
     const tg = this.telegramApi(businessId);
     if (!tg) return;
     try {
-      await tg.sendMessage(chatId, message, { parse_mode: 'HTML' });
+      await tg.sendMessage(chatId, message, {
+        parse_mode: 'HTML',
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+      });
     } catch (err) {
       this.logger.warn(`Не удалось отправить сообщение в ${chatId}: ${(err as Error).message}`);
     }

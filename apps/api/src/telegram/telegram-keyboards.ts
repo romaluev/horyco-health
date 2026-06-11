@@ -35,6 +35,34 @@ export function languageKeyboard() {
   ]);
 }
 
+/** Reply-клавиатура «Отправить локацию». */
+export function shareLocationKeyboard(lang: Lang) {
+  return Markup.keyboard([[Markup.button.locationRequest(t(lang, 'share_location'))]])
+    .resize()
+    .oneTime();
+}
+
+/** Пропустить ввод ориентира после локации. */
+export function skipLandmarkKeyboard(lang: Lang) {
+  return Markup.inlineKeyboard([[Markup.button.callback(t(lang, 'btn_skip_landmark'), 'reg:skip_landmark')]]);
+}
+
+/** Кнопки в push-уведомлениях о заказе. */
+export function orderNotifyKeyboard(lang: Lang, webAppUrl?: string) {
+  const rows: InlineKeyboardButton[][] = [
+    [Markup.button.callback(t(lang, 'btn_my_orders_short'), 'nav:orders')],
+  ];
+  if (webAppUrl?.startsWith('https://')) {
+    rows.push([Markup.button.webApp(t(lang, 'btn_webapp'), webAppUrl)]);
+  }
+  return Markup.inlineKeyboard(rows);
+}
+
+/** URL-кнопка «Открыть на карте» для карточек заказа. */
+export function mapsLinkButton(lang: Lang, lat: number, lng: number): InlineKeyboardButton {
+  return Markup.button.url(t(lang, 'btn_open_maps'), `https://maps.google.com/?q=${lat},${lng}`);
+}
+
 /** Reply-клавиатура «Поделиться контактом». */
 export function shareContactKeyboard(lang: Lang) {
   return Markup.keyboard([[Markup.button.contactRequest(t(lang, 'share_contact'))]])

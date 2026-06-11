@@ -1,4 +1,5 @@
 import type { Role } from '@eatfit/shared';
+import type { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
 import type { OrderResponseDto } from '../../orders/dto/order-response.dto';
 
 /**
@@ -15,9 +16,25 @@ export enum NotifyGroup {
   Admins = 'admins',
 }
 
+export interface NotifyUserOptions {
+  replyMarkup?: { inline_keyboard: InlineKeyboardButton[][] };
+}
+
 export interface INotifier {
   /** Сообщение конкретному пользователю по Telegram id (бот бизнеса businessId). */
-  notifyUser(businessId: string, telegramId: string, message: string): Promise<void>;
+  notifyUser(
+    businessId: string,
+    telegramId: string,
+    message: string,
+    options?: NotifyUserOptions,
+  ): Promise<void>;
+  /** Push клиенту о заказе с inline «Мои заказы» (+ web app при HTTPS). */
+  notifyOrderClient(
+    businessId: string,
+    telegramId: string,
+    message: string,
+    lang: import('@eatfit/shared').Language,
+  ): Promise<void>;
   /** Сообщение в рабочую группу бизнеса (повара/курьеры/админы). */
   notifyGroup(businessId: string, group: NotifyGroup, message: string): Promise<void>;
   /**

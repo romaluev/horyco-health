@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { Language } from '@eatfit/shared';
 
 export class UpdateProfileDto {
@@ -12,10 +12,23 @@ export class UpdateProfileDto {
   @MaxLength(32)
   phone?: string;
 
+  /** Ориентир к точке на карте (подъезд, квартира). */
   @IsOptional()
   @IsString()
   @MaxLength(300)
   address?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  deliveryLat?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  deliveryLng?: number;
 
   @IsOptional()
   @IsEnum(Language)

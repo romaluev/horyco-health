@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { Language } from '@eatfit/shared';
 
 export class UpdateBusinessSettingsDto {
@@ -29,4 +29,14 @@ export class UpdateBusinessSettingsDto {
   @Min(0)
   @Max(23)
   dailyReportHour?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  welcomeMessageRu?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  welcomeMessageUz?: string;
 }

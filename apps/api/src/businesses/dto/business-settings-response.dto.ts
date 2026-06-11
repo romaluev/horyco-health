@@ -13,4 +13,6 @@ export class BusinessSettingsResponseDto {
   languageDefault!: Language;
   tzOffsetHours!: number;
   dailyReportHour!: number;
+  welcomeMessageRu!: string | null;
+  welcomeMessageUz!: string | null;
 }

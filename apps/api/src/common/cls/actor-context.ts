@@ -24,6 +24,9 @@ export interface BotBusinessContext {
   id: string;
   slug: string;
   botUsername: string | null;
+  name: string;
+  welcomeMessageRu: string | null;
+  welcomeMessageUz: string | null;
 }
 
 /** Типизированное хранилище CLS приложения. */

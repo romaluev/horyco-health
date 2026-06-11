@@ -21,6 +21,107 @@ const dict = {
   },
   share_contact: { ru: '📱 Поделиться контактом', uz: '📱 Kontaktni ulashish' },
   ask_address: { ru: 'Введите адрес доставки:', uz: 'Yetkazib berish manzilini kiriting:' },
+  ask_location: {
+    ru: 'Отправьте точку доставки на карте — нажмите кнопку ниже:',
+    uz: 'Yetkazib berish nuqtasini xaritada yuboring — pastdagi tugmani bosing:',
+  },
+  share_location: { ru: '📍 Отправить локацию', uz: '📍 Lokatsiyani yuborish' },
+  location_saved: {
+    ru: 'Точка на карте сохранена ✅',
+    uz: 'Xaritadagi nuqta saqlandi ✅',
+  },
+  invalid_location: {
+    ru: 'Нужна геолокация. Нажмите кнопку «Отправить локацию» ниже:',
+    uz: 'Geolokatsiya kerak. Pastdagi «Lokatsiyani yuborish» tugmasini bosing:',
+  },
+  ask_landmark: {
+    ru: 'Добавьте ориентир (подъезд, квартира, этаж) или нажмите «Пропустить»:',
+    uz: 'Mo‘ljal qo‘shing (kirish, kvartira, qavat) yoki «O‘tkazib yuborish»ni bosing:',
+  },
+  btn_skip_landmark: { ru: '➡️ Пропустить', uz: '➡️ O‘tkazib yuborish' },
+  pf_location: { ru: '📍 Точка на карте', uz: '📍 Xaritadagi nuqta' },
+  btn_open_maps: { ru: '📍 Открыть на карте', uz: '📍 Xaritada ochish' },
+  profile_landmark: { ru: 'Ориентир', uz: 'Mo‘ljal' },
+  profile_location_set: { ru: 'Точка на карте указана', uz: 'Xaritadagi nuqta ko‘rsatilgan' },
+  profile_location_missing: { ru: 'Точка на карте не указана', uz: 'Xaritadagi nuqta ko‘rsatilmagan' },
+
+  welcome_new: {
+    ru: 'Добро пожаловать в {businessName}! 🎉\n\nСейчас быстро настроим профиль — это займёт минуту.',
+    uz: '{businessName} ga xush kelibsiz! 🎉\n\nProfilni tez sozlaymiz — bir daqiqa vaqt oladi.',
+  },
+  welcome_back: {
+    ru: 'С возвращением в {businessName}! 👋',
+    uz: '{businessName} ga yana xush kelibsiz! 👋',
+  },
+  registration_intro: {
+    ru: 'Для доставки нам нужны ваш телефон и точка на карте.',
+    uz: 'Yetkazib berish uchun telefon va xaritadagi nuqta kerak.',
+  },
+  checkout_need_profile: {
+    ru: 'Сначала завершите регистрацию — отправьте /start',
+    uz: 'Avval ro‘yxatdan o‘ting — /start yuboring',
+  },
+  first_order_congrats: {
+    ru: 'Поздравляем с первым заказом! 🎉 Приятного аппетита!',
+    uz: 'Birinchi buyurtmangiz bilan tabriklaymiz! 🎉 Yoqimli ishtaha!',
+  },
+  hint_empty_cart: {
+    ru: 'Выберите блюда в меню, затем нажмите «Оформить заказ».',
+    uz: 'Menyudan taom tanlang, keyin «Buyurtmani rasmiylashtirish»ni bosing.',
+  },
+  hint_use_menu_button: {
+    ru: 'Нажмите «🍽 Сделать заказ», чтобы открыть меню.',
+    uz: 'Menyuni ochish uchun «🍽 Buyurtma berish»ni bosing.',
+  },
+  hint_support_available: {
+    ru: 'Если нужна помощь — раздел «🆘 Поддержка» в меню.',
+    uz: 'Yordam kerak bo‘lsa — menyudagi «🆘 Yordam» bo‘limi.',
+  },
+  offer_accept_ok: { ru: 'Заказ оформлен ✅', uz: 'Buyurtma rasmiylashtirildi ✅' },
+  offer_accept_need_profile: {
+    ru: 'Сначала укажите профиль и точку доставки в приложении:',
+    uz: 'Avval ilovada profil va yetkazish nuqtasini ko‘rsating:',
+  },
+  offer_accept_failed: { ru: 'Не удалось оформить заказ.', uz: 'Buyurtma rasmiylashtirib bo‘lmadi.' },
+  staff_invite_wrong_account: {
+    ru: 'Это приглашение предназначено другому аккаунту.',
+    uz: 'Bu taklif boshqa akkaunt uchun.',
+  },
+  staff_invite_accepted: {
+    ru: '✅ Вы приняли приглашение в команду!',
+    uz: '✅ Jamoa taklifini qabul qildingiz!',
+  },
+  btn_my_orders_short: { ru: '📦 Мои заказы', uz: '📦 Buyurtmalarim' },
+  btn_view_balance: { ru: '💰 Баланс', uz: '💰 Balans' },
+  broadcast_offer_title: { ru: 'Специальное предложение', uz: 'Maxsus taklif' },
+  broadcast_btn_accept: { ru: '✅ Оформить', uz: '✅ Rasmiylashtirish' },
+  broadcast_btn_customize: { ru: '✏️ Изменить', uz: '✏️ O‘zgartirish' },
+  bind_usage: {
+    ru: 'Использование: /bind cook | courier | admin',
+    uz: 'Foydalanish: /bind cook | courier | admin',
+  },
+  bind_success: { ru: 'Группа привязана ✅', uz: 'Guruh bog‘landi ✅' },
+  bind_unknown_kind: { ru: 'Неизвестный тип группы.', uz: 'Noma’lum guruh turi.' },
+  bind_groups_only: { ru: 'Привязка работает только в группах.', uz: 'Bog‘lash faqat guruhlarda ishlaydi.' },
+  bind_start_first: { ru: 'Сначала напишите боту в личку /start', uz: 'Avval botga shaxsiy chatda /start yuboring' },
+  bind_owner_only: {
+    ru: 'Только владелец или менеджер может привязать группу.',
+    uz: 'Guruhni faqat egasi yoki menejer bog‘lay oladi.',
+  },
+  bind_bot_added_hint: {
+    ru: '👋 Бот добавлен в группу.\n\nВладелец или менеджер: выполните команду\n/bind cook, /bind courier или /bind admin',
+    uz: '👋 Bot guruhga qo‘shildi.\n\nEga yoki menejer:\n/bind cook, /bind courier yoki /bind admin buyrug‘ini bajaring',
+  },
+  profile_link_hint: {
+    ru: 'Откройте профиль в приложении, чтобы указать адрес:',
+    uz: 'Manzilni ko‘rsatish uchun ilovada profilni oching:',
+  },
+  notify_ready: {
+    ru: 'Заказ готов, скоро передадим курьеру 🍽',
+    uz: 'Buyurtma tayyor, tez orada kuryerga topshiramiz 🍽',
+  },
+  group_order_ready: { ru: 'готов к доставке', uz: 'yetkazishga tayyor' },
+
   registration_done: { ru: 'Регистрация завершена! 🎉', uz: 'Ro‘yxatdan o‘tish yakunlandi! 🎉' },
   invalid_phone: {
     ru: 'Похоже, это не телефон. Попробуйте ещё раз:',
@@ -143,12 +244,7 @@ const dict = {
 
   // Статусы заказа — единый источник в libs/shared (orderStatusLabel), см. statusText().
 
-  // ---- Уведомления клиенту ----
-  notify_confirmed: { ru: 'Ваш заказ принят, готовим! 🍳', uz: 'Buyurtmangiz qabul qilindi, tayyorlayapmiz! 🍳' },
-  notify_cooking: { ru: 'Повар приступил к готовке 👨‍🍳', uz: 'Oshpaz tayyorlashga kirishdi 👨‍🍳' },
-  notify_delivering: { ru: 'Курьер выехал! 🚗', uz: 'Kuryer yo‘lga chiqdi! 🚗' },
-  notify_done: { ru: 'Заказ доставлен. Приятного аппетита! 🙏', uz: 'Buyurtma yetkazib berildi. Yoqimli ishtaha! 🙏' },
-  notify_cancelled: { ru: 'Заказ отменён', uz: 'Buyurtma bekor qilindi' },
+  // ---- Уведомления клиенту (UI бота; push — libs/shared/order-notify-messages) ----
 
   // ---- Повар ----
   cook_panel_title: { ru: '👨‍🍳 Режим повара — активные заказы:', uz: '👨‍🍳 Oshpaz rejimi — faol buyurtmalar:' },
@@ -288,7 +384,10 @@ const dict = {
   // ---- Ошибки / доступ ----
   error_generic: { ru: '⚠️ Произошла ошибка. Попробуйте позже.', uz: '⚠️ Xatolik yuz berdi. Keyinroq urinib ko‘ring.' },
   access_denied: { ru: '⛔ Недостаточно прав.', uz: '⛔ Ruxsat yetarli emas.' },
-  not_registered: { ru: 'Пожалуйста, завершите регистрацию командой /start', uz: 'Iltimos, /start buyrug‘i bilan ro‘yxatdan o‘ting' },
+  not_registered: {
+    ru: 'Пожалуйста, завершите регистрацию — отправьте /start',
+    uz: 'Iltimos, ro‘yxatdan o‘ting — /start yuboring',
+  },
   dish_not_found: { ru: 'Блюдо не найдено или недоступно.', uz: 'Taom topilmadi yoki mavjud emas.' },
   pcs: { ru: 'шт', uz: 'dona' },
   btn_details: { ru: '🔎 Подробнее', uz: '🔎 Batafsil' },

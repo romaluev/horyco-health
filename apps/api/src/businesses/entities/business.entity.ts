@@ -59,6 +59,13 @@ export class Business extends BaseEntity {
   @Column({ type: 'varchar', nullable: true })
   topupPhone!: string | null;
 
+  /** Кастомное приветствие в боте при первой регистрации (RU). Пусто — дефолт из bot-i18n. */
+  @Column({ type: 'text', nullable: true })
+  welcomeMessageRu!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  welcomeMessageUz!: string | null;
+
   // Счётчик заказов бизнеса: номер выдаётся UPDATE … RETURNING под блокировкой строки.
   @Column({ type: 'int', default: 0 })
   lastOrderNo!: number;

@@ -263,10 +263,10 @@ export class BotUiService {
     const lang = this.langOf(client);
     const row = profileButtonRow(lang, this.webAppUrl());
     if (!row) {
-      await ctx.reply('Укажите адрес в профиле');
+      await ctx.reply(t(lang, 'profile_link_hint'));
       return;
     }
-    await ctx.reply('Укажите адрес в профиле', {
+    await ctx.reply(t(lang, 'profile_link_hint'), {
       reply_markup: { inline_keyboard: [row] },
     });
   }

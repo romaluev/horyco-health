@@ -111,10 +111,12 @@ export class OrdersService {
     if (!client) {
       throw new NotFoundError('Клиент не найден');
     }
-    const address = dto.address ?? client.address;
-    if (!address) {
-      throw new ConflictError('Укажите адрес доставки');
+    const deliveryLat = dto.deliveryLat ?? parseCoord(client.deliveryLat);
+    const deliveryLng = dto.deliveryLng ?? parseCoord(client.deliveryLng);
+    if (deliveryLat == null || deliveryLng == null) {
+      throw new ConflictError('Укажите точку доставки на карте');
     }
+    const address = dto.address ?? client.address ?? '';
 
     const { items, total } = await this.linePricing.buildOrderItems(businessId, lines);
 
@@ -134,6 +136,8 @@ export class OrdersService {
       status: OrderStatus.Pending,
       total,
       address,
+      deliveryLat: String(deliveryLat),
+      deliveryLng: String(deliveryLng),
       comment: dto.comment ?? null,
       paymentMethod: dto.paymentMethod,
       offerId: opts.offerId ?? null,
@@ -234,4 +238,10 @@ export class OrdersService {
       client ? { name: client.name, phone: client.phone } : undefined,
     );
   }
+}
+
+function parseCoord(v: string | null | undefined): number | null {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
