@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Allergens, Category, Ingredient, Nutrition, OrderStatus, Role } from '@eatfit/shared';
 import { api, apiUpload } from './api';
 import { ClientDto, MenuItemDto, OrderDto, SettingsDto } from './types';
+import { useAuthStore } from '@/store/auth.store';
+import { getBizSlug } from './biz';
 
 export interface DishBody {
   category: Category;
@@ -38,9 +40,14 @@ export function useTransition() {
 
 /* ── публичный конфиг (юзернейм бота для deep-link) ── */
 export function usePublicConfig() {
+  // Активный бизнес: стафф-сессия (activeBusinessSlug) либо ?biz= в URL Mini App.
+  const slug = useAuthStore((s) => s.activeBusinessSlug) ?? getBizSlug() ?? null;
   return useQuery({
-    queryKey: ['config'],
-    queryFn: () => api<{ botUsername: string | null }>('/config'),
+    queryKey: ['config', slug],
+    queryFn: () =>
+      api<{ botUsername: string | null }>(
+        slug ? `/config?biz=${encodeURIComponent(slug)}` : '/config',
+      ),
     staleTime: 5 * 60 * 1000,
   });
 }

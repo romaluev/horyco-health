@@ -555,7 +555,7 @@ export class ClientUpdate {
     const lang = this.ui.langOf(client);
 
     if (step === 'client') {
-      const found = await this.clients.search(text.trim());
+      const found = await this.clients.search(this.actorCtx.getBusinessIdOrThrow(), text.trim());
       if (!found.length) {
         await ctx.reply(t(lang, 'user_not_found'));
         return;
@@ -612,7 +612,7 @@ export class ClientUpdate {
     const lang = this.ui.langOf(client);
 
     if (step === 'client') {
-      const found = await this.clients.search(text.trim());
+      const found = await this.clients.search(this.actorCtx.getBusinessIdOrThrow(), text.trim());
       if (!found.length) {
         await ctx.reply(t(lang, 'user_not_found'));
         return;

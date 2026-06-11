@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Role } from '@eatfit/shared';
 import { ActorContextService } from '../common/cls/actor-context.service';
-import { ForbiddenError, NotFoundError } from '../common/errors/domain-error';
+import { NotFoundError } from '../common/errors/domain-error';
 import { Money } from '../common/money/money';
 import { BusinessCustomersRepository } from '../businesses/business-customers.repository';
 import { ClientRepository } from './clients.repository';
@@ -43,7 +42,8 @@ export class ClientsService {
 
   async search(term?: string): Promise<ClientResponseDto[]> {
     const actor = this.actorCtx.getOrThrow();
-    const list = await this.clients.search(term);
+    // Поиск скоуплен бизнесом актора (business_customers): без платформенной утечки клиентов.
+    const list = await this.clients.search(actor.businessId, term);
     if (!list.length) return [];
     // Балансы одним запросом — без N+1.
     const ids = list.map((c) => c.id);
@@ -53,21 +53,14 @@ export class ClientsService {
 
   async getByIdAdmin(id: string): Promise<ClientResponseDto> {
     const actor = this.actorCtx.getOrThrow();
+    // Клиент виден админу, только если есть строка business_customers (actor.businessId, id).
+    const wallet = await this.wallets.find(actor.businessId, id);
+    if (!wallet) {
+      throw new NotFoundError('Клиент не найден');
+    }
     const client = await this.loadOrThrow(id);
     const bal = await this.balance.balanceOf(id, actor.businessId);
     return new ClientResponseDto(client, bal);
-  }
-
-  async changeRole(targetId: string, role: Role): Promise<ClientResponseDto> {
-    const actor = this.actorCtx.getOrThrow();
-    if (targetId === actor.userId) {
-      throw new ForbiddenError('Нельзя менять собственную роль');
-    }
-    const client = await this.loadOrThrow(targetId);
-    client.role = role;
-    const saved = await this.clients.save(client);
-    const bal = await this.balance.balanceOf(targetId, actor.businessId);
-    return new ClientResponseDto(saved, bal);
   }
 
   private async loadOrThrow(id: string): Promise<Client> {

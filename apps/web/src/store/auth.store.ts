@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { ClientDto } from '@/lib/types';
 import { getBizSlug } from '@/lib/biz';
 import { StaffBusiness } from '@/lib/backoffice-queries';
-import { persistStaffSession } from '@/lib/staff-auth';
+import { persistStaffSession, clearStaffSession } from '@/lib/staff-auth';
 
 export type AuthStatus = 'idle' | 'loading' | 'authed' | 'web-anon' | 'missing-biz' | 'error';
 
@@ -43,6 +43,7 @@ interface AuthState {
   setClient: (client: ClientDto) => void;
   setStatus: (status: AuthStatus, error?: string) => void;
   logout: () => void;
+  logoutStaff: () => void;
 }
 
 /** Сессия: JWT + профиль. Токен персистится per-biz (eatfit-token:<slug>). */
@@ -70,7 +71,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   setClient: (client) => set({ client }),
   setStatus: (status, error) => set({ status, error }),
   logout: () => {
+    // Очищаем и клиентский, и стафф-токены: кнопка «Выйти» есть в back office.
     saveToken(null);
+    clearStaffSession();
+    set({
+      token: null,
+      client: null,
+      status: 'web-anon',
+      staffBusinesses: [],
+      activeBusinessSlug: null,
+    });
+  },
+  logoutStaff: () => {
+    // 401 на стафф/платформенном вызове: чистим стафф-сессию, не трогая клиентский токен.
+    clearStaffSession();
     set({
       token: null,
       client: null,

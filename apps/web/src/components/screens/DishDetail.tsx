@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Language } from '@eatfit/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useMenuItem, useCart } from '@/lib/queries';
+import { useMenuItem, useCart, useDeleteCartLine } from '@/lib/queries';
 import { useUpsertCartLine } from '@/lib/offers-queries';
 import { useUiStore } from '@/store/ui.store';
 import { useAuthStore } from '@/store/auth.store';
@@ -34,8 +34,15 @@ export function DishDetail() {
   const { data: item, isLoading } = useMenuItem(id);
   const { data: cart } = useCart();
   const upsertLine = useUpsertCartLine();
+  const deleteLine = useDeleteCartLine();
   const [portion, setPortion] = useState(1);
   const [modifierIds, setModifierIds] = useState<string[]>([]);
+
+  // Сбрасываем выбор порции/модификаторов при открытии другого блюда.
+  useEffect(() => {
+    setPortion(1);
+    setModifierIds([]);
+  }, [id]);
 
   const { data: modifierGroups } = useQuery({
     queryKey: ['menu', id, 'modifier-groups'],
@@ -53,18 +60,12 @@ export function DishDetail() {
       JSON.stringify(i.modifiers.map((m) => m.id).sort()) === JSON.stringify([...modifierIds].sort()),
   );
   const qty = line?.quantity ?? 0;
-  const busy = upsertLine.isPending;
+  const busy = upsertLine.isPending || deleteLine.isPending;
 
   const change = (q: number) => {
-    if (q <= 0 && line) {
-      upsertLine.mutate({
-        kind: 'dish',
-        menuItemId: id,
-        portion,
-        modifierIds,
-        quantity: 0,
-        lineId: line.lineId,
-      });
+    // Уменьшение до нуля — удаляем строку по lineId (POST quantity:0 нарушает @Min(1)).
+    if (q <= 0) {
+      if (line) deleteLine.mutate(line.lineId);
       return;
     }
     upsertLine.mutate({
@@ -126,7 +127,7 @@ export function DishDetail() {
 
       {item.hasPhoto ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img className="dd-img" src={`/api/menu/${item.id}/photo`} alt="" />
+        <img className="dd-img" src={`/api/menu/${item.id}/photo`} alt={primaryName} />
       ) : (
         <div className="dd-img dd-img-empty">{t('detail_photo_soon')}</div>
       )}

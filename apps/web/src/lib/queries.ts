@@ -18,6 +18,23 @@ export function useMenuItem(id: string | null) {
   });
 }
 
+export interface MenuComboDto {
+  id: string;
+  nameRu: string;
+  nameUz: string;
+  descriptionRu: string | null;
+  descriptionUz: string | null;
+  price: string;
+  originalPrice: string | null;
+  photoUrl: string | null;
+  isActive: boolean;
+}
+
+/** Витрина активных комбо (для секции «Комбо» в меню). */
+export function useMenuCombos() {
+  return useQuery({ queryKey: ['combos'], queryFn: () => api<MenuComboDto[]>('/combos') });
+}
+
 export function useCart() {
   return useQuery({ queryKey: ['cart'], queryFn: () => api<CartDto>('/cart') });
 }
@@ -48,6 +65,29 @@ export function useSetQuantity() {
         method: 'PATCH',
         body: { quantity: v.quantity, portion: v.portion ?? 1 },
       }),
+    onSuccess: (data) => qc.setQueryData(['cart'], data),
+  });
+}
+
+/** Изменение количества строки корзины по lineId (работает для блюд/комбо/модификаторов). */
+export function usePatchCartLine() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { lineId: string; quantity: number }) =>
+      api<CartDto>(`/cart/lines/${v.lineId}`, {
+        method: 'PATCH',
+        body: { quantity: v.quantity },
+      }),
+    onSuccess: (data) => qc.setQueryData(['cart'], data),
+  });
+}
+
+/** Удаление строки корзины по lineId. */
+export function useDeleteCartLine() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (lineId: string) =>
+      api<CartDto>(`/cart/lines/${lineId}`, { method: 'DELETE' }),
     onSuccess: (data) => qc.setQueryData(['cart'], data),
   });
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Language } from '@eatfit/shared';
 import { api } from '@/lib/api';
-import { useCart } from '@/lib/queries';
+import { useCart, useDeleteCartLine } from '@/lib/queries';
 import { useUpsertCartLine } from '@/lib/offers-queries';
 import { useUiStore } from '@/store/ui.store';
 import { useAuthStore } from '@/store/auth.store';
@@ -42,6 +42,7 @@ export function ComboDetail() {
   });
   const { data: cart } = useCart();
   const upsertLine = useUpsertCartLine();
+  const deleteLine = useDeleteCartLine();
   const [slotSelections, setSlotSelections] = useState<Record<string, string>>({});
   const [modifierIds, setModifierIds] = useState<string[]>([]);
 
@@ -107,7 +108,7 @@ export function ComboDetail() {
   });
 
   const qty = line?.quantity ?? 0;
-  const busy = upsertLine.isPending;
+  const busy = upsertLine.isPending || deleteLine.isPending;
 
   if (!comboId) return null;
 
@@ -132,6 +133,11 @@ export function ComboDetail() {
   }
 
   const change = (q: number) => {
+    // Уменьшение до нуля — удаляем строку по lineId (POST quantity:0 нарушает @Min(1)).
+    if (q <= 0) {
+      if (line) deleteLine.mutate(line.lineId);
+      return;
+    }
     upsertLine.mutate({
       kind: 'combo',
       comboId: combo.id,
@@ -151,7 +157,7 @@ export function ComboDetail() {
 
       {combo.photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img className="dd-img" src={combo.photoUrl} alt="" />
+        <img className="dd-img" src={combo.photoUrl} alt={primaryName} />
       ) : (
         <div className="dd-img dd-img-empty">{t('detail_photo_soon')}</div>
       )}

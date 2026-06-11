@@ -1,8 +1,13 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Transactional } from '@nestjs-cls/transactional';
-import { Language, Role } from '@eatfit/shared';
+import { BusinessStatus, Language, Role } from '@eatfit/shared';
 import { ConflictError } from '../common/errors/domain-error';
 import { ActorContextService } from '../common/cls/actor-context.service';
 import { ClientRepository } from '../clients/clients.repository';
@@ -13,7 +18,7 @@ import { BusinessesRepository } from '../businesses/businesses.repository';
 import { BusinessCustomersRepository } from '../businesses/business-customers.repository';
 import { BusinessMembersRepository } from '../businesses/business-members.repository';
 import { DefaultBusinessService } from '../businesses/default-business.service';
-import { deriveActorRole } from '../businesses/membership.util';
+import { deriveActorKind, deriveActorRole } from '../businesses/membership.util';
 import { decryptToken, parseEncKey } from '../businesses/token-crypto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -21,7 +26,7 @@ import { LoginDto } from './dto/login.dto';
 import { StaffBusinessDto } from './dto/staff-business.dto';
 import { StaffLoginResponseDto } from './dto/staff-login-response.dto';
 import { SwitchBusinessDto } from './dto/switch-business.dto';
-import { ActorKind, JwtPayload } from './jwt-payload';
+import { JwtPayload } from './jwt-payload';
 import { hashPassword, verifyPassword } from './password';
 import { verifyTelegramInitData } from './telegram-initdata';
 
@@ -50,6 +55,7 @@ export class AuthService {
   @Transactional()
   async authenticateTelegram(initData: string, businessSlug?: string): Promise<AuthResponseDto> {
     const business = await this.resolveBusiness(businessSlug);
+    this.requireActiveBusiness(business);
     const botToken = await this.botTokenOf(business);
     const tgUser = verifyTelegramInitData(initData, botToken, INITDATA_MAX_AGE_SECONDS);
 
@@ -70,14 +76,14 @@ export class AuthService {
         isPlatformAdmin: shouldBePlatformAdmin,
       });
     } else {
-      // Синхронизируем username; сид платформенных админов по списку (права — только сервер).
+      // Синхронизируем username; платформенные права сидятся ТОЛЬКО списком ADMIN_TELEGRAM_IDS:
+      // вне списка — снимаем флаг (демоут), внутри — выдаём (промоут). Источник прав — сервер.
       const promote = shouldBePlatformAdmin && !client.isPlatformAdmin;
-      if (client.username !== username || promote) {
+      const demote = !shouldBePlatformAdmin && client.isPlatformAdmin;
+      if (client.username !== username || promote || demote) {
         client.username = username;
-        if (promote) {
-          client.isPlatformAdmin = true;
-          if (client.role === Role.Client) client.role = Role.Admin;
-        }
+        if (promote) client.isPlatformAdmin = true;
+        if (demote) client.isPlatformAdmin = false;
         client = await this.clients.save(client);
       }
     }
@@ -90,6 +96,7 @@ export class AuthService {
   @Transactional()
   async register(dto: RegisterDto, businessSlug?: string): Promise<AuthResponseDto> {
     const business = await this.resolveBusiness(businessSlug);
+    this.requireActiveBusiness(business);
     const existing = await this.clients.findWebByPhone(dto.phone);
     if (existing) {
       throw new ConflictError('Этот телефон уже зарегистрирован');
@@ -111,6 +118,7 @@ export class AuthService {
   @Transactional()
   async login(dto: LoginDto, businessSlug?: string): Promise<AuthResponseDto> {
     const business = await this.resolveBusiness(businessSlug);
+    this.requireActiveBusiness(business);
     const client = await this.clients.findWebByPhone(dto.phone);
     if (!client?.passwordHash || !verifyPassword(dto.password, client.passwordHash)) {
       throw new UnauthorizedException('Неверный телефон или пароль');
@@ -135,14 +143,20 @@ export class AuthService {
       throw new UnauthorizedException('Нет активных мест работы');
     }
 
+    // Приостановленные бизнесы недоступны для входа сотрудника (suspension enforcement).
     const staffBusinesses: StaffBusinessDto[] = [];
     for (const member of memberships) {
       const business = await this.businesses.findById(member.businessId);
-      if (business) staffBusinesses.push(new StaffBusinessDto(member, business));
+      if (business && business.status !== BusinessStatus.Suspended) {
+        staffBusinesses.push(new StaffBusinessDto(member, business));
+      }
     }
     if (!staffBusinesses.length) {
       throw new UnauthorizedException('Нет активных мест работы');
     }
+
+    // Детерминированный порядок: «первичный» бизнес стабилен между входами (по slug).
+    staffBusinesses.sort((a, b) => a.slug.localeCompare(b.slug));
 
     const primary = staffBusinesses[0];
     const { accessToken, balance } = await this.issueStaff(client, primary.businessId);
@@ -168,9 +182,11 @@ export class AuthService {
     if (!client.isPlatformAdmin) {
       const membership = await this.members.findActive(business.id, client.id);
       if (!membership) {
-        throw new ForbiddenException('Нет доступа к этому бизнесу');
+        // Тот же ответ, что и для несуществующего бизнеса — без перечисления slug'ов.
+        throw new NotFoundException('Бизнес недоступен');
       }
     }
+    this.requireActiveBusiness(business);
 
     await this.customers.ensureExists(business.id, client.id);
     return this.issue(client, business.id);
@@ -179,15 +195,16 @@ export class AuthService {
   private async resolveSwitchTarget(dto: SwitchBusinessDto): Promise<Business> {
     if (dto.biz?.trim()) {
       const business = await this.businesses.findBySlug(dto.biz.trim());
+      // Generic 404 (как и при отсутствии доступа) — анти-энумерация slug'ов.
       if (!business) {
-        throw new UnauthorizedException('Неизвестный бизнес');
+        throw new NotFoundException('Бизнес недоступен');
       }
       return business;
     }
     if (dto.businessId) {
       const business = await this.businesses.findById(dto.businessId);
       if (!business) {
-        throw new UnauthorizedException('Неизвестный бизнес');
+        throw new NotFoundException('Бизнес недоступен');
       }
       return business;
     }
@@ -211,17 +228,31 @@ export class AuthService {
     return business;
   }
 
-  /** Токен бота бизнеса (расшифровка); переходный фолбэк — env BOT_TOKEN. */
+  /**
+   * Бизнес недоступен, если приостановлен. Onboarding допускается (single-tenant до Phase 3).
+   */
+  private requireActiveBusiness(business: Business): void {
+    if (business.status === BusinessStatus.Suspended) {
+      throw new ForbiddenException('Бизнес приостановлен');
+    }
+  }
+
+  /**
+   * Токен бота бизнеса (расшифровка). Переходный фолбэк на env BOT_TOKEN разрешён ТОЛЬКО для
+   * дефолтного/сид-бизнеса (single-tenant). Любой другой бизнес без своего токена → ошибка
+   * (нельзя верифицировать чужой initData токеном дефолтного бота).
+   */
   private async botTokenOf(business: Business): Promise<string> {
     const withToken = await this.businesses.findByIdWithToken(business.id);
     if (withToken?.botTokenEnc) {
       return decryptToken(withToken.botTokenEnc, parseEncKey(this.config.get<string>('security.tokenEncKey')));
     }
-    const envToken = this.config.get<string>('bot.token');
-    if (!envToken) {
-      throw new UnauthorizedException('У бизнеса не подключён бот');
+    const defaultId = await this.defaultBusiness.getId();
+    if (business.id === defaultId) {
+      const envToken = this.config.get<string>('bot.token');
+      if (envToken) return envToken;
     }
-    return envToken;
+    throw new UnauthorizedException('У бизнеса не подключён бот');
   }
 
   private async issue(client: Client, businessId: string): Promise<AuthResponseDto> {
@@ -235,11 +266,7 @@ export class AuthService {
   ): Promise<{ accessToken: string; balance: Awaited<ReturnType<BalanceService['balanceOf']>> }> {
     const membership = await this.members.findActive(businessId, client.id);
     const effectiveRole = deriveActorRole(membership, client);
-    const kind: ActorKind = client.isPlatformAdmin
-      ? 'platform'
-      : membership
-        ? 'staff'
-        : 'customer';
+    const kind = deriveActorKind(membership, client);
 
     const payload: JwtPayload = {
       v: 2,
@@ -247,7 +274,7 @@ export class AuthService {
       telegramId: client.telegramId ?? '',
       role: effectiveRole,
       biz: businessId,
-      kind: kind === 'customer' && effectiveRole !== Role.Client ? 'staff' : kind,
+      kind,
     };
     const accessToken = await this.jwt.signAsync(payload);
     const balance = await this.balanceSvc.balanceOf(client.id, businessId);

@@ -1,6 +1,21 @@
 import { getAuthToken, useAuthStore } from '@/store/auth.store';
+import { jwtKind } from '@/lib/jwt';
 
 const BASE = '/api';
+
+/**
+ * Сброс сессии при 401 в зависимости от вида токена:
+ *  - staff/platform → чистим стафф-сессию (вход для сотрудников/платформы);
+ *  - customer (или неизвестно) → клиентский logout (web-anon).
+ */
+function handleUnauthorized(token: string | null | undefined) {
+  const kind = jwtKind(token);
+  if (kind === 'staff' || kind === 'platform') {
+    useAuthStore.getState().logoutStaff();
+  } else {
+    useAuthStore.getState().logout();
+  }
+}
 
 export class ApiError extends Error {
   constructor(
@@ -32,9 +47,9 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   });
 
   if (!res.ok) {
-    // Просроченный / невалидный токен: сбрасываем хранилище, чтобы не зациклиться на 401.
+    // Просроченный / невалидный токен: сбрасываем нужную сессию, чтобы не зациклиться на 401.
     if (res.status === 401) {
-      useAuthStore.getState().logout();
+      handleUnauthorized(token);
     }
     const err = (await res.json().catch(() => null)) as
       | { message?: string; error?: string }
@@ -58,6 +73,9 @@ export async function apiUpload<T>(path: string, file: File): Promise<T> {
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      handleUnauthorized(token);
+    }
     const err = (await res.json().catch(() => null)) as
       | { message?: string; error?: string }
       | null;

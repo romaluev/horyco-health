@@ -6,7 +6,9 @@ import {
   useOffers,
   useOfferDetail,
   useCreateOffer,
+  useUpdateOffer,
   useSendOffer,
+  useResendFailed,
   useSetOfferRecipients,
   useAdminCombosForOffers,
   type OfferCompositionLine,
@@ -54,6 +56,36 @@ function useComboModifierGroups(comboId: string | null) {
   });
 }
 
+/** Строка сборки с предрасчитанной надбавкой за единицу (только для UI-предпросмотра). */
+type ComposeLine = OfferCompositionLine & { unitExtra: number };
+
+/** Сумма дельт модификаторов по выбранным id внутри групп. */
+function sumModifierDeltas(groups: ModifierGroupDto[] | undefined, modifierIds: string[]): number {
+  if (!groups) return 0;
+  let sum = 0;
+  for (const g of groups) {
+    for (const m of g.modifiers) {
+      if (modifierIds.includes(m.id)) sum += Number(m.priceDelta);
+    }
+  }
+  return sum;
+}
+
+/** Сумма доплат за выбранные варианты слотов комбо. */
+function sumSlotSurcharges(
+  slots: ComboSlotView[] | undefined,
+  selections: Record<string, string>,
+): number {
+  if (!slots) return 0;
+  let sum = 0;
+  for (const slot of slots) {
+    const picked = selections[slot.id];
+    const opt = slot.options.find((o) => o.menuItemId === picked);
+    if (opt) sum += Number(opt.priceOverride);
+  }
+  return sum;
+}
+
 export function OffersTab() {
   const t = useT();
   const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
@@ -62,10 +94,13 @@ export function OffersTab() {
   const { data: combos } = useAdminCombosForOffers();
   const { data: users } = useAdminUsers('');
   const create = useCreateOffer();
+  const update = useUpdateOffer();
   const send = useSendOffer();
+  const resendFailed = useResendFailed();
   const setRecipients = useSetOfferRecipients();
 
-  const [composition, setComposition] = useState<OfferCompositionLine[]>([]);
+  // unitExtra — надбавка модификаторов + доплаты слотов комбо за единицу (для предпросмотра суммы).
+  const [composition, setComposition] = useState<ComposeLine[]>([]);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -93,27 +128,34 @@ export function OffersTab() {
         const item = menu?.find((m) => m.id === line.menuItemId);
         if (item) {
           const price = line.portion === 2 && item.price2 ? Number(item.price2) : Number(item.price);
-          sum += price * line.quantity;
+          sum += (price + line.unitExtra) * line.quantity;
         }
       }
       if (line.kind === 'combo' && line.comboId) {
         const combo = combos?.find((c) => c.id === line.comboId);
-        if (combo) sum += Number(combo.price) * line.quantity;
+        if (combo) sum += (Number(combo.price) + line.unitExtra) * line.quantity;
       }
     }
     return sum;
   }, [composition, menu, combos]);
 
+  /** Строки для отправки в API — без UI-поля unitExtra. */
+  const toApiComposition = (lines: ComposeLine[]): OfferCompositionLine[] =>
+    lines.map(({ unitExtra: _unitExtra, ...line }) => line);
+
   const addDishLine = () => {
     if (!pickDishId) return;
+    const modifierIds = [...(draftLine.modifierIds ?? [])];
+    const unitExtra = sumModifierDeltas(pickGroups, modifierIds);
     setComposition((prev) => [
       ...prev,
       {
         kind: 'dish',
         menuItemId: pickDishId,
         portion: draftLine.portion ?? 1,
-        modifierIds: [...(draftLine.modifierIds ?? [])],
+        modifierIds,
         quantity: draftLine.quantity || 1,
+        unitExtra,
       },
     ]);
     setPickDishId(null);
@@ -126,6 +168,9 @@ export function OffersTab() {
       Object.keys(comboSlotSelections).length > 0
         ? comboSlotSelections
         : defaultSlotSelections(pickCombo.slots);
+    const unitExtra =
+      sumSlotSurcharges(pickCombo.slots, slotSelections) +
+      sumModifierDeltas(pickComboModGroups, comboModifierIds);
     setComposition((prev) => [
       ...prev,
       {
@@ -134,6 +179,7 @@ export function OffersTab() {
         slotSelections,
         modifierIds: [...comboModifierIds],
         quantity: 1,
+        unitExtra,
       },
     ]);
     setPickComboId(null);
@@ -142,8 +188,14 @@ export function OffersTab() {
   };
 
   const saveDraft = () => {
+    const apiComposition = toApiComposition(composition);
+    // Существующий черновик правим через PATCH — иначе каждый save плодит дубликаты.
+    if (draftId) {
+      update.mutate({ id: draftId, composition: apiComposition });
+      return;
+    }
     create.mutate(
-      { composition },
+      { composition: apiComposition },
       {
         onSuccess: (o) => setDraftId(o.id),
       },
@@ -282,10 +334,13 @@ export function OffersTab() {
         </div>
         {composition.length === 0 && <div className="muted">{t('bo_cart_empty')}</div>}
         {composition.map((line, idx) => {
-          const name =
-            line.kind === 'dish'
-              ? (menu?.find((m) => m.id === line.menuItemId)?.nameRu ?? line.menuItemId)
-              : (combos?.find((c) => c.id === line.comboId)?.nameRu ?? line.comboId);
+          const dish = line.kind === 'dish' ? menu?.find((m) => m.id === line.menuItemId) : undefined;
+          const combo = line.kind === 'combo' ? combos?.find((c) => c.id === line.comboId) : undefined;
+          const name = dish
+            ? pick(lang, dish.nameRu, dish.nameUz)
+            : combo
+              ? pick(lang, combo.nameRu, combo.nameUz)
+              : (line.menuItemId ?? line.comboId ?? '');
           const slotCount = line.slotSelections ? Object.keys(line.slotSelections).length : 0;
           return (
             <div className="row" key={idx}>
@@ -306,10 +361,10 @@ export function OffersTab() {
         })}
         <button
           className="btn btn-primary"
-          disabled={composition.length === 0 || create.isPending}
+          disabled={composition.length === 0 || create.isPending || update.isPending}
           onClick={saveDraft}
         >
-          {t('bo_save_draft')}
+          {draftId ? t('save') : t('bo_save_draft')}
         </button>
       </div>
 
@@ -368,9 +423,21 @@ export function OffersTab() {
             </span>
           </div>
           {sendDetail.offer.status !== 'sending' && (
-            <button className="btn" type="button" onClick={() => setSendingId(null)}>
-              {t('bo_send_done')}
-            </button>
+            <div className="seg" style={{ marginTop: 8 }}>
+              {(sendDetail.counts.failed ?? 0) > 0 && (
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  disabled={resendFailed.isPending}
+                  onClick={() => resendFailed.mutate(sendingId)}
+                >
+                  {t('bo_resend_failed')}
+                </button>
+              )}
+              <button className="btn" type="button" onClick={() => setSendingId(null)}>
+                {t('bo_send_done')}
+              </button>
+            </div>
           )}
         </div>
       )}

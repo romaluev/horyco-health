@@ -56,6 +56,21 @@ export function persistStaffSession(
   saveStaffMeta(businesses, slug);
 }
 
+/** Полная очистка стафф-сессии: токены по всем известным slug + мета. */
+export function clearStaffSession() {
+  try {
+    const { businesses, slug } = loadStaffMeta();
+    const slugs = new Set<string>();
+    if (slug) slugs.add(slug);
+    for (const b of businesses) if (b.slug) slugs.add(b.slug);
+    for (const s of slugs) localStorage.removeItem(staffTokenKey(s));
+    localStorage.removeItem(STAFF_BIZ_KEY);
+    localStorage.removeItem(STAFF_SLUG_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function staffLogin(phone: string, password: string): Promise<StaffLoginResponse> {
   return api<StaffLoginResponse>('/auth/staff-login', {
     method: 'POST',

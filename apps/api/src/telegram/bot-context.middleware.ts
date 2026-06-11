@@ -1,12 +1,10 @@
 import { randomUUID } from 'crypto';
 import { ClsService } from 'nestjs-cls';
-import { Role } from '@eatfit/shared';
 import type { Context, MiddlewareFn } from 'telegraf';
 import { ClientRepository } from '../clients/clients.repository';
 import { BusinessMembersRepository } from '../businesses/business-members.repository';
-import { deriveActorRole } from '../businesses/membership.util';
+import { deriveActorKind, deriveActorRole } from '../businesses/membership.util';
 import { AppClsStore, BotBusinessContext } from '../common/cls/actor-context';
-import { ActorKind } from '../auth/jwt-payload';
 
 /**
  * Per-bot Telegraf middleware: CLS + actor из membership бизнеса бота (не DefaultBusinessService).
@@ -30,20 +28,14 @@ export function createBotContextMiddleware(
           const businessId = botBusiness.id;
           const membership = await members.findActive(businessId, client.id);
           const role = deriveActorRole(membership, client);
-          const kind: ActorKind = client.isPlatformAdmin
-            ? 'platform'
-            : membership
-              ? 'staff'
-              : role !== Role.Client
-                ? 'staff'
-                : 'customer';
+          const kind = deriveActorKind(membership, client);
 
           cls.set('actor', {
             userId: client.id,
             telegramId,
             role,
             businessId,
-            kind: kind === 'customer' && role !== Role.Client ? 'staff' : kind,
+            kind,
             source: 'bot',
           });
         }

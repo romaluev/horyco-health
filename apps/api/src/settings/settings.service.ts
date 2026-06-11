@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Business } from '../businesses/entities/business.entity';
 import { BusinessesRepository } from '../businesses/businesses.repository';
-import { DefaultBusinessService } from '../businesses/default-business.service';
+import { ActorContextService } from '../common/cls/actor-context.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { SettingsResponseDto } from './dto/settings-response.dto';
 
@@ -27,12 +27,16 @@ const KEY_TO_FIELD: Record<SettingKey, 'topupTelegram' | 'topupPhone' | 'support
 export class SettingsService {
   constructor(
     private readonly businesses: BusinessesRepository,
-    private readonly defaultBusiness: DefaultBusinessService,
+    private readonly actorCtx: ActorContextService,
   ) {}
 
+  /**
+   * Настройки скоупятся бизнесом из контекста (CLS): admin B правит именно B, а не дефолтный.
+   * В API это actor.businessId (JWT biz); в боте — actor или бизнес бота (для незарегистрированных).
+   */
   private async load(): Promise<Business> {
-    const id = await this.defaultBusiness.getId();
-    const business = await this.businesses.findById(id);
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const business = await this.businesses.findById(businessId);
     if (!business) {
       throw new Error('Бизнес не найден при чтении настроек');
     }

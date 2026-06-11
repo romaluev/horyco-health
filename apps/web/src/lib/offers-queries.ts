@@ -59,6 +59,32 @@ export function useCreateOffer() {
   });
 }
 
+/** Обновление черновика рассылки (PATCH вместо повторного POST — без дублей). */
+export function useUpdateOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; composition: OfferCompositionLine[] }) =>
+      api<OfferDto>(`/b/offers/${v.id}`, { method: 'PATCH', body: { composition: v.composition } }),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['b', 'offers'] });
+      qc.invalidateQueries({ queryKey: ['b', 'offers', v.id] });
+    },
+  });
+}
+
+/** Повторная отправка по получателям со статусом failed. */
+export function useResendFailed() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<{ offerId: string; queued: number }>(`/b/offers/${id}/resend-failed`, { method: 'POST' }),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ['b', 'offers'] });
+      qc.invalidateQueries({ queryKey: ['b', 'offers', id] });
+    },
+  });
+}
+
 export function useSendOffer() {
   const qc = useQueryClient();
   return useMutation({

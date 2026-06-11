@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Language, PaymentMethod } from '@eatfit/shared';
-import { useCart, useSetQuantity, useCheckout } from '@/lib/queries';
+import { useCart, usePatchCartLine, useCheckout } from '@/lib/queries';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
 import { useT } from '@/lib/i18n';
@@ -18,7 +18,7 @@ export function CartScreen() {
   const balance = Number(client?.balance ?? '0');
   const needsRegistration = !client?.phone || !client?.address;
   const { data: cart, isLoading } = useCart();
-  const setQty = useSetQuantity();
+  const patchLine = usePatchCartLine();
   const checkout = useCheckout();
   const setTab = useUiStore((s) => s.setTab);
   const [comment, setComment] = useState('');
@@ -81,7 +81,7 @@ export function CartScreen() {
               ))}
               {it.comboSlots?.map((s, i) => (
                 <div className="dish-desc" key={i}>
-                  ▸ {s.itemNameRu}
+                  ▸ {pick(lang, s.itemNameRu, s.itemNameUz)}
                 </div>
               ))}
               <div className="dish-desc">
@@ -91,11 +91,8 @@ export function CartScreen() {
             <Stepper
               qty={it.quantity}
               addLabel={t('add')}
-              busy={setQty.isPending}
-              onChange={(q) =>
-                it.menuItemId &&
-                setQty.mutate({ menuItemId: it.menuItemId, quantity: q, portion: it.portion })
-              }
+              busy={patchLine.isPending}
+              onChange={(q) => patchLine.mutate({ lineId: it.lineId, quantity: q })}
             />
           </div>
         </div>
@@ -128,7 +125,7 @@ export function CartScreen() {
         />
       </div>
 
-      {error && <div className="err" style={{ marginBottom: 12 }}>{error}</div>}
+      {error && <div className="err" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
 
       <div className="seg" style={{ marginBottom: 10 }}>
         <button

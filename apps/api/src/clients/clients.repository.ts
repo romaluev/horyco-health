@@ -3,6 +3,7 @@ import { EntityTarget, IsNull, Not } from 'typeorm';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm';
 import { TransactionalRepository } from '../common/database/transactional-repository';
+import { BusinessCustomer } from '../businesses/entities/business-customer.entity';
 import { Client } from './entities/client.entity';
 
 @Injectable()
@@ -35,12 +36,24 @@ export class ClientRepository extends TransactionalRepository<Client> {
       .getOne();
   }
 
-  /** Поиск клиентов админом по телефону / @username / telegram_id (живой фильтр). */
-  search(term?: string): Promise<Client[]> {
-    const qb = this.repo.createQueryBuilder('client').orderBy('client.createdAt', 'DESC');
+  /**
+   * Поиск клиентов админом по телефону / @username / telegram_id (живой фильтр).
+   * Скоупится бизнесом через business_customers — возвращаются ТОЛЬКО клиенты этого тенанта,
+   * а не платформенный список.
+   */
+  search(businessId: string, term?: string): Promise<Client[]> {
+    const qb = this.repo
+      .createQueryBuilder('client')
+      .innerJoin(
+        BusinessCustomer,
+        'bc',
+        'bc.client_id = client.id AND bc.business_id = :businessId',
+        { businessId },
+      )
+      .orderBy('client.createdAt', 'DESC');
     if (term && term.trim()) {
-      qb.where(
-        'client.phone ILIKE :t OR client.username ILIKE :t OR CAST(client.telegramId AS TEXT) ILIKE :t',
+      qb.andWhere(
+        '(client.phone ILIKE :t OR client.username ILIKE :t OR CAST(client.telegramId AS TEXT) ILIKE :t)',
         { t: `%${term.trim()}%` },
       );
     }

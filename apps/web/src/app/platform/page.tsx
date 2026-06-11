@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { api } from '@/lib/api';
+import { jwtKind } from '@/lib/jwt';
 import { staffLogin, saveStaffToken } from '@/lib/staff-auth';
 import {
   usePlatformMetrics,
@@ -70,6 +71,12 @@ export default function PlatformPage() {
 
   useEffect(() => {
     if (!token) return;
+    // Платформенный доступ только для токенов kind==='platform'; иначе — отказ.
+    if (jwtKind(token) !== 'platform') {
+      setAuthed(false);
+      setDenied(true);
+      return;
+    }
     api('/platform/metrics', { token })
       .then(() => setAuthed(true))
       .catch(() => setDenied(true));
@@ -78,13 +85,13 @@ export default function PlatformPage() {
   if (!token || denied) {
     return (
       <div className="app">
-        <PlatformLogin
-          onDone={() => {
-            setDenied(false);
-            setAuthed(true);
-          }}
-        />
-        {denied && <div className="err center">{t('platform_denied')}</div>}
+        {/* authed выставит эффект после проверки kind==='platform' по новому токену. */}
+        <PlatformLogin onDone={() => setDenied(false)} />
+        {denied && (
+          <div className="err center" role="alert">
+            {t('platform_denied')}
+          </div>
+        )}
       </div>
     );
   }

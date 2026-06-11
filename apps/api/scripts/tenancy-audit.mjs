@@ -36,6 +36,26 @@ const EXEMPT_FILE_METHODS = {
   'offers.repository.ts': new Set(['findSendingOffers']),
 };
 
+/**
+ * void-businessId аудит: методы, которые ДЕКЛАРИРУЮТ параметр businessId, но не используют его
+ * в теле (анти-паттерн `void businessId;`). Записи здесь — временные изъятия для репозиториев,
+ * до-тенантизация которых ведётся в других модулях/батчах. Удаляются, как только метод начнёт
+ * реально скоупиться по businessId. { filename → Set<methodName> }
+ */
+const EXEMPT_UNUSED_BUSINESSID = {
+  'combos.repository.ts': new Set(['saveSlot', 'saveOption', 'getComboGroupIds', 'setComboGroups']),
+  'modifiers.repository.ts': new Set([
+    'findModifiersByGroup',
+    'findModifierById',
+    'saveModifier',
+    'deleteModifier',
+    'getMenuItemGroupIds',
+    'setMenuItemGroups',
+    'getComboGroupIds',
+  ]),
+  'offers.repository.ts': new Set(['saveRecipients', 'clearRecipients', 'countRecipientsByStatus']),
+};
+
 // ─────────────── обход файлов ───────────────
 
 const SRC_DIR = new URL('../src', import.meta.url).pathname;
@@ -56,9 +76,11 @@ function walk(dir) {
 // ─────────────── парсинг методов ───────────────
 
 /**
- * Читает файл и возвращает [{methodName, params, line}] для каждого
+ * Читает файл и возвращает [{name, sig, body, line}] для каждого
  * публичного метода класса (не static, не private, не protected, не constructor).
  * Поддерживает многострочные сигнатуры — читает до закрывающей ')'.
+ * body — текст тела метода (от строки после сигнатуры до закрывающей '  }' на уровне класса);
+ * используется для проверки фактического использования businessId.
  */
 function extractMethods(src) {
   const lines = src.split('\n');
@@ -73,10 +95,11 @@ function extractMethods(src) {
     const name = m[1];
     if (name === 'constructor') continue;
 
-    // Соберём сигнатуру до первой ')' на уровне глубины 0.
+    // Соберём сигнатуру до первой ')' на уровне глубины 0; запомним строку её окончания.
     let sig = '';
     let depth = 0;
     let done = false;
+    let sigEndLine = i;
     for (let j = i; j < lines.length && !done; j++) {
       for (const ch of lines[j]) {
         if (ch === '(') depth++;
@@ -86,11 +109,38 @@ function extractMethods(src) {
         }
         sig += ch;
       }
+      sigEndLine = j;
       if (!done) sig += '\n';
     }
-    methods.push({ name, sig, line: i + 1 });
+
+    // Тело: от строки ПОСЛЕ сигнатуры до закрывающей скобки метода (ровно 2 пробела + '}').
+    // Метод класса закрывается на отступе класса; вложенные блоки — глубже (≥4 пробелов).
+    let bodyEndLine = sigEndLine;
+    for (let j = sigEndLine + 1; j < lines.length; j++) {
+      bodyEndLine = j;
+      if (/^ {2}\}/.test(lines[j])) break;
+    }
+    const body = lines.slice(sigEndLine + 1, bodyEndLine).join('\n');
+
+    methods.push({ name, sig, body, line: i + 1 });
   }
   return methods;
+}
+
+/** Сигнатура объявляет параметр с именем businessId? */
+function declaresBusinessId(sig) {
+  const start = sig.indexOf('(');
+  if (start === -1) return false;
+  return /\bbusinessId\b/.test(sig.slice(start + 1));
+}
+
+/**
+ * Тело реально использует businessId? `void businessId;` (подавление линтера) НЕ считается
+ * использованием — это и есть анти-паттерн, который мы ловим.
+ */
+function bodyUsesBusinessId(body) {
+  const withoutVoid = body.replace(/void\s+businessId\s*;?/g, '');
+  return /\bbusinessId\b/.test(withoutVoid);
 }
 
 /**
@@ -123,8 +173,17 @@ for (const absPath of files) {
   const src = readFileSync(absPath, 'utf8');
   const methods = extractMethods(src);
   const fileExempt = EXEMPT_FILE_METHODS[fileName] ?? new Set();
+  const voidExempt = EXEMPT_UNUSED_BUSINESSID[fileName] ?? new Set();
 
-  for (const { name, sig, line } of methods) {
+  for (const { name, sig, body, line } of methods) {
+    // Проверка №2: объявлен businessId, но тело его не использует (void businessId).
+    if (declaresBusinessId(sig) && !bodyUsesBusinessId(body) && !voidExempt.has(name)) {
+      violations.push(
+        `${relPath}:${line}  → метод '${name}' — объявляет businessId, но не использует его (void businessId)`,
+      );
+    }
+
+    // Проверка №1: businessId — первый параметр (тенантная сигнатура).
     if (EXEMPT_METHODS_GLOBAL.has(name)) continue;
     if (fileExempt.has(name)) continue;
 

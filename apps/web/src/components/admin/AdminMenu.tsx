@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Category, Ingredient } from '@eatfit/shared';
+import { useEffect, useRef, useState } from 'react';
+import { Category, Ingredient, Language } from '@eatfit/shared';
+import { useQuery } from '@tanstack/react-query';
 import {
   useAdminMenu,
   useCreateDish,
@@ -14,8 +15,14 @@ import {
   usePublishDish,
   type DishBody,
 } from '@/lib/admin-queries';
+import {
+  useModifierGroupsAdmin,
+  useSetMenuItemModifierGroups,
+} from '@/lib/modifiers-queries';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/auth.store';
 import { useT, type I18nKey } from '@/lib/i18n';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, pick } from '@/lib/format';
 import { MenuItemDto } from '@/lib/types';
 
 const CATS: { cat: Category; key: I18nKey }[] = [
@@ -552,6 +559,8 @@ export function AdminMenu() {
             )}
           </div>
         </div>
+        {editing && <ModifierGroupsAttach menuItemId={editing.id} />}
+
         <div className="seg">
           <button className="btn" onClick={close}>
             {t('act_cancel')}

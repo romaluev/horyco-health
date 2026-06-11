@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { bootstrapStaffSession } from '@/lib/staff-auth';
+import { jwtKind } from '@/lib/jwt';
 import { useT, type I18nKey } from '@/lib/i18n';
 import { StaffLogin } from './StaffLogin';
 import { BusinessSwitcher } from './BusinessSwitcher';
@@ -31,6 +32,7 @@ export function BackofficeShell() {
   const t = useT();
   const status = useAuthStore((s) => s.status);
   const client = useAuthStore((s) => s.client);
+  const token = useAuthStore((s) => s.token);
   const logout = useAuthStore((s) => s.logout);
   const [tab, setTab] = useState<Tab>('dashboard');
   const [booted, setBooted] = useState(false);
@@ -47,7 +49,9 @@ export function BackofficeShell() {
     return <div className="center">{t('loading')}</div>;
   }
 
-  if (status !== 'authed' || !client) {
+  // Back office доступен только стафф/платформенной сессии — клиентский JWT не пускаем.
+  const kind = jwtKind(token);
+  if (status !== 'authed' || !client || (kind !== 'staff' && kind !== 'platform')) {
     return <StaffLogin />;
   }
 
