@@ -18,9 +18,14 @@ export async function bootstrapAuth(): Promise<void> {
   if (initData) {
     store.setStatus('loading');
     try {
+      // slug бизнеса из ?biz= — передаём в тело чтобы скоупить JWT на нужный тенант
+      const biz =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('biz') ?? undefined
+          : undefined;
       const res = await api<AuthResponse>('/auth/telegram', {
         method: 'POST',
-        body: { initData },
+        body: biz ? { initData, biz } : { initData },
         token: '',
       });
       store.setAuth(res.accessToken, res.client);

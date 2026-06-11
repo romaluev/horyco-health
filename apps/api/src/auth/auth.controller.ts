@@ -14,14 +14,14 @@ export class AuthController {
   @Post('telegram')
   @HttpCode(HttpStatus.OK)
   telegram(@Body() dto: TelegramAuthDto): Promise<AuthResponseDto> {
-    return this.auth.authenticateTelegram(dto.initData);
+    return this.auth.authenticateTelegram(dto.initData, dto.biz);
   }
 
   /** Регистрация на сайте (вне Telegram): телефон + пароль. */
   @Public()
   @Post('register')
   register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
-    return this.auth.register(dto);
+    return this.auth.register(dto, dto.biz);
   }
 
   /** Вход на сайте: телефон + пароль. */
@@ -29,6 +29,6 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
-    return this.auth.login(dto);
+    return this.auth.login(dto, dto.biz);
   }
 }

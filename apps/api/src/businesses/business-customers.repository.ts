@@ -3,6 +3,7 @@ import { EntityTarget } from 'typeorm';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm';
 import { TransactionalRepository } from '../common/database/transactional-repository';
+import { Money } from '../common/money/money';
 import { BusinessCustomer } from './entities/business-customer.entity';
 
 @Injectable()
@@ -62,5 +63,27 @@ export class BusinessCustomersRepository extends TransactionalRepository<Busines
 
   save(row: BusinessCustomer): Promise<BusinessCustomer> {
     return this.repo.save(row);
+  }
+
+  /**
+   * Балансы сразу для нескольких клиентов одного бизнеса (один запрос, без N+1).
+   * Используется при постраничном выводе списка клиентов.
+   * Отсутствующие строки в Map означают нулевой баланс — вызывающий подставляет Money.zero().
+   */
+  async balancesFor(businessId: string, clientIds: string[]): Promise<Map<string, Money>> {
+    if (!clientIds.length) return new Map();
+    const rows = await this.repo
+      .createQueryBuilder('bc')
+      .select(['bc.clientId', 'bc.balance'])
+      .where('bc.businessId = :businessId AND bc.clientId = ANY(:ids)', {
+        businessId,
+        ids: clientIds,
+      })
+      .getMany();
+    const map = new Map<string, Money>();
+    for (const row of rows) {
+      map.set(row.clientId, row.balance);
+    }
+    return map;
   }
 }

@@ -27,7 +27,8 @@ export interface AdminDepositResult {
 interface BalanceNotifyPayload {
   target: Client;
   amount: Money;
-  updated: Client;
+  /** Баланс кошелька после операции. */
+  newBalance: Money;
   direction: 'deposit' | 'debit';
 }
 
@@ -63,13 +64,13 @@ export class DepositsService {
     const amount = Money.fromMajor(dto.amount);
     const key = `deposit:${dto.idempotencyKey ?? randomUUID()}`;
 
-    const { client: updated, applied } = await this.balance.deposit(target.id, businessId, amount, key);
+    const { balance: newBalance, applied } = await this.balance.deposit(target.id, businessId, amount, key);
     if (!applied) {
       const [last] = await this.deposits.findByClient(businessId, target.id);
       return {
         result: {
           deposit: last ? new DepositResponseDto(last) : null,
-          balance: updated.balance.toString(),
+          balance: newBalance.toString(),
         },
       };
     }
@@ -82,8 +83,8 @@ export class DepositsService {
     });
 
     return {
-      result: { deposit: new DepositResponseDto(deposit), balance: updated.balance.toString() },
-      notify: { target, amount, updated, direction: 'deposit' },
+      result: { deposit: new DepositResponseDto(deposit), balance: newBalance.toString() },
+      notify: { target, amount, newBalance, direction: 'deposit' },
     };
   }
 
@@ -108,21 +109,21 @@ export class DepositsService {
     const amount = Money.fromMajor(dto.amount);
     const key = `debit:${dto.idempotencyKey ?? randomUUID()}`;
 
-    const { client: updated, applied } = await this.balance.adminDebit(target.id, businessId, amount, key);
+    const { balance: newBalance, applied } = await this.balance.adminDebit(target.id, businessId, amount, key);
     if (!applied) {
-      return { balance: updated.balance.toString() };
+      return { balance: newBalance.toString() };
     }
 
     return {
-      balance: updated.balance.toString(),
-      notify: { target, amount, updated, direction: 'debit' },
+      balance: newBalance.toString(),
+      notify: { target, amount, newBalance, direction: 'debit' },
     };
   }
 
   private async notifyBalanceChange(payload: BalanceNotifyPayload): Promise<void> {
-    const { target, amount, updated, direction } = payload;
+    const { target, amount, newBalance, direction } = payload;
     const amt = amount.toString();
-    const bal = updated.balance.toString();
+    const bal = newBalance.toString();
     const safeName = escapeHtml(target.name);
 
     const userMsg =

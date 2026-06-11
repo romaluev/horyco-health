@@ -1,4 +1,4 @@
-import { getAuthToken } from '@/store/auth.store';
+import { getAuthToken, useAuthStore } from '@/store/auth.store';
 
 const BASE = '/api';
 
@@ -32,6 +32,10 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   });
 
   if (!res.ok) {
+    // Просроченный / невалидный токен: сбрасываем хранилище, чтобы не зациклиться на 401.
+    if (res.status === 401) {
+      useAuthStore.getState().logout();
+    }
     const err = (await res.json().catch(() => null)) as
       | { message?: string; error?: string }
       | null;

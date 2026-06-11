@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
+import { Role } from '@eatfit/shared';
 import type { Context } from 'telegraf';
 import { ClientRepository } from '../clients/clients.repository';
 import { DefaultBusinessService } from '../businesses/default-business.service';
@@ -36,6 +37,11 @@ export function createBotContextMiddleware(
             role: client.role,
             // Переходно (Phase 1–2): единственный бизнес; с Phase 3 — бизнес бота.
             businessId: await defaultBusiness.getId(),
+            kind: client.isPlatformAdmin
+              ? 'platform'
+              : client.role !== Role.Client
+                ? 'staff'
+                : 'customer',
             source: 'bot',
           });
         }

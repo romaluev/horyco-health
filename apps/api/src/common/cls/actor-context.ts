@@ -1,5 +1,6 @@
 import { Role } from '@eatfit/shared';
 import { ClsStore } from 'nestjs-cls';
+import type { ActorKind } from '../../auth/jwt-payload';
 
 /**
  * Кто выполняет действие. Кладётся в CLS на входе (guard для API, middleware для бота),
@@ -13,6 +14,8 @@ export interface ActorContext {
   role: Role;
   /** Бизнес (тенант), в контексте которого действует актор. */
   businessId: string;
+  /** customer | staff | platform (см. JwtPayload). */
+  kind: ActorKind;
   source: 'bot' | 'api';
 }
 

@@ -5,7 +5,6 @@ import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 import { ActorContextService } from '../../common/cls/actor-context.service';
-import { DefaultBusinessService } from '../../businesses/default-business.service';
 import { JwtPayload } from '../jwt-payload';
 
 /**
@@ -19,7 +18,6 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly actorCtx: ActorContextService,
-    private readonly defaultBusiness: DefaultBusinessService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -49,12 +47,18 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Неверный или просроченный токен');
     }
 
+    // Токены старого формата (без v=2/biz) отклоняем: Mini App тихо переавторизуется
+    // через initData, веб-аккаунты входят заново один раз.
+    if (payload.v !== 2 || !payload.biz) {
+      throw new UnauthorizedException('Токен устарел — войдите заново');
+    }
+
     this.actorCtx.set({
       userId: payload.sub,
       telegramId: payload.telegramId,
       role: payload.role,
-      // Переходно (Phase 1–2): единственный бизнес; с Phase 2 tenant приедет в JWT.
-      businessId: await this.defaultBusiness.getId(),
+      businessId: payload.biz,
+      kind: payload.kind,
       source: 'api',
     });
     return true;

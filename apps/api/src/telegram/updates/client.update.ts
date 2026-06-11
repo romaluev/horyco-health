@@ -12,6 +12,7 @@ import { CartService } from '../../orders/cart/cart.service';
 import { OrdersService } from '../../orders/orders.service';
 import { CartResponseDto } from '../../orders/cart/dto/cart-response.dto';
 import { DepositsService } from '../../deposits/deposits.service';
+import { BalanceService } from '../../clients/balance/balance.service';
 import { SettingsService, SettingKey } from '../../settings/settings.service';
 import { hashPassword } from '../../auth/password';
 import { DomainError, InsufficientBalanceError } from '../../common/errors/domain-error';
@@ -54,6 +55,7 @@ export class ClientUpdate {
     private readonly settings: SettingsService,
     private readonly deposits: DepositsService,
     private readonly menuAdmin: BotMenuAdminService,
+    private readonly balance: BalanceService,
   ) {}
 
   // ─────────────────────────── /start + deep link ───────────────────────────
@@ -212,7 +214,8 @@ export class ClientUpdate {
       return;
     }
     await this.ui.deleteMenu(ctx, client.telegramId!); // витрина исчезает
-    const balance = Number(client.balance.toString());
+    const businessId = await this.defaultBusiness.getId();
+    const balance = Number((await this.balance.balanceOf(client.id, businessId)).toString());
     const total = Number(cart.total);
     const rows: InlineKeyboardButton[][] = [];
     if (balance >= total) rows.push([{ text: t(lang, 'btn_pay_balance'), callback_data: 'checkout:pay:balance' }]);
@@ -657,12 +660,14 @@ export class ClientUpdate {
   private async showProfile(ctx: Context, client: Client): Promise<void> {
     const lang = this.ui.langOf(client);
     const dash = '—';
+    const businessId = await this.defaultBusiness.getId();
+    const bal = await this.balance.balanceOf(client.id, businessId);
     const lines = [
       `<b>${esc(t(lang, 'profile_title'))}</b>`,
       `${esc(t(lang, 'profile_name'))}: ${esc(client.name || dash)}`,
       `${esc(t(lang, 'profile_phone'))}: ${esc(client.phone || dash)}`,
       `${esc(t(lang, 'profile_address'))}: ${esc(client.address || dash)}`,
-      `${esc(t(lang, 'profile_balance'))}: ${esc(formatMoney(client.balance.toString()))} ${esc(t(lang, 'currency'))}`,
+      `${esc(t(lang, 'profile_balance'))}: ${esc(formatMoney(bal.toString()))} ${esc(t(lang, 'currency'))}`,
     ];
     await ctx.reply(lines.join('\n'), {
       parse_mode: 'HTML',
@@ -672,7 +677,9 @@ export class ClientUpdate {
 
   private async showBalance(ctx: Context, client: Client): Promise<void> {
     const lang = this.ui.langOf(client);
-    const text = `<b>${esc(t(lang, 'balance_title'))}</b>\n${esc(formatMoney(client.balance.toString()))} ${esc(t(lang, 'currency'))}`;
+    const businessId = await this.defaultBusiness.getId();
+    const bal = await this.balance.balanceOf(client.id, businessId);
+    const text = `<b>${esc(t(lang, 'balance_title'))}</b>\n${esc(formatMoney(bal.toString()))} ${esc(t(lang, 'currency'))}`;
     await ctx.reply(text, {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([[Markup.button.callback(t(lang, 'btn_topup'), 'topup')]]),
