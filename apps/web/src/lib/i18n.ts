@@ -64,6 +64,12 @@ const dict = {
   language: { ru: 'Язык', uz: 'Til' },
   save: { ru: 'Сохранить', uz: 'Saqlash' },
   saved: { ru: 'Сохранено', uz: 'Saqlandi' },
+  profile_password: { ru: 'Пароль для сайта', uz: 'Sayt uchun parol' },
+  profile_password_hint: {
+    ru: 'Необязательно. Нужен только для входа с компьютера или back office.',
+    uz: 'Ixtiyoriy. Faqat kompyuter yoki boshqaruv paneliga kirish uchun.',
+  },
+  profile_password_saved: { ru: 'Пароль сохранён', uz: 'Parol saqlandi' },
   register_title: { ru: 'Регистрация', uz: 'Ro‘yxatdan o‘tish' },
   register_hint: { ru: 'Заполните профиль, чтобы заказывать', uz: 'Buyurtma berish uchun profilni to‘ldiring' },
   required: { ru: 'Обязательное поле', uz: 'Majburiy maydon' },
@@ -197,6 +203,11 @@ const dict = {
   bo_token_hint: { ru: 'Вставьте токен от @BotFather', uz: 'BotFather tokenini kiriting' },
   bo_bot_token: { ru: 'Токен бота', uz: 'Bot tokeni' },
   bo_connect_bot: { ru: 'Подключить', uz: 'Ulash' },
+  bo_reconnect_bot: { ru: 'Переподключить бота', uz: 'Botni qayta ulash' },
+  bo_bot_status_webhook: { ru: 'Webhook активен', uz: 'Webhook faol' },
+  bo_bot_status_polling: { ru: 'Polling активен', uz: 'Polling faol' },
+  bo_bot_status_error: { ru: 'Ошибка бота', uz: 'Bot xatosi' },
+  bo_bot_status_off: { ru: 'Бот отключён', uz: 'Bot o‘chirilgan' },
   bo_disconnect_bot: { ru: 'Отключить бота', uz: 'Botni uzish' },
   bo_ready: { ru: 'Готово к работе!', uz: 'Ishga tayyor!' },
   bo_bind_hint: { ru: 'Привяжите группы через Telegram:', uz: 'Telegram orqali guruhlarni ulang:' },
@@ -300,6 +311,9 @@ const dict = {
   platform_list: { ru: 'Бизнесы', uz: 'Bizneslar' },
   platform_suspend: { ru: 'Приостановить', uz: 'To‘xtatish' },
   platform_activate: { ru: 'Активировать', uz: 'Faollashtirish' },
+  platform_bot_webhook: { ru: 'бот OK', uz: 'bot OK' },
+  platform_bot_error: { ru: 'бот ошибка', uz: 'bot xato' },
+  platform_bot_off: { ru: 'бот выкл', uz: 'bot o‘chiq' },
 } satisfies Record<string, Entry>;
 
 export type I18nKey = keyof typeof dict;

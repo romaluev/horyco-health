@@ -21,6 +21,7 @@ export interface ChecklistItem {
   key: string;
   ok: boolean;
   label: string;
+  hint?: string;
 }
 
 export interface BusinessChecklist {
@@ -90,6 +91,17 @@ export function useRemoveBotToken() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api<BusinessSettings>('/b/bot-token', { method: 'DELETE' }),
+    onSuccess: (data) => {
+      qc.setQueryData(['b', 'settings'], data);
+      qc.invalidateQueries({ queryKey: ['b', 'checklist'] });
+    },
+  });
+}
+
+export function useReconnectBot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<BusinessSettings>('/b/bot-token/reconnect', { method: 'POST' }),
     onSuccess: (data) => {
       qc.setQueryData(['b', 'settings'], data);
       qc.invalidateQueries({ queryKey: ['b', 'checklist'] });

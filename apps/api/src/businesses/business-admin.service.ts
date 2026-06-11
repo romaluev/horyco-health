@@ -130,6 +130,22 @@ export class BusinessAdminService {
     return this.toSettingsDto(business);
   }
 
+  @Transactional()
+  async reconnectBot(): Promise<BusinessSettingsResponseDto> {
+    const businessId = this.businessId();
+    const business = await this.requireBusiness();
+    if (!business.botTokenEnc) {
+      throw new ConflictError('Сначала подключите токен бота');
+    }
+    if (!business.webhookSecret) {
+      business.webhookSecret = randomBytes(24).toString('hex');
+      await this.businesses.save(business);
+    }
+    await this.botConnector.connectAndBootstrap(businessId);
+    const fresh = await this.businesses.findById(businessId);
+    return this.toSettingsDto(fresh!);
+  }
+
   async getChecklist(): Promise<BusinessChecklistDto> {
     const businessId = this.businessId();
     const business = await this.requireBusiness();
@@ -143,17 +159,46 @@ export class BusinessAdminService {
     const chatOk = (kind: ChatKind) =>
       chats.some((c) => c.kind === kind && c.status === ChatStatus.Active);
 
+    const webhookOk =
+      business.botStatus === BotStatus.Webhook || business.botStatus === BotStatus.Polling;
+
     const items: ChecklistItemDto[] = [
-      { key: 'token', ok: Boolean(business.botId), label: 'Токен бота подключён' },
+      {
+        key: 'token',
+        ok: Boolean(business.botId),
+        label: 'Токен бота подключён',
+        hint: business.botId ? undefined : 'Вставьте токен BotFather в настройках',
+      },
       {
         key: 'webhook',
-        ok: business.botStatus === BotStatus.Webhook || business.botStatus === BotStatus.Polling,
+        ok: webhookOk,
         label: 'Webhook / polling активен',
+        hint: webhookOk ? undefined : 'Нажмите «Переподключить бота» в настройках',
       },
-      { key: 'cook_group', ok: chatOk(ChatKind.Cook), label: 'Группа поваров привязана' },
-      { key: 'admin_group', ok: chatOk(ChatKind.Admin), label: 'Админ-группа привязана' },
-      { key: 'menu', ok: activeMenu >= 1, label: '≥1 активное блюдо в меню' },
-      { key: 'cook', ok: cooks.length >= 1, label: '≥1 активный повар' },
+      {
+        key: 'cook_group',
+        ok: chatOk(ChatKind.Cook),
+        label: 'Группа поваров привязана',
+        hint: chatOk(ChatKind.Cook) ? undefined : 'В группе поваров выполните /bind cook',
+      },
+      {
+        key: 'admin_group',
+        ok: chatOk(ChatKind.Admin),
+        label: 'Админ-группа привязана',
+        hint: chatOk(ChatKind.Admin) ? undefined : 'В админ-группе выполните /bind admin',
+      },
+      {
+        key: 'menu',
+        ok: activeMenu >= 1,
+        label: '≥1 активное блюдо в меню',
+        hint: activeMenu >= 1 ? undefined : 'Создайте и активируйте блюдо во вкладке «Меню»',
+      },
+      {
+        key: 'cook',
+        ok: cooks.length >= 1,
+        label: '≥1 активный повар',
+        hint: cooks.length >= 1 ? undefined : 'Пригласите повара по ссылке в разделе «Сотрудники»',
+      },
     ];
 
     return { ready: items.every((i) => i.ok), items };

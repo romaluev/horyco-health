@@ -18,9 +18,14 @@ export class ClientRepository extends TransactionalRepository<Client> {
     return this.repo.findOne({ where: { telegramId } });
   }
 
-  /** Веб-аккаунт по телефону (только с паролем — Telegram-клиенты не участвуют). */
+  /** Веб-аккаунт по телефону (только с паролем — Telegram-клиенты без пароля не участвуют). */
   findWebByPhone(phone: string): Promise<Client | null> {
     return this.repo.findOne({ where: { phone, passwordHash: Not(IsNull()) } });
+  }
+
+  /** Любой клиент с этим телефоном (в т.ч. Telegram без пароля). */
+  findByPhone(phone: string): Promise<Client | null> {
+    return this.repo.findOne({ where: { phone } });
   }
 
   findById(id: string): Promise<Client | null> {

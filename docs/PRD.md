@@ -118,6 +118,7 @@ Platform-admin seed: `ADMIN_TELEGRAM_IDS` (env). Остальные роли —
 - **DishDetail** — KBJU, аллергены, порции, **ModifierPicker** → `POST /cart/lines`
 - **ComboDetail** — slot pickers
 - **CartScreen** — sub-lines модификаторов, calorie total
+- **ProfileScreen** — имя, телефон, адрес; опциональный **пароль для сайта** (заказы в Telegram без пароля)
 - **AppGate** — friendly screen без `?biz=`
 
 ### 5.2 Back office `/b`
@@ -131,11 +132,11 @@ Platform-admin seed: `ADMIN_TELEGRAM_IDS` (env). Остальные роли —
 | Offers | Cart composer + CRM send |
 | Modifiers | Groups CRUD |
 | Customers | CRM, balance |
-| Staff / Settings | Bot token, groups, TZ, report hour |
+| Staff / Settings | Bot token, **reconnect bot**, bot status badge, onboarding checklist with hints, groups, TZ, report hour |
 
 ### 5.3 Platform `/platform`
 
-Businesses table, create/suspend/activate, GMV per business.
+Businesses table with **botStatus badge**, create/suspend/activate, GMV per business. Platform admin login: phone + password (set in Mini App profile); `ADMIN_TELEGRAM_IDS` grants access without business membership.
 
 ---
 
@@ -199,6 +200,9 @@ Platform: GMV and order count per business.
 - Modifier price deltas do not adjust base KBJU display
 - Offer composer combo slot pickers: defaults only (full slot UI in Mini App customize path)
 - CSP Report-Only by default until inline-script audit complete
+- No automatic merge of web-only and Telegram client accounts (same phone → set password in Mini App, do not register twice)
+- No Telegram Login Widget SSO on public website
+- No push alerts when business bot webhook fails (use `/platform` botStatus badge or `/b` reconnect)
 
 ---
 

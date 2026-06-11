@@ -97,8 +97,17 @@ export class AuthService {
   async register(dto: RegisterDto, businessSlug?: string): Promise<AuthResponseDto> {
     const business = await this.resolveBusiness(businessSlug);
     this.requireActiveBusiness(business);
-    const existing = await this.clients.findWebByPhone(dto.phone);
-    if (existing) {
+    const existingWeb = await this.clients.findWebByPhone(dto.phone);
+    if (existingWeb) {
+      throw new ConflictError('Этот телефон уже зарегистрирован');
+    }
+    const existingPhone = await this.clients.findByPhone(dto.phone);
+    if (existingPhone?.telegramId && !existingPhone.passwordHash) {
+      throw new ConflictError(
+        'Этот номер привязан к Telegram-аккаунту — задайте пароль в профиле Mini App',
+      );
+    }
+    if (existingPhone) {
       throw new ConflictError('Этот телефон уже зарегистрирован');
     }
     const client = await this.clients.create({
@@ -121,6 +130,12 @@ export class AuthService {
     this.requireActiveBusiness(business);
     const client = await this.clients.findWebByPhone(dto.phone);
     if (!client?.passwordHash || !verifyPassword(dto.password, client.passwordHash)) {
+      const byPhone = await this.clients.findByPhone(dto.phone);
+      if (byPhone?.telegramId && !byPhone.passwordHash) {
+        throw new UnauthorizedException(
+          'Задайте пароль в профиле Mini App (Telegram → Меню → Профиль)',
+        );
+      }
       throw new UnauthorizedException('Неверный телефон или пароль');
     }
     await this.customers.ensureExists(business.id, client.id);
@@ -135,11 +150,22 @@ export class AuthService {
   async staffLogin(dto: LoginDto): Promise<StaffLoginResponseDto> {
     const client = await this.clients.findWebByPhone(dto.phone);
     if (!client?.passwordHash || !verifyPassword(dto.password, client.passwordHash)) {
+      const byPhone = await this.clients.findByPhone(dto.phone);
+      if (byPhone?.telegramId && !byPhone.passwordHash) {
+        throw new UnauthorizedException(
+          'Задайте пароль в профиле Mini App (Telegram → Меню → Профиль)',
+        );
+      }
       throw new UnauthorizedException('Неверный телефон или пароль');
     }
 
     const memberships = await this.members.findActiveByClient(client.id);
     if (!memberships.length) {
+      if (client.isPlatformAdmin) {
+        const defaultBizId = await this.defaultBusiness.getId();
+        const { accessToken, balance } = await this.issueStaff(client, defaultBizId);
+        return new StaffLoginResponseDto(accessToken, client, balance, []);
+      }
       throw new UnauthorizedException('Нет активных мест работы');
     }
 

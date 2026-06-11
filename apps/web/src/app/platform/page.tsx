@@ -12,7 +12,20 @@ import {
   useSuspendBusiness,
   useActivateBusiness,
 } from '@/lib/backoffice-queries';
-import { useT } from '@/lib/i18n';
+import { useT, type I18nKey } from '@/lib/i18n';
+
+function botStatusBadge(status: string, t: (k: I18nKey) => string) {
+  switch (status) {
+    case 'webhook':
+    case 'polling':
+      return { label: t('platform_bot_webhook'), color: 'var(--accent)' };
+    case 'error':
+    case 'revoked':
+      return { label: t('platform_bot_error'), color: 'var(--danger, #e74c3c)' };
+    default:
+      return { label: t('platform_bot_off'), color: 'var(--muted, #888)' };
+  }
+}
 
 function PlatformLogin({ onDone }: { onDone: () => void }) {
   const t = useT();
@@ -169,7 +182,9 @@ export default function PlatformPage() {
         </div>
 
         <h3>{t('platform_list')}</h3>
-        {businesses?.map((b) => (
+        {businesses?.map((b) => {
+          const badge = botStatusBadge(b.botStatus, t);
+          return (
           <div className="card" key={b.id} style={{ marginBottom: 8 }}>
             <div className="row">
               <div>
@@ -177,6 +192,9 @@ export default function PlatformPage() {
                 <div className="muted">
                   {b.slug} · {b.status} · @{b.botUsername ?? '—'}
                 </div>
+                <span style={{ fontSize: 13, color: badge.color, fontWeight: 600 }}>
+                  {badge.label}
+                </span>
               </div>
               <div className="seg">
                 {b.status === 'active' ? (
@@ -191,7 +209,8 @@ export default function PlatformPage() {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

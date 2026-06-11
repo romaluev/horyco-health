@@ -106,15 +106,22 @@ cd apps/api && npm run e2e:smoke
 ### 3.1 Platform admin
 
 1. Send `/start` to your Eat&fit bot from the Telegram account in `ADMIN_TELEGRAM_IDS`.
-2. Register web login: open `https://health.horyco.com/?biz=eatfit` → sign up (phone + password) **or** use owner phone if already seeded.
+2. Set web password in **Mini App → Профиль → «Пароль для сайта»** (optional for ordering; required for `/platform` and `/b` login from browser).
+3. Log in at `https://health.horyco.com/platform` with **phone + password** from step 2.
+
+> Platform admin rights come from `ADMIN_TELEGRAM_IDS` (Telegram ID), not from registration alone. Do **not** register a separate web account if you already use the bot — that creates a duplicate client.
 
 ### 3.2 Back office
 
-Open **`https://health.horyco.com/b/?biz=eatfit`** → staff login (phone + password).
+Open **`https://health.horyco.com/b/?biz=eatfit`** → staff login (owner phone + password from business creation, or your Mini App profile password).
 
 If bot was **not** in env at migration time:
 
 - **Settings → Onboarding** → paste BotFather token → Connect (registers webhook automatically).
+
+If bot is connected but **silent** (no reply to `/start`):
+
+- **Settings → «Переподключить бота»** — re-registers webhook and generates `webhook_secret` if missing.
 
 ### 3.3 Bind groups (if not env-seeded)
 
@@ -167,3 +174,48 @@ If needed manually in BotFather: set Mini App URL to `https://health.horyco.com/
 - [ ] Set `CSP_REPORT_ONLY=false` after CSP smoke.
 - [ ] Schedule Postgres backups in Coolify.
 - [ ] Keep `single-tenant-lkg` branch 1 week, then archive.
+
+---
+
+## 7. Troubleshooting
+
+### Bot silent (messages delivered, no reply)
+
+**Cause:** webhook secret missing or webhook not registered (common when `BOT_TOKEN` was seeded via env at migration without back-office connect).
+
+**Fix (after deploy with self-heal code):** Restart app — startup generates `webhook_secret` automatically. Or in `/b` → Settings → **Переподключить бота**.
+
+**Manual SQL (before code deploy):**
+
+```sql
+UPDATE businesses SET webhook_secret = encode(gen_random_bytes(24), 'hex') WHERE slug = 'eatfit';
+-- then Restart app in Coolify
+```
+
+### «Нет активных мест работы» on `/b` or `/platform` login
+
+**Cause:** account has password but no `business_members` row (fresh DB + platform admin created after migration).
+
+**Fix (after deploy):** Platform admins can log in without membership. For business owner access, insert owner membership or create business via `/platform`.
+
+**Manual SQL:**
+
+```sql
+INSERT INTO business_members (business_id, client_id, role, status)
+SELECT b.id, c.id, 'owner', 'active'
+FROM businesses b, clients c
+WHERE b.slug = 'eatfit' AND c.telegram_id = '<YOUR_TELEGRAM_ID>'
+ON CONFLICT DO NOTHING;
+```
+
+### «Задайте пароль в профиле Mini App» on web login
+
+**Cause:** Telegram account has phone but no `password_hash` yet.
+
+**Fix:** Telegram → bot → **Menu** (Mini App) → **Профиль** → set **Пароль для сайта** → Save.
+
+### Web registration: «номер привязан к Telegram-аккаунту»
+
+**Cause:** phone already used by your Telegram client — do not create a second account.
+
+**Fix:** Set password in Mini App profile (same phone), then log in on web.

@@ -115,6 +115,10 @@ export class BusinessesRepository extends TransactionalRepository<Business> {
     await this.repo.update(id, patch);
   }
 
+  async updateWebhookSecret(id: string, webhookSecret: string): Promise<void> {
+    await this.repo.update(id, { webhookSecret });
+  }
+
   /** Единственный активный бизнес (переходный режим до мультибота, Phase 1–2). */
   findFirstActive(): Promise<Business | null> {
     return this.repo.findOne({ where: { status: BusinessStatus.Active }, order: { createdAt: 'ASC' } });

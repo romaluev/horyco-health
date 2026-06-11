@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { Language } from '@eatfit/shared';
 
 export class UpdateProfileDto {
@@ -20,4 +20,10 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsEnum(Language)
   language?: Language;
+
+  /** Пароль для входа на сайте / back office (не обязателен для заказов в Telegram). */
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  password?: string;
 }

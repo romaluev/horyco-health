@@ -39,6 +39,11 @@ export class BusinessAdminController {
     return this.admin.setBotToken(dto.token);
   }
 
+  @Post('bot-token/reconnect')
+  reconnectBot() {
+    return this.admin.reconnectBot();
+  }
+
   @Delete('bot-token')
   @HttpCode(HttpStatus.OK)
   removeBotToken() {

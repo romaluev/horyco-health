@@ -8,6 +8,7 @@ import { Client } from './entities/client.entity';
 import { BalanceService } from './balance/balance.service';
 import { ClientResponseDto } from './dto/client-response.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { hashPassword } from '../auth/password';
 
 @Injectable()
 export class ClientsService {
@@ -33,6 +34,7 @@ export class ClientsService {
     if (dto.phone !== undefined) client.phone = dto.phone;
     if (dto.address !== undefined) client.address = dto.address;
     if (dto.language !== undefined) client.language = dto.language;
+    if (dto.password !== undefined) client.passwordHash = hashPassword(dto.password);
     const saved = await this.clients.save(client);
     const bal = await this.balance.balanceOf(actor.userId, actor.businessId);
     return new ClientResponseDto(saved, bal);

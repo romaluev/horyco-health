@@ -49,6 +49,11 @@ export function OnboardingWizard() {
             {checklist.items.map((item) => (
               <li key={item.key} style={{ marginBottom: 6 }}>
                 {item.ok ? '✅' : '⬜'} {item.label}
+                {!item.ok && item.hint && (
+                  <div className="muted" style={{ fontSize: 13, marginLeft: 22 }}>
+                    {item.hint}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

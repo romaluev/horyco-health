@@ -22,6 +22,7 @@ export function ProfileScreen() {
   const client = useAuthStore((s) => s.client)!;
   const update = useUpdateProfile();
   const [saved, setSaved] = useState(false);
+  const [password, setPassword] = useState('');
 
   const {
     register,
@@ -32,13 +33,16 @@ export function ProfileScreen() {
     defaultValues: { name: client.name, phone: client.phone ?? '', address: client.address ?? '' },
   });
 
-  const onSubmit = (data: FormValues) =>
-    update.mutate(data, {
+  const onSubmit = (data: FormValues) => {
+    const body = password.trim().length >= 6 ? { ...data, password: password.trim() } : data;
+    update.mutate(body, {
       onSuccess: () => {
         setSaved(true);
+        if (password.trim().length >= 6) setPassword('');
         setTimeout(() => setSaved(false), 1500);
       },
     });
+  };
 
   return (
     <div>
@@ -68,6 +72,21 @@ export function ProfileScreen() {
           <label>{t('address')}</label>
           <input className="input" {...register('address')} />
           {errors.address && <div className="err" role="alert">{t('required')}</div>}
+        </div>
+
+        <div className="field">
+          <label>{t('profile_password')}</label>
+          <input
+            className="input"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={t('web_password_hint')}
+          />
+          <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+            {t('profile_password_hint')}
+          </p>
         </div>
 
         <div className="field">

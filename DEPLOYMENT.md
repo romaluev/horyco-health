@@ -19,21 +19,25 @@ One container serves:
 
 ## Environments
 
-| Branch | Coolify environment | Domain | Postgres resource |
-|--------|---------------------|--------|-------------------|
-| `dev` | Development | `dev-health.horyco.com` | `horyco-health-postgres-dev` |
-| `main` | Production | `health.horyco.com` | `horyco-health-postgres` |
+
+| Branch | Coolify environment | Domain                  | Postgres resource            |
+| ------ | ------------------- | ----------------------- | ---------------------------- |
+| `dev`  | Development         | `dev-health.horyco.com` | `horyco-health-postgres-dev` |
+| `main` | Production          | `health.horyco.com`     | `horyco-health-postgres`     |
+
 
 ## Coolify Application Settings
 
-| Setting | Value |
-|---------|-------|
-| Build pack | **Dockerfile** |
-| Dockerfile location | `/Dockerfile` |
-| Port | `3000` |
-| Health check path | `/api/health` |
-| Health check start period | **60s** (DB sync + bot startup) |
-| Replicas | **1** (webhook mode: one process handles all business bots) |
+
+| Setting                   | Value                                                       |
+| ------------------------- | ----------------------------------------------------------- |
+| Build pack                | **Dockerfile**                                              |
+| Dockerfile location       | `/Dockerfile`                                               |
+| Port                      | `3000`                                                      |
+| Health check path         | `/api/health`                                               |
+| Health check start period | **60s** (DB sync + bot startup)                             |
+| Replicas                  | **1** (webhook mode: one process handles all business bots) |
+
 
 Build command is handled by the Dockerfile: `npm run build` (shared → web → api).
 
@@ -56,43 +60,55 @@ Set in Coolify → Application → **Environment Variables**.
 
 ### Required
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string (internal Coolify hostname) |
-| `JWT_SECRET` | JWT signing secret, **minimum 32 characters** |
+
+| Variable        | Description                                                              |
+| --------------- | ------------------------------------------------------------------------ |
+| `DATABASE_URL`  | PostgreSQL connection string (internal Coolify hostname)                 |
+| `JWT_SECRET`    | JWT signing secret, **minimum 32 characters**                            |
 | `TOKEN_ENC_KEY` | 64 hex chars (`openssl rand -hex 32`) — encrypts per-business bot tokens |
-| `PUBLIC_URL` | Public HTTPS URL (webhooks: `{PUBLIC_URL}/api/tg/wh/:businessId`) |
-| `WEB_APP_URL` | Mini App URL (usually same as public domain root) |
+| `PUBLIC_URL`    | Public HTTPS URL (webhooks: `{PUBLIC_URL}/api/tg/wh/:businessId`)        |
+| `WEB_APP_URL`   | Mini App URL (usually same as public domain root)                        |
+
 
 ### Recommended
 
-| Variable | Dev example | Prod example |
-|----------|-------------|--------------|
-| `NODE_ENV` | `production` | `production` |
-| `DATABASE_SSL` | `false` | `false` |
-| `WEB_APP_URL` | `https://dev-health.horyco.com` | `https://health.horyco.com` |
-| `PUBLIC_URL` | `https://dev-health.horyco.com` | `https://health.horyco.com` |
-| `CORS_ORIGINS` | `https://dev-health.horyco.com` | `https://health.horyco.com` |
-| `TYPEORM_SYNC` | `false` | `false` (schema is migration-managed) |
-| `TYPEORM_MIGRATIONS_RUN` | `true` | `true` (after one-time baseline registration, see Migrations) |
-| `BOT_ENABLED` | `true` | `true` |
-| `BOT_MODE` | `webhook` | `webhook` |
-| `CSP_REPORT_ONLY` | `true` | `true` → `false` after CSP audit |
+
+| Variable                 | Dev example                     | Prod example                                                  |
+| ------------------------ | ------------------------------- | ------------------------------------------------------------- |
+| `NODE_ENV`               | `production`                    | `production`                                                  |
+| `DATABASE_SSL`           | `false`                         | `false`                                                       |
+| `WEB_APP_URL`            | `https://dev-health.horyco.com` | `https://health.horyco.com`                                   |
+| `PUBLIC_URL`             | `https://dev-health.horyco.com` | `https://health.horyco.com`                                   |
+| `CORS_ORIGINS`           | `https://dev-health.horyco.com` | `https://health.horyco.com`                                   |
+| `TYPEORM_SYNC`           | `false`                         | `false` (schema is migration-managed)                         |
+| `TYPEORM_MIGRATIONS_RUN` | `true`                          | `true` (after one-time baseline registration, see Migrations) |
+| `BOT_ENABLED`            | `true`                          | `true`                                                        |
+| `BOT_MODE`               | `webhook`                       | `webhook`                                                     |
+| `CSP_REPORT_ONLY`        | `true`                          | `true` → `false` after CSP audit                              |
+
 
 ### Optional / transitional
 
-| Variable | Description |
-|----------|-------------|
-| `BOT_TOKEN` | Fallback bot token for initData HMAC if business has no encrypted token yet |
-| `BOT_USERNAME` | Legacy deep-link fallback |
-| `ADMIN_TELEGRAM_IDS` | Comma-separated Telegram IDs — **platform admin seed only** |
-| `TELEGRAM_WEBHOOK_SECRET` | Global webhook secret fallback (per-business secrets preferred) |
-| `TZ_OFFSET_HOURS` | Default TZ offset (default `5`); per-business TZ in settings |
-| `DAILY_REPORT_HOUR` | Default report hour; per-business override in settings |
-| `JWT_EXPIRES_IN` | JWT lifetime (default `7d`) |
-| `PORT` | Container port (Coolify sets this; default `3000`) |
+
+| Variable                  | Description                                                                 |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `BOT_TOKEN`               | Fallback bot token for initData HMAC if business has no encrypted token yet |
+| `BOT_USERNAME`            | Legacy deep-link fallback                                                   |
+| `ADMIN_TELEGRAM_IDS`      | Comma-separated Telegram IDs — **platform admin seed only**                 |
+| `TELEGRAM_WEBHOOK_SECRET` | Global webhook secret fallback (per-business secrets preferred)             |
+| `TZ_OFFSET_HOURS`         | Default TZ offset (default `5`); per-business TZ in settings                |
+| `DAILY_REPORT_HOUR`       | Default report hour; per-business override in settings                      |
+| `JWT_EXPIRES_IN`          | JWT lifetime (default `7d`)                                                 |
+| `PORT`                    | Container port (Coolify sets this; default `3000`)                          |
+
 
 **Removed (multi-tenant):** `CHANNEL_ID`, `COOK_GROUP_ID`, `COURIER_GROUP_ID`, `ADMIN_GROUP_ID` — bind groups per business via `/bind` in Telegram.
+
+### Bot token and webhook secret
+
+- Per-business bot tokens are stored encrypted (`TOKEN_ENC_KEY`) after connect via `/b` → Settings.
+- **`webhook_secret`** is generated when connecting token in back office, or **automatically on app startup** if a business has a token but no secret (fixes env-seeded `BOT_TOKEN` on fresh DB).
+- Owners can **reconnect** the bot from `/b` → Settings → «Переподключить бота» without re-pasting the token (re-registers Telegram webhook).
 
 ## Migrations
 
@@ -117,9 +133,9 @@ already has the tables would fail. Register it as already-applied instead:
 1. Backup: `pg_dump` the database.
 2. Deploy with `TYPEORM_SYNC=false` and `TYPEORM_MIGRATIONS_RUN=false`.
 3. One-time, from a shell with `DATABASE_URL` pointing at that database:
-   ```bash
+  ```bash
    cd apps/api && npx typeorm -d dist/database/data-source.js migration:run --fake
-   ```
+  ```
    This records `Baseline` in the `migrations` table without executing DDL.
    Verify: `npx typeorm -d dist/database/data-source.js migration:show` → `[X] Baseline…`
 4. Set `TYPEORM_MIGRATIONS_RUN=true`. Subsequent deploys apply new migrations on boot.
@@ -158,8 +174,8 @@ Same pattern as other Horyco apps:
 2. Copy the **Deploy Webhook URL**
 3. GitHub repo → **Settings** → **Webhooks** → add Coolify webhook
 4. Branch mapping:
-   - `dev` → Development environment
-   - `main` → Production environment
+  - `dev` → Development environment
+  - `main` → Production environment
 
 GitHub Actions CI (`.github/workflows/ci.yml`) runs `npm ci` + `npm run build` on push/PR. Deploy is triggered by Coolify webhook, not CI.
 
@@ -174,11 +190,13 @@ In **polling mode** (local dev), Telegram allows **one long-polling connection**
 
 ## Security hardening (Phase 10)
 
-| Control | Config |
-|---------|--------|
-| CSP | Helmet; `CSP_REPORT_ONLY=true` (default) → `false` to enforce |
-| Rate limit | `@nestjs/throttler`: auth 15/min, webhooks 600/min |
-| Tenant isolation | Business-scoped JWT; run `cd apps/api && npm test` |
+
+| Control          | Config                                                        |
+| ---------------- | ------------------------------------------------------------- |
+| CSP              | Helmet; `CSP_REPORT_ONLY=true` (default) → `false` to enforce |
+| Rate limit       | `@nestjs/throttler`: auth 15/min, webhooks 600/min            |
+| Tenant isolation | Business-scoped JWT; run `cd apps/api && npm test`            |
+
 
 ## Verification Checklist
 
@@ -266,3 +284,4 @@ docker run --rm -p 3000:3000 \
   -e BOT_TOKEN=your-bot-token \
   horyco-health
 ```
+

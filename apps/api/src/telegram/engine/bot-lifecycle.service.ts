@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomBytes } from 'crypto';
 import { BotStatus } from '@eatfit/shared';
 import { BusinessesRepository } from '../../businesses/businesses.repository';
 import { BotRegistryService } from './bot-registry.service';
@@ -48,6 +49,13 @@ export class BotLifecycleService implements OnApplicationBootstrap {
       await this.businesses.updateBotStatus(businessId, BotStatus.Error);
       await this.registry.disconnect(businessId);
       return;
+    }
+
+    if (!handle.webhookSecret) {
+      const secret = randomBytes(24).toString('hex');
+      await this.businesses.updateWebhookSecret(businessId, secret);
+      handle.webhookSecret = secret;
+      this.logger.log(`Webhook secret создан для ${slug}`);
     }
 
     if (botMode === 'webhook') {

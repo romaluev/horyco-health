@@ -7,6 +7,7 @@ import {
   useSaveBusinessSettings,
   useSetBotToken,
   useRemoveBotToken,
+  useReconnectBot,
   useStaffList,
   useInviteStaff,
   useRemoveStaff,
@@ -21,6 +22,7 @@ export function BackofficeSettings() {
   const save = useSaveBusinessSettings();
   const setBot = useSetBotToken();
   const removeBot = useRemoveBotToken();
+  const reconnectBot = useReconnectBot();
   const { data: staff } = useStaffList();
   const invite = useInviteStaff();
   const remove = useRemoveStaff();
@@ -50,23 +52,49 @@ export function BackofficeSettings() {
 
   const showWizard = settings && !settings.hasBotToken;
 
+  const botStatusLabel = (status: string) => {
+    switch (status) {
+      case 'webhook':
+        return t('bo_bot_status_webhook');
+      case 'polling':
+        return t('bo_bot_status_polling');
+      case 'error':
+      case 'revoked':
+        return t('bo_bot_status_error');
+      default:
+        return t('bo_bot_status_off');
+    }
+  };
+
+  const botStatusColor = (status: string) => {
+    if (status === 'webhook' || status === 'polling') return 'var(--accent)';
+    return 'var(--danger, #e74c3c)';
+  };
+
   return (
     <div>
       {showWizard && <OnboardingWizard />}
 
       {settings?.hasBotToken && (
         <div className="card" style={{ marginBottom: 16 }}>
-          <div>
-            @{settings.botUsername ?? '—'} · {settings.botStatus}
+          <div className="row">
+            <span>@{settings.botUsername ?? '—'}</span>
+            <span style={{ color: botStatusColor(settings.botStatus), fontWeight: 600 }}>
+              {botStatusLabel(settings.botStatus)}
+            </span>
           </div>
-          <button
-            className="btn"
-            style={{ marginTop: 8 }}
-            disabled={removeBot.isPending}
-            onClick={() => removeBot.mutate()}
-          >
-            {t('bo_disconnect_bot')}
-          </button>
+          <div className="seg" style={{ marginTop: 8 }}>
+            <button
+              className="btn btn-primary"
+              disabled={reconnectBot.isPending}
+              onClick={() => reconnectBot.mutate()}
+            >
+              {t('bo_reconnect_bot')}
+            </button>
+            <button className="btn" disabled={removeBot.isPending} onClick={() => removeBot.mutate()}>
+              {t('bo_disconnect_bot')}
+            </button>
+          </div>
         </div>
       )}
 

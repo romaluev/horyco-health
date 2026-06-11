@@ -110,6 +110,7 @@ export type ProfilePatch = Partial<{
   phone: string;
   address: string;
   language: Language;
+  password: string;
 }>;
 
 export function useUpdateProfile() {
