@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Language } from '@eatfit/shared';
+import { Language, normalizePhone } from '@eatfit/shared';
 import { useAuthStore } from '@/store/auth.store';
 import { useUpdateProfile } from '@/lib/queries';
+import { ApiError } from '@/lib/api';
 import { useT } from '@/lib/i18n';
 import { formatMoney } from '@/lib/format';
 import { DeliveryLocationFields, hasDeliveryLocation } from '@/components/DeliveryLocationFields';
@@ -59,7 +60,7 @@ export function ProfileScreen() {
   const onSubmit = (data: FormValues) => {
     const body = {
       name: data.name,
-      phone: data.phone,
+      phone: normalizePhone(data.phone),
       address: data.address?.trim() || undefined,
       deliveryLat: data.deliveryLat ?? undefined,
       deliveryLng: data.deliveryLng ?? undefined,
@@ -135,6 +136,12 @@ export function ProfileScreen() {
             </button>
           </div>
         </div>
+
+        {update.isError && (
+          <div className="err" role="alert" style={{ marginBottom: 12 }}>
+            {update.error instanceof ApiError ? update.error.message : t('error_generic')}
+          </div>
+        )}
 
         <button className="btn btn-primary btn-block" disabled={update.isPending}>
           {saved ? t('saved') : t('save')}

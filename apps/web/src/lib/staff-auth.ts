@@ -1,3 +1,4 @@
+import { normalizePhone } from '@eatfit/shared';
 import { api } from './api';
 import { useAuthStore } from '@/store/auth.store';
 import { StaffLoginResponse } from './backoffice-queries';
@@ -74,7 +75,7 @@ export function clearStaffSession() {
 export async function staffLogin(phone: string, password: string): Promise<StaffLoginResponse> {
   return api<StaffLoginResponse>('/auth/staff-login', {
     method: 'POST',
-    body: { phone, password },
+    body: { phone: normalizePhone(phone), password },
     token: '',
   });
 }

@@ -221,3 +221,15 @@ ON CONFLICT DO NOTHING;
 **Cause:** phone already used by your Telegram client — do not create a second account.
 
 **Fix:** Set password in Mini App profile (same phone), then log in on web.
+
+### «Неверный телефон или пароль» despite correct password
+
+**Cause:** phone stored without `+` (e.g. `998901172772`) while login used `+998…`, or the reverse.
+
+**Fix:** After deploy with phone normalization, either format works. Re-save **Профиль** in Mini App once (phone is normalized to `+998…`), set **Пароль для сайта** (min 6 chars), then log in at `/platform` or `/b`.
+
+### Platform admin: no business / «Нет активных мест работы»
+
+**Cause:** account in `ADMIN_TELEGRAM_IDS` had `is_platform_admin` but no `business_members` row.
+
+**Fix:** Open Mini App once (promotes admin flag) or log in on `/platform` — API auto-creates **owner** membership on the default business. Manual SQL above is only needed on old deploys before this fix.

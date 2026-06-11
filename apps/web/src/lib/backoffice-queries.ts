@@ -201,17 +201,19 @@ export function useAnalytics(range: 'today' | '7d' | '30d') {
   });
 }
 
-export function usePlatformMetrics() {
+export function usePlatformMetrics(enabled = true) {
   return useQuery({
     queryKey: ['platform', 'metrics'],
     queryFn: () => api<PlatformMetrics>('/platform/metrics'),
+    enabled,
   });
 }
 
-export function usePlatformBusinesses() {
+export function usePlatformBusinesses(enabled = true) {
   return useQuery({
     queryKey: ['platform', 'businesses'],
     queryFn: () => api<PlatformBusiness[]>('/platform/businesses'),
+    enabled,
   });
 }
 

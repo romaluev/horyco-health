@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { jwtKind } from '@/lib/jwt';
 import { staffLogin, saveStaffToken } from '@/lib/staff-auth';
 import {
@@ -31,15 +31,25 @@ function PlatformLogin({ onDone }: { onDone: () => void }) {
   const t = useT();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const setStaffAuth = useAuthStore((s) => s.setStaffAuth);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await staffLogin(phone, password);
-    const slug = res.businesses[0]?.slug ?? 'platform';
-    saveStaffToken(res.accessToken, slug);
-    setStaffAuth(res.accessToken, res.client, res.businesses, slug);
-    onDone();
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await staffLogin(phone, password);
+      const slug = res.businesses[0]?.slug ?? 'platform';
+      saveStaffToken(res.accessToken, slug);
+      setStaffAuth(res.accessToken, res.client, res.businesses, slug);
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('error_generic'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -47,18 +57,26 @@ function PlatformLogin({ onDone }: { onDone: () => void }) {
       <h2>{t('platform_login')}</h2>
       <div className="field">
         <label>{t('phone')}</label>
-        <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <input
+          className="input"
+          type="tel"
+          autoComplete="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
       </div>
       <div className="field">
         <label>{t('web_password')}</label>
         <input
           className="input"
           type="password"
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
       </div>
-      <button className="btn btn-primary btn-block">{t('web_login')}</button>
+      {error && <div className="err" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
+      <button className="btn btn-primary btn-block" disabled={busy}>{t('web_login')}</button>
     </form>
   );
 }
@@ -68,8 +86,8 @@ export default function PlatformPage() {
   const token = useAuthStore((s) => s.token);
   const [authed, setAuthed] = useState(false);
   const [denied, setDenied] = useState(false);
-  const { data: metrics } = usePlatformMetrics();
-  const { data: businesses } = usePlatformBusinesses();
+  const { data: metrics } = usePlatformMetrics(authed);
+  const { data: businesses } = usePlatformBusinesses(authed);
   const create = useCreateBusiness();
   const suspend = useSuspendBusiness();
   const activate = useActivateBusiness();

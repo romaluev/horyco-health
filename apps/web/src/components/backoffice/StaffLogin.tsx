@@ -20,14 +20,10 @@ export function StaffLogin() {
     setBusy(true);
     try {
       const res = await staffLogin(phone, password);
-      const slug = res.businesses[0]?.slug;
-      if (!slug) {
-        setError(t('bo_no_business'));
-        return;
-      }
+      const slug = res.businesses[0]?.slug ?? 'eatfit';
       setStaffAuth(res.accessToken, res.client, res.businesses, slug);
     } catch (err) {
-      setError((err as ApiError).status === 401 ? t('web_auth_failed') : t('error_generic'));
+      setError(err instanceof ApiError ? err.message : t('error_generic'));
     } finally {
       setBusy(false);
     }

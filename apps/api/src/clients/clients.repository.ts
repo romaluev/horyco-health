@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { EntityTarget, IsNull, Not } from 'typeorm';
+import { phoneLookupVariants } from '@eatfit/shared';
+import { EntityTarget, In, IsNull, Not } from 'typeorm';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm';
 import { TransactionalRepository } from '../common/database/transactional-repository';
@@ -20,12 +21,14 @@ export class ClientRepository extends TransactionalRepository<Client> {
 
   /** Веб-аккаунт по телефону (только с паролем — Telegram-клиенты без пароля не участвуют). */
   findWebByPhone(phone: string): Promise<Client | null> {
-    return this.repo.findOne({ where: { phone, passwordHash: Not(IsNull()) } });
+    const variants = phoneLookupVariants(phone);
+    return this.repo.findOne({ where: { phone: In(variants), passwordHash: Not(IsNull()) } });
   }
 
   /** Любой клиент с этим телефоном (в т.ч. Telegram без пароля). */
   findByPhone(phone: string): Promise<Client | null> {
-    return this.repo.findOne({ where: { phone } });
+    const variants = phoneLookupVariants(phone);
+    return this.repo.findOne({ where: { phone: In(variants) } });
   }
 
   findById(id: string): Promise<Client | null> {

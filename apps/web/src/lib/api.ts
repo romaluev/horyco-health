@@ -9,6 +9,7 @@ const BASE = '/api';
  *  - customer (или неизвестно) → клиентский logout (web-anon).
  */
 function handleUnauthorized(token: string | null | undefined) {
+  if (!token) return;
   const kind = jwtKind(token);
   if (kind === 'staff' || kind === 'platform') {
     useAuthStore.getState().logoutStaff();

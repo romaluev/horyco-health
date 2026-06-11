@@ -23,7 +23,7 @@ async function bootstrap() {
           frameAncestors: ["'self'"],
           imgSrc: ["'self'", 'data:', 'https://telegram.org', 'https://*.telegram.org'],
           objectSrc: ["'none'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'https://telegram.org'],
           styleSrc: ["'self'", "'unsafe-inline'"],
           connectSrc: ["'self'", 'https://telegram.org', 'https://*.telegram.org'],
           frameSrc: ["'self'", 'https://telegram.org', 'https://*.telegram.org'],

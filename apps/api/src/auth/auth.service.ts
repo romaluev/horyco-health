@@ -7,7 +7,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Transactional } from '@nestjs-cls/transactional';
-import { BusinessStatus, Language, Role } from '@eatfit/shared';
+import { BusinessStatus, Language, MemberRole, MemberStatus, Role } from '@eatfit/shared';
+import { normalizePhone } from '@eatfit/shared';
 import { ConflictError } from '../common/errors/domain-error';
 import { ActorContextService } from '../common/cls/actor-context.service';
 import { ClientRepository } from '../clients/clients.repository';
@@ -89,12 +90,16 @@ export class AuthService {
     }
 
     await this.customers.ensureExists(business.id, client.id);
+    if (client.isPlatformAdmin) {
+      await this.ensurePlatformAdminMembership(client.id, business.id);
+    }
     return this.issue(client, business.id);
   }
 
   /** Регистрация веб-аккаунта (вне Telegram): телефон+пароль → клиент → JWT. */
   @Transactional()
   async register(dto: RegisterDto, businessSlug?: string): Promise<AuthResponseDto> {
+    this.normalizeLoginPhone(dto);
     const business = await this.resolveBusiness(businessSlug);
     this.requireActiveBusiness(business);
     const existingWeb = await this.clients.findWebByPhone(dto.phone);
@@ -126,6 +131,7 @@ export class AuthService {
   /** Вход веб-аккаунта: телефон+пароль (скоуп — бизнес из ?biz= или дефолтный). */
   @Transactional()
   async login(dto: LoginDto, businessSlug?: string): Promise<AuthResponseDto> {
+    this.normalizeLoginPhone(dto);
     const business = await this.resolveBusiness(businessSlug);
     this.requireActiveBusiness(business);
     const client = await this.clients.findWebByPhone(dto.phone);
@@ -148,6 +154,7 @@ export class AuthService {
    */
   @Transactional()
   async staffLogin(dto: LoginDto): Promise<StaffLoginResponseDto> {
+    this.normalizeLoginPhone(dto);
     const client = await this.clients.findWebByPhone(dto.phone);
     if (!client?.passwordHash || !verifyPassword(dto.password, client.passwordHash)) {
       const byPhone = await this.clients.findByPhone(dto.phone);
@@ -163,8 +170,13 @@ export class AuthService {
     if (!memberships.length) {
       if (client.isPlatformAdmin) {
         const defaultBizId = await this.defaultBusiness.getId();
+        await this.ensurePlatformAdminMembership(client.id, defaultBizId);
+        const business = await this.businesses.findById(defaultBizId);
+        const member = await this.members.findActive(defaultBizId, client.id);
         const { accessToken, balance } = await this.issueStaff(client, defaultBizId);
-        return new StaffLoginResponseDto(accessToken, client, balance, []);
+        const staffBusinesses =
+          business && member ? [new StaffBusinessDto(member, business)] : [];
+        return new StaffLoginResponseDto(accessToken, client, balance, staffBusinesses);
       }
       throw new UnauthorizedException('Нет активных мест работы');
     }
@@ -261,6 +273,29 @@ export class AuthService {
     if (business.status === BusinessStatus.Suspended) {
       throw new ForbiddenException('Бизнес приостановлен');
     }
+  }
+
+  private normalizeLoginPhone(dto: { phone: string }): void {
+    dto.phone = normalizePhone(dto.phone);
+  }
+
+  /** Платформенный админ получает owner-членство, чтобы staff-login и /b видели бизнес. */
+  private async ensurePlatformAdminMembership(clientId: string, businessId: string): Promise<void> {
+    const existing = await this.members.findAny(businessId, clientId);
+    if (existing) {
+      if (existing.status !== MemberStatus.Active || existing.role !== MemberRole.Owner) {
+        existing.status = MemberStatus.Active;
+        existing.role = MemberRole.Owner;
+        await this.members.save(existing);
+      }
+      return;
+    }
+    await this.members.create({
+      businessId,
+      clientId,
+      role: MemberRole.Owner,
+      status: MemberStatus.Active,
+    });
   }
 
   /**
