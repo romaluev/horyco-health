@@ -59,6 +59,7 @@ export class MenuService {
 
   async getOne(id: string): Promise<MenuItemResponseDto> {
     const item = await this.getEntityOrThrow(id);
+    if (!item.isActive) throw new NotFoundError('Блюдо не найдено');
     const hasRequiredModifiers = await this.modifiers.hasRequiredModifiers(id);
     return new MenuItemResponseDto(item, { hasRequiredModifiers });
   }

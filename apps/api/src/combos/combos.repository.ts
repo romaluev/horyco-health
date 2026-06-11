@@ -13,8 +13,7 @@ import {
 import { ConflictError } from '../common/errors/domain-error';
 import { Money } from '../common/money/money';
 import { MenuRepository } from '../menu/menu.repository';
-import { ModifiersRepository } from '../modifiers/modifiers.repository';
-import { ComboSlotSnapshot, ModifierSnapshot } from '../orders/pricing/line-pricing.types';
+import { ComboSlotSnapshot } from '../orders/pricing/line-pricing.types';
 
 @Injectable()
 export class CombosRepository extends TransactionalRepository<Combo> {
@@ -23,7 +22,6 @@ export class CombosRepository extends TransactionalRepository<Combo> {
   constructor(
     txHost: TransactionHost<TransactionalAdapterTypeOrm>,
     private readonly menu: MenuRepository,
-    private readonly modifiers: ModifiersRepository,
   ) {
     super(txHost);
   }
@@ -46,7 +44,11 @@ export class CombosRepository extends TransactionalRepository<Combo> {
     return this.repo.findOne({ where: { id, businessId } });
   }
 
-  async findByIdWithDetails(businessId: string, id: string): Promise<ComboWithDetails | null> {
+  async findByIdWithDetails(
+    businessId: string,
+    id: string,
+    opts?: { activeOptionsOnly?: boolean },
+  ): Promise<ComboWithDetails | null> {
     const combo = await this.findById(businessId, id);
     if (!combo) return null;
 
@@ -65,7 +67,13 @@ export class CombosRepository extends TransactionalRepository<Combo> {
           relations: { menuItem: true },
           order: { sortOrder: 'ASC' },
         });
-        return { ...slot, options };
+        const scoped = options.filter(
+          (o) => o.menuItem?.businessId === businessId,
+        );
+        const filtered = opts?.activeOptionsOnly
+          ? scoped.filter((o) => o.menuItem?.isActive)
+          : scoped;
+        return { ...slot, options: filtered };
       }),
     );
 
@@ -117,8 +125,17 @@ export class CombosRepository extends TransactionalRepository<Combo> {
     return slotRepo.save(slotRepo.create(data));
   }
 
-  saveOption(businessId: string, data: Partial<ComboSlotOption>): Promise<ComboSlotOption> {
-    void businessId;
+  async saveOption(businessId: string, data: Partial<ComboSlotOption>): Promise<ComboSlotOption> {
+    if (!data.menuItemId) {
+      throw new ConflictError('Блюдо слота не указано');
+    }
+    const menuItem = await this.menu.findById(businessId, data.menuItemId);
+    if (!menuItem) {
+      throw new ConflictError('Блюдо не найдено');
+    }
+    if (data.priceOverride?.isNegative()) {
+      throw new ConflictError('Цена не может быть отрицательной');
+    }
     const optRepo = this.txHost.tx.getRepository(ComboSlotOption);
     return optRepo.save(optRepo.create(data));
   }
@@ -132,7 +149,10 @@ export class CombosRepository extends TransactionalRepository<Combo> {
   }
 
   async setComboGroups(businessId: string, comboId: string, groupIds: string[]): Promise<void> {
-    void businessId;
+    const combo = await this.findById(businessId, comboId);
+    if (!combo) {
+      throw new ConflictError('Комбо не найдено');
+    }
     const joinRepo = this.txHost.tx.getRepository(ComboModifierGroup);
     await joinRepo.delete({ comboId });
     if (groupIds.length === 0) return;
@@ -145,16 +165,20 @@ export class CombosRepository extends TransactionalRepository<Combo> {
     businessId: string,
     combo: ComboWithDetails,
     selections: Record<string, string>,
-    comboModifierIds: string[],
   ): Promise<ComboSlotSnapshot[]> {
     const snapshots: ComboSlotSnapshot[] = [];
 
     for (const slot of combo.slots) {
       const selectedOptionId = selections[slot.id];
-      let option = selectedOptionId
-        ? slot.options.find((o) => o.menuItemId === selectedOptionId || o.id === selectedOptionId)
-        : undefined;
-      if (!option) {
+      let option: (typeof slot.options)[number] | undefined;
+      if (selectedOptionId) {
+        option = slot.options.find(
+          (o) => o.menuItemId === selectedOptionId || o.id === selectedOptionId,
+        );
+        if (!option) {
+          throw new ConflictError(`Неверный выбор в слоте «${slot.nameRu}»`);
+        }
+      } else {
         option = slot.options.find((o) => o.isDefault) ?? slot.options[0];
       }
       if (!option) {
@@ -166,20 +190,6 @@ export class CombosRepository extends TransactionalRepository<Combo> {
         throw new ConflictError(`Блюдо в слоте «${slot.nameRu}» недоступно`);
       }
 
-      const modSnapshots: ModifierSnapshot[] = [];
-      if (comboModifierIds.length > 0) {
-        const mods = await this.modifiers.findByIds(businessId, comboModifierIds);
-        for (const m of mods) {
-          modSnapshots.push({
-            id: m.id,
-            groupId: m.groupId,
-            nameRu: m.nameRu,
-            nameUz: m.nameUz,
-            priceDelta: m.priceDelta.toString(),
-          });
-        }
-      }
-
       snapshots.push({
         slotId: slot.id,
         slotNameRu: slot.nameRu,
@@ -188,8 +198,8 @@ export class CombosRepository extends TransactionalRepository<Combo> {
         itemNameRu: menuItem.nameRu,
         itemNameUz: menuItem.nameUz,
         surcharge: option.priceOverride.toString(),
-        modifierIds: comboModifierIds,
-        modifiers: modSnapshots,
+        modifierIds: [],
+        modifiers: [],
       });
     }
 

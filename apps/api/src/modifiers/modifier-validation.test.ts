@@ -35,4 +35,14 @@ describe('modifier-validation', () => {
     } as ModifierGroup;
     assert.throws(() => validateGroupSelection(group, 2), ConflictError);
   });
+
+  it('enforces minSelect on optional groups', () => {
+    const group = {
+      isRequired: false,
+      minSelect: 2,
+      selectionType: ModifierSelectionType.Multiple,
+    } as ModifierGroup;
+    assert.throws(() => validateGroupSelection(group, 1), ConflictError);
+    assert.doesNotThrow(() => validateGroupSelection(group, 2));
+  });
 });

@@ -2,6 +2,23 @@ import { ConflictError } from '../common/errors/domain-error';
 import { Modifier, ModifierGroup, ModifierSelectionType } from './entities/modifier.entity';
 import { ModifiersRepository } from './modifiers.repository';
 
+async function attachedGroups(
+  repo: ModifiersRepository,
+  businessId: string,
+  menuItemId: string | null,
+  comboId: string | null,
+): Promise<ModifierGroup[]> {
+  if (menuItemId) {
+    return repo.findGroupsForMenuItem(businessId, menuItemId);
+  }
+  if (comboId) {
+    const groupIds = await repo.getComboGroupIds(businessId, comboId);
+    if (groupIds.length === 0) return [];
+    return repo.findGroupsWithModifiers(businessId, groupIds);
+  }
+  return [];
+}
+
 /** Единый источник валидации модификаторов (корзина, офферы, checkout). */
 export async function validateLineModifiers(
   repo: ModifiersRepository,
@@ -11,14 +28,11 @@ export async function validateLineModifiers(
   modifierIds: string[],
   resolved: Modifier[],
 ): Promise<void> {
+  const attached = await attachedGroups(repo, businessId, menuItemId, comboId);
+
   if (modifierIds.length === 0) {
-    if (menuItemId) {
-      const groups = await repo.findGroupsForMenuItem(businessId, menuItemId);
-      for (const g of groups) {
-        if (g.isRequired) {
-          throw new ConflictError(`Выберите: ${g.nameRu}`);
-        }
-      }
+    for (const g of attached) {
+      validateGroupSelection(g, []);
     }
     return;
   }
@@ -27,13 +41,7 @@ export async function validateLineModifiers(
     throw new ConflictError('Один из модификаторов недоступен');
   }
 
-  const groupIds = menuItemId
-    ? await repo.getMenuItemGroupIds(businessId, menuItemId)
-    : comboId
-      ? await repo.getComboGroupIds(businessId, comboId)
-      : [];
-
-  const allowedGroupIds = new Set(groupIds);
+  const allowedGroupIds = new Set(attached.map((g) => g.id));
   const byGroup = new Map<string, Modifier[]>();
 
   for (const mod of resolved) {
@@ -45,27 +53,8 @@ export async function validateLineModifiers(
     byGroup.set(mod.groupId, list);
   }
 
-  const groups = await repo.findGroupsWithModifiers(
-    businessId,
-    [...byGroup.keys()],
-  );
-  const groupMap = new Map(groups.map((g) => [g.id, g]));
-
-  for (const [groupId, mods] of byGroup) {
-    const group = groupMap.get(groupId);
-    if (!group || !group.isActive) {
-      throw new ConflictError('Группа модификаторов недоступна');
-    }
-    validateGroupSelection(group, mods);
-  }
-
-  if (menuItemId) {
-    const attached = await repo.findGroupsForMenuItem(businessId, menuItemId);
-    for (const g of attached) {
-      if (g.isRequired && !byGroup.has(g.id)) {
-        throw new ConflictError(`Выберите: ${g.nameRu}`);
-      }
-    }
+  for (const g of attached) {
+    validateGroupSelection(g, byGroup.get(g.id) ?? []);
   }
 }
 

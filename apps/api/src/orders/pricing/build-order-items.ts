@@ -7,12 +7,14 @@ import { MenuItem } from '../../menu/entities/menu-item.entity';
 import { CartLine } from '../cart/cart-line.types';
 import {
   caloriesForPortion,
+  effectiveModifierPriceDelta,
   nutritionForPortion,
   priceForPortion,
   sumModifierDeltas,
   weightForPortion,
 } from './line-pricing';
 import { BuiltCartLineView, BuiltOrderItem, ModifierSnapshot } from './line-pricing.types';
+import { Modifier, ModifierPricingType } from '../../modifiers/entities/modifier.entity';
 import { ModifiersRepository } from '../../modifiers/modifiers.repository';
 import { CombosRepository } from '../../combos/combos.repository';
 import { validateLineModifiers } from '../../modifiers/modifier-validation';
@@ -113,7 +115,9 @@ export class LinePricingService {
     if (!line.comboId) {
       throw new ConflictError('Некорректная строка корзины');
     }
-    const combo = await this.combos.findByIdWithDetails(businessId, line.comboId);
+    const combo = await this.combos.findByIdWithDetails(businessId, line.comboId, {
+      activeOptionsOnly: true,
+    });
     if (!combo || !combo.isActive) {
       throw new ConflictError('Комбо недоступно');
     }
@@ -122,16 +126,23 @@ export class LinePricingService {
       businessId,
       combo,
       line.slotSelections ?? {},
+    );
+
+    const comboModifierSnapshots = await this.resolveModifiers(
+      businessId,
+      null,
+      combo.id,
       line.modifierIds ?? [],
     );
 
     let unitPrice = combo.price;
     for (const slot of slotSnapshots) {
       unitPrice = unitPrice.add(Money.fromMajor(slot.surcharge));
-      for (const mod of slot.modifiers) {
-        unitPrice = unitPrice.add(Money.fromMajor(mod.priceDelta));
-      }
     }
+    const modifierTotal = sumModifierDeltas(
+      comboModifierSnapshots.map((m) => ({ priceDelta: Money.fromMajor(m.priceDelta) })),
+    );
+    unitPrice = unitPrice.add(modifierTotal);
 
     return {
       kind: 'combo',
@@ -147,7 +158,7 @@ export class LinePricingService {
       nutritionSnapshot: null,
       ingredientsSnapshot: null,
       allergensSnapshot: null,
-      modifiersSnapshot: null,
+      modifiersSnapshot: comboModifierSnapshots.length ? comboModifierSnapshots : null,
       comboSelectionsSnapshot: slotSnapshots,
     };
   }
@@ -192,7 +203,7 @@ export class LinePricingService {
       portion: 1,
       weightGrams: null,
       calories: null,
-      modifiers: [],
+      modifiers: built.modifiersSnapshot ?? [],
       comboSlots: built.comboSelectionsSnapshot ?? [],
     };
   }
@@ -203,16 +214,31 @@ export class LinePricingService {
     comboId: string | null,
     modifierIds: string[],
   ): Promise<ModifierSnapshot[]> {
-    if (modifierIds.length === 0) return [];
-    const mods = await this.modifiers.findByIds(businessId, modifierIds);
+    const mods =
+      modifierIds.length > 0 ? await this.modifiers.findByIds(businessId, modifierIds) : [];
     await validateLineModifiers(this.modifiers, businessId, menuItemId, comboId, modifierIds, mods);
-    return mods.map((m) => ({
-      id: m.id,
-      groupId: m.groupId,
-      nameRu: m.nameRu,
-      nameUz: m.nameUz,
-      priceDelta: m.priceDelta.toString(),
-    }));
+    if (modifierIds.length === 0) return [];
+    return this.toModifierSnapshots(businessId, mods);
+  }
+
+  private async toModifierSnapshots(
+    businessId: string,
+    mods: Modifier[],
+  ): Promise<ModifierSnapshot[]> {
+    const groupIds = [...new Set(mods.map((m) => m.groupId))];
+    const groups = await this.modifiers.findGroupsWithModifiers(businessId, groupIds);
+    const groupMap = new Map(groups.map((g) => [g.id, g]));
+    return mods.map((m) => {
+      const pricingType = groupMap.get(m.groupId)?.pricingType ?? ModifierPricingType.Paid;
+      const delta = effectiveModifierPriceDelta(m.priceDelta, pricingType);
+      return {
+        id: m.id,
+        groupId: m.groupId,
+        nameRu: m.nameRu,
+        nameUz: m.nameUz,
+        priceDelta: delta.toString(),
+      };
+    });
   }
 }
 

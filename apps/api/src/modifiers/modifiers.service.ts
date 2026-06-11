@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ActorContextService } from '../common/cls/actor-context.service';
 import { DefaultBusinessService } from '../businesses/default-business.service';
-import { NotFoundError } from '../common/errors/domain-error';
+import { ConflictError, NotFoundError } from '../common/errors/domain-error';
 import { Money } from '../common/money/money';
+import { MenuRepository } from '../menu/menu.repository';
 import { ModifiersRepository } from './modifiers.repository';
 import { Modifier, ModifierGroup } from './entities/modifier.entity';
 import { CreateModifierGroupDto, CreateModifierDto, UpdateModifierGroupDto } from './dto/modifier.dto';
@@ -11,6 +12,7 @@ import { CreateModifierGroupDto, CreateModifierDto, UpdateModifierGroupDto } fro
 export class ModifiersService {
   constructor(
     private readonly repo: ModifiersRepository,
+    private readonly menu: MenuRepository,
     private readonly actorCtx: ActorContextService,
     private readonly defaultBusiness: DefaultBusinessService,
   ) {}
@@ -50,11 +52,15 @@ export class ModifiersService {
     const businessId = await this.businessId();
     const group = await this.repo.findGroupById(businessId, groupId);
     if (!group) throw new NotFoundError('Группа не найдена');
+    const priceDelta = Money.fromMajor(dto.priceDelta ?? '0');
+    if (priceDelta.isNegative()) {
+      throw new ConflictError('Цена не может быть отрицательной');
+    }
     return this.repo.saveModifier(businessId, {
       groupId,
       nameRu: dto.nameRu,
       nameUz: dto.nameUz,
-      priceDelta: Money.fromMajor(dto.priceDelta ?? '0'),
+      priceDelta,
       isActive: dto.isActive ?? true,
       sortOrder: dto.sortOrder ?? 0,
     });
@@ -66,7 +72,13 @@ export class ModifiersService {
     if (!mod) throw new NotFoundError('Модификатор не найден');
     if (dto.nameRu != null) mod.nameRu = dto.nameRu;
     if (dto.nameUz != null) mod.nameUz = dto.nameUz;
-    if (dto.priceDelta != null) mod.priceDelta = Money.fromMajor(dto.priceDelta);
+    if (dto.priceDelta != null) {
+      const priceDelta = Money.fromMajor(dto.priceDelta);
+      if (priceDelta.isNegative()) {
+        throw new ConflictError('Цена не может быть отрицательной');
+      }
+      mod.priceDelta = priceDelta;
+    }
     if (dto.isActive != null) mod.isActive = dto.isActive;
     if (dto.sortOrder != null) mod.sortOrder = dto.sortOrder;
     return this.repo.saveModifier(businessId, mod);
@@ -78,6 +90,8 @@ export class ModifiersService {
 
   async getGroupsForMenuItem(menuItemId: string) {
     const businessId = await this.businessId();
+    const item = await this.menu.findById(businessId, menuItemId);
+    if (!item) throw new NotFoundError('Блюдо не найдено');
     const groups = await this.repo.findGroupsForMenuItem(businessId, menuItemId);
     return Promise.all(
       groups.map(async (g) => ({
@@ -105,7 +119,14 @@ export class ModifiersService {
   }
 
   async setMenuItemGroups(menuItemId: string, groupIds: string[]): Promise<void> {
-    await this.repo.setMenuItemGroups(await this.businessId(), menuItemId, groupIds);
+    const businessId = await this.businessId();
+    const item = await this.menu.findById(businessId, menuItemId);
+    if (!item) throw new NotFoundError('Блюдо не найдено');
+    for (const groupId of groupIds) {
+      const group = await this.repo.findGroupById(businessId, groupId);
+      if (!group) throw new NotFoundError('Группа не найдена');
+    }
+    await this.repo.setMenuItemGroups(businessId, menuItemId, groupIds);
   }
 
   async hasRequiredModifiers(menuItemId: string): Promise<boolean> {

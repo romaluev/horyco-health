@@ -79,9 +79,16 @@ export class MenuPublishService {
     }
 
     const business = await this.businesses.findById(businessId);
-    const combo = await this.combos.findByIdWithDetails(businessId, comboId);
+    const combo = await this.combos.findByIdWithDetails(businessId, comboId, {
+      activeOptionsOnly: true,
+    });
     if (!combo || !combo.isActive) {
       throw new NotFoundError('Комбо не найдено');
+    }
+    for (const slot of combo.slots) {
+      if (slot.options.length === 0) {
+        throw new ConflictError(`Слот «${slot.nameRu}» не содержит активных блюд`);
+      }
     }
 
     const lang = 'ru' as Lang;

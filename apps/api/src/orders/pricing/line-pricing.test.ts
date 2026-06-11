@@ -1,8 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { priceForPortion, sumModifierDeltas } from './line-pricing';
+import { effectiveModifierPriceDelta, priceForPortion, sumModifierDeltas } from './line-pricing';
 import { Money } from '../../common/money/money';
 import { MenuItem } from '../../menu/entities/menu-item.entity';
+import { ModifierPricingType } from '../../modifiers/entities/modifier.entity';
 
 describe('line-pricing', () => {
   it('priceForPortion returns price2 for portion 2', () => {
@@ -20,5 +21,21 @@ describe('line-pricing', () => {
       { priceDelta: Money.fromMajor('3.50') },
     ]);
     assert.equal(total.toString(), '8.50');
+  });
+
+  it('effectiveModifierPriceDelta zeroes FREE and INCLUDED', () => {
+    const delta = Money.fromMajor('10');
+    assert.equal(
+      effectiveModifierPriceDelta(delta, ModifierPricingType.Free).toString(),
+      '0.00',
+    );
+    assert.equal(
+      effectiveModifierPriceDelta(delta, ModifierPricingType.Included).toString(),
+      '0.00',
+    );
+    assert.equal(
+      effectiveModifierPriceDelta(delta, ModifierPricingType.Paid).toString(),
+      '10.00',
+    );
   });
 });

@@ -58,6 +58,9 @@ export class CartService {
     if (!item || !item.isActive) {
       throw new ConflictError('Блюдо недоступно');
     }
+    if (await this.modifiers.hasRequiredModifiers(this.businessId, menuItemId)) {
+      throw new ConflictError('Выберите модификаторы для этого блюда');
+    }
     if (priceForPortion(item, portion) === null) {
       throw new ConflictError('Выбранная порция недоступна');
     }
@@ -101,6 +104,9 @@ export class CartService {
         const item = await this.menu.findById(this.businessId, menuItemId);
         if (!item || !item.isActive) {
           throw new ConflictError('Блюдо недоступно');
+        }
+        if (await this.modifiers.hasRequiredModifiers(this.businessId, menuItemId)) {
+          throw new ConflictError('Выберите модификаторы для этого блюда');
         }
         if (priceForPortion(item, portion) === null) {
           throw new ConflictError('Выбранная порция недоступна');
