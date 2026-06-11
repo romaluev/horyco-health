@@ -1,5 +1,4 @@
 import {
-  ConflictError,
   ForbiddenError,
 } from '../common/errors/domain-error';
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
@@ -33,14 +32,15 @@ export class PlatformSetupService implements OnApplicationBootstrap {
     const name = this.config.get<string>('platform.adminName') ?? 'Platform Admin';
     if (!phone?.trim() || !password?.trim()) return;
 
-    const needsSetup = await this.needsSetup();
-    if (!needsSetup) return;
-
     try {
-      await this.createFirstAdmin({ name, phone: normalizePhone(phone), password });
-      this.logger.log('Platform admin seeded from PLATFORM_ADMIN_* env');
+      await this.upsertPlatformAdmin({
+        name,
+        phone: normalizePhone(phone),
+        password,
+      });
+      this.logger.log(`Platform admin synced from PLATFORM_ADMIN_* env (${normalizePhone(phone)})`);
     } catch (err) {
-      this.logger.error('Failed to seed platform admin from env', err);
+      this.logger.error('Failed to sync platform admin from env', err);
     }
   }
 
@@ -54,7 +54,7 @@ export class PlatformSetupService implements OnApplicationBootstrap {
     if (!(await this.needsSetup())) {
       throw new ForbiddenError('Платформа уже настроена — войдите с существующим аккаунтом');
     }
-    const client = await this.createFirstAdmin({
+    const client = await this.upsertPlatformAdmin({
       name: dto.name.trim(),
       phone: normalizePhone(dto.phone),
       password: dto.password,
@@ -62,32 +62,30 @@ export class PlatformSetupService implements OnApplicationBootstrap {
     return this.auth.buildStaffLoginResponse(client);
   }
 
+  /**
+   * Create or update platform admin by phone. Used by env bootstrap and setup wizard.
+   * Always refreshes password hash so redeploy with PLATFORM_ADMIN_* resets browser login.
+   */
   @Transactional()
-  private async createFirstAdmin(input: { name: string; phone: string; password: string }) {
-    const existing = await this.clients.findWebByPhone(input.phone);
-    if (existing) {
-      if (existing.isPlatformAdmin && existing.passwordHash) {
-        throw new ConflictError('Платформенный админ с этим телефоном уже существует');
-      }
-      existing.isPlatformAdmin = true;
-      existing.passwordHash = hashPassword(input.password);
-      if (!existing.name?.trim()) existing.name = input.name;
-      const saved = await this.clients.save(existing);
+  async upsertPlatformAdmin(input: { name: string; phone: string; password: string }) {
+    const existingWeb = await this.clients.findWebByPhone(input.phone);
+    if (existingWeb) {
+      existingWeb.isPlatformAdmin = true;
+      existingWeb.passwordHash = hashPassword(input.password);
+      if (input.name.trim()) existingWeb.name = input.name.trim();
+      const saved = await this.clients.save(existingWeb);
       await this.ensureOwnerMembership(saved.id);
       return saved;
     }
 
     const byPhone = await this.clients.findByPhone(input.phone);
-    if (byPhone?.telegramId && !byPhone.passwordHash) {
+    if (byPhone) {
       byPhone.isPlatformAdmin = true;
       byPhone.passwordHash = hashPassword(input.password);
-      byPhone.name = input.name;
+      if (input.name.trim()) byPhone.name = input.name.trim();
       const saved = await this.clients.save(byPhone);
       await this.ensureOwnerMembership(saved.id);
       return saved;
-    }
-    if (byPhone) {
-      throw new ConflictError('Телефон уже занят другим аккаунтом');
     }
 
     const client = await this.clients.create({

@@ -118,7 +118,7 @@ cd apps/api && npm run e2e:smoke
 | `PLATFORM_ADMIN_PASSWORD` | Min 6 chars |
 | `PLATFORM_ADMIN_NAME` | *(optional)* display name |
 
-On first boot (no platform admin with password in DB), the API creates the account automatically.
+On first boot (no platform admin with password in DB), the API creates the account automatically. **On every subsequent boot**, if these vars are set, the API **updates** the password for this phone (redeploy after changing password in Coolify).
 
 **Option B — setup wizard:** open `https://health.horyco.com/platform/setup/` once after migrations.
 
