@@ -675,10 +675,22 @@ export class ClientUpdate {
 
   private async applyPhone(ctx: Context, flow: string, phone: string): Promise<void> {
     const from = ctx.from!;
-    const client = await this.clients.findByTelegramId(String(from.id));
+    let client = await this.clients.findByTelegramId(String(from.id));
     if (!client) return;
     const lang = this.ui.langOf(client);
     const normalized = this.parsePhone(phone) ?? phone.trim();
+
+    const webTwin = await this.clients.findWebOnlyByPhone(normalized);
+    if (webTwin && webTwin.id !== client.id) {
+      client = await this.mergeTelegramIntoWebClient(client, webTwin, String(from.id));
+    } else {
+      const other = await this.clients.findByPhone(normalized);
+      if (other && other.id !== client.id && other.telegramId && other.telegramId !== String(from.id)) {
+        await ctx.reply(t(lang, 'invalid_phone'));
+        return;
+      }
+    }
+
     client.phone = normalized;
     await this.clients.save(client);
 
@@ -1076,6 +1088,34 @@ export class ClientUpdate {
   }
 
   // ───────────────────────────── утилиты ─────────────────────────────
+
+  private async mergeTelegramIntoWebClient(
+    telegramClient: Client,
+    webClient: Client,
+    telegramId: string,
+  ): Promise<Client> {
+    telegramClient.telegramId = null;
+    await this.clients.save(telegramClient);
+
+    webClient.telegramId = telegramId;
+    webClient.username = telegramClient.username ?? webClient.username;
+    if (!webClient.name?.trim() || webClient.name === 'Гость') {
+      webClient.name = telegramClient.name;
+    }
+    if (!webClient.deliveryLat && telegramClient.deliveryLat) {
+      webClient.deliveryLat = telegramClient.deliveryLat;
+      webClient.deliveryLng = telegramClient.deliveryLng;
+      webClient.address = telegramClient.address;
+    }
+    await this.clients.save(webClient);
+
+    await this.members.mergeClientMemberships(telegramClient.id, webClient.id);
+    await this.customers.removeByClientId(telegramClient.id);
+    await this.clients.removeById(telegramClient.id);
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    invalidateActorCache(businessId, telegramId);
+    return webClient;
+  }
 
   private hasDeliveryLocation(client: { deliveryLat: string | null; deliveryLng: string | null }): boolean {
     return parseCoord(client.deliveryLat) != null && parseCoord(client.deliveryLng) != null;

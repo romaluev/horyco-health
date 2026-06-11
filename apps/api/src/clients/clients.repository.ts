@@ -75,4 +75,26 @@ export class ClientRepository extends TransactionalRepository<Client> {
   save(client: Client): Promise<Client> {
     return this.repo.save(client);
   }
+
+  /** Платформенные админы с паролем (для cold-start / setup wizard). */
+  countPlatformAdminsWithPassword(): Promise<number> {
+    return this.repo.count({
+      where: {
+        isPlatformAdmin: true,
+        passwordHash: Not(IsNull()),
+      },
+    });
+  }
+
+  async removeById(id: string): Promise<void> {
+    await this.repo.delete(id);
+  }
+
+  /** Веб-only аккаунт по телефону (без telegramId). */
+  findWebOnlyByPhone(phone: string): Promise<Client | null> {
+    const variants = phoneLookupVariants(phone);
+    return this.repo.findOne({
+      where: { phone: In(variants), telegramId: IsNull(), passwordHash: Not(IsNull()) },
+    });
+  }
 }

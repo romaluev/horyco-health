@@ -1,8 +1,33 @@
-# 🍽 Eat&fit — Telegram-бот службы доставки еды
+# 🍽 Eat&fit / Horyco Health — Telegram Mini App + multi-tenant platform
+
+Monorepo: **NestJS API** (`apps/api`) + **Next.js static SPA** (`apps/web`) + shared types (`libs/shared`).
+PostgreSQL via TypeORM migrations. Each business has its own Telegram bot (per-tenant tokens in DB).
+
+## Admin & platform (browser)
+
+| URL | Who | Purpose |
+|-----|-----|---------|
+| `/platform/setup/` | First deploy only | One-time wizard — create first platform admin (if no `PLATFORM_ADMIN_*` env seed) |
+| `/platform/` | Platform admin | Metrics dashboard |
+| `/platform/businesses/` | Platform admin | List / suspend / activate tenants |
+| `/platform/businesses/new/` | Platform admin | Create business + owner credentials |
+| `/b/` | Owner / manager / staff | Back office (redirects to `/b/dashboard/`) |
+| `/b/onboarding/` | Owner | Bot token, groups, menu, staff checklist |
+| `/b/settings/` | Owner / manager | Bot, chats, staff invites, contacts |
+
+**Cold start:** set optional `PLATFORM_ADMIN_PHONE` + `PLATFORM_ADMIN_PASSWORD` in env, **or** open `/platform/setup/` after migrate. Then log in at `/platform/`.
+
+**Staff login:** phone + password (`POST /api/auth/staff-login`). Platform admins need JWT `kind=platform` (`is_platform_admin` in DB).
+
+---
+
+Legacy sections below describe the original single-tenant bot; the production stack is Nest + Next as above. See [docs/GO-LIVE.md](./docs/GO-LIVE.md) and [docs/PRD.md](./docs/PRD.md).
+
+# 🍽 Eat&fit — Telegram-бот службы доставки еды (legacy overview)
 
 Полноценный Telegram-бот для службы доставки **Eat&fit** на двух языках (русский / узбекский),
 с **Telegram Mini App** и сайтом-витриной.
-Стек: **Node.js**, **node-telegram-bot-api** (polling), **Express** (Mini App), **PostgreSQL**.
+Стек: **Node.js**, **NestJS**, **Next.js**, **PostgreSQL**.
 Деплой на **Coolify** (HyperApp Cloud) — см. [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## Возможности
@@ -62,10 +87,10 @@ npm start
 |-----------------------|--------------------------------------------------------------------------|
 | `BOT_TOKEN`           | Токен бота от [@BotFather](https://t.me/BotFather)                        |
 | `DATABASE_URL`        | Строка подключения к PostgreSQL (на Coolify — internal URL из ресурса Postgres) |
-| `ADMIN_TELEGRAM_IDS`  | Telegram ID администраторов через запятую. **Только они** видят и открывают админку |
-| `COOK_GROUP_ID`       | ID группы поваров (новые заказы). Формат `-100xxxxxxxxx`                   |
-| `COURIER_GROUP_ID`    | ID группы курьеров (готовые заказы)                                       |
-| `ADMIN_GROUP_ID`      | ID группы админов: live-карточки всех заказов, пополнения/списания, итоги дня |
+| `ADMIN_TELEGRAM_IDS`  | Telegram ID платформенных админов (промоут при `/start`) |
+| `PLATFORM_ADMIN_PHONE` | (опц.) телефон первого platform admin — seed при старте |
+| `PLATFORM_ADMIN_PASSWORD` | (опц.) пароль первого platform admin |
+| `PLATFORM_ADMIN_NAME` | (опц.) имя первого platform admin |
 | `TZ_OFFSET_HOURS`     | (опц.) смещение таймзоны от UTC для итогов дня (Узбекистан = `5`)         |
 | `DAILY_REPORT_HOUR`   | (опц.) час локального времени для авто-отправки итогов дня (0–23, по умолч. `19`) |
 | `BOT_USERNAME`        | Username бота **без `@`** — для генерации deep link                       |
@@ -80,16 +105,14 @@ npm start
 
 ## 👑 Администраторы и роли
 
-**Админы задаются только через `ADMIN_TELEGRAM_IDS`.** При `/start` бот проставит таким пользователям роль `admin` в БД, но доступ к админке (кнопка, `/admin`, действия) проверяется именно по этому списку.
+**Platform admin** — `is_platform_admin` в БД:
+- env `PLATFORM_ADMIN_PHONE` + `PLATFORM_ADMIN_PASSWORD` (seed при старте), **или**
+- `/platform/setup/` на пустой инсталляции, **или**
+- Telegram ID в `ADMIN_TELEGRAM_IDS` при `/start` в боте (+ пароль для браузера в Mini App профиле).
 
-Роли `cook` и `courier` назначаются:
-- из админ-панели: **👥 Пользователи → поиск → 🔁 Изменить роль**, либо
-- прямым SQL (пользователь должен сначала нажать `/start`):
+**Staff per-business** — таблица `business_members` (owner / manager / cook / courier). Роли назначаются в **`/b/settings/` → Сотрудники** (invite link `t.me/<bot>?start=staff_<token>`), не через legacy `clients.role`.
 
-```sql
-UPDATE clients SET role = 'cook'    WHERE telegram_id = 111111111;
-UPDATE clients SET role = 'courier' WHERE telegram_id = 222222222;
-```
+**Back office routes:** `/b/dashboard/`, `/b/orders/`, `/b/menu/`, `/b/onboarding/`, … — см. sidebar в UI. Cook/courier видят только заказы.
 
 ---
 

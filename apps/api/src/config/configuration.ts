@@ -41,6 +41,12 @@ export default () => ({
     /** Seed platform-admin флага is_platform_admin при первом /start. */
     adminIds: parseIds(process.env.ADMIN_TELEGRAM_IDS),
   },
+  platform: {
+    /** Опциональный cold-start: создать первого платформенного админа при старте. */
+    adminPhone: process.env.PLATFORM_ADMIN_PHONE,
+    adminPassword: process.env.PLATFORM_ADMIN_PASSWORD,
+    adminName: process.env.PLATFORM_ADMIN_NAME,
+  },
   cors: {
     origins: parseIds(process.env.CORS_ORIGINS),
   },

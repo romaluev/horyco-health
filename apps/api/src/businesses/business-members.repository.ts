@@ -46,4 +46,18 @@ export class BusinessMembersRepository extends TransactionalRepository<BusinessM
   save(member: BusinessMember): Promise<BusinessMember> {
     return this.repo.save(member);
   }
+
+  /** Перенос членств при слиянии Telegram ↔ web аккаунта. */
+  async mergeClientMemberships(fromClientId: string, toClientId: string): Promise<void> {
+    const fromRows = await this.repo.find({ where: { clientId: fromClientId } });
+    for (const row of fromRows) {
+      const existing = await this.findAny(row.businessId, toClientId);
+      if (existing) {
+        await this.repo.delete(row.id);
+      } else {
+        row.clientId = toClientId;
+        await this.save(row);
+      }
+    }
+  }
 }

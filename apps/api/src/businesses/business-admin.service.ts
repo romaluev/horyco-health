@@ -190,6 +190,21 @@ export class BusinessAdminService {
         hint: chatOk(ChatKind.Admin) ? undefined : 'В админ-группе выполните /bind admin',
       },
       {
+        key: 'courier_group',
+        ok: chatOk(ChatKind.Courier),
+        label: 'Группа курьеров привязана',
+        hint: chatOk(ChatKind.Courier) ? undefined : 'В группе курьеров выполните /bind courier',
+      },
+      {
+        key: 'support_contact',
+        ok: Boolean(business.supportContact?.trim() || business.topupTelegram?.trim() || business.topupPhone?.trim()),
+        label: 'Контакты поддержки заполнены',
+        hint:
+          business.supportContact?.trim() || business.topupTelegram?.trim() || business.topupPhone?.trim()
+            ? undefined
+            : 'Укажите supportContact или контакты пополнения в настройках',
+      },
+      {
         key: 'menu',
         ok: activeMenu >= 1,
         label: '≥1 активное блюдо в меню',

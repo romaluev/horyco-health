@@ -201,6 +201,39 @@ export class AuthService {
     return new StaffLoginResponseDto(accessToken, client, balance, staffBusinesses);
   }
 
+  /** Сборка staff-login ответа для уже аутентифицированного клиента (setup wizard). */
+  async buildStaffLoginResponse(client: Client): Promise<StaffLoginResponseDto> {
+    const memberships = await this.members.findActiveByClient(client.id);
+    if (!memberships.length) {
+      if (client.isPlatformAdmin) {
+        const defaultBizId = await this.defaultBusiness.getId();
+        await this.ensurePlatformAdminMembership(client.id, defaultBizId);
+        const business = await this.businesses.findById(defaultBizId);
+        const member = await this.members.findActive(defaultBizId, client.id);
+        const { accessToken, balance } = await this.issueStaff(client, defaultBizId);
+        const staffBusinesses =
+          business && member ? [new StaffBusinessDto(member, business)] : [];
+        return new StaffLoginResponseDto(accessToken, client, balance, staffBusinesses);
+      }
+      throw new UnauthorizedException('Нет активных мест работы');
+    }
+
+    const staffBusinesses: StaffBusinessDto[] = [];
+    for (const member of memberships) {
+      const business = await this.businesses.findById(member.businessId);
+      if (business && business.status !== BusinessStatus.Suspended) {
+        staffBusinesses.push(new StaffBusinessDto(member, business));
+      }
+    }
+    if (!staffBusinesses.length) {
+      throw new UnauthorizedException('Нет активных мест работы');
+    }
+    staffBusinesses.sort((a, b) => a.slug.localeCompare(b.slug));
+    const primary = staffBusinesses[0];
+    const { accessToken, balance } = await this.issueStaff(client, primary.businessId);
+    return new StaffLoginResponseDto(accessToken, client, balance, staffBusinesses);
+  }
+
   /**
    * Переключение staff-сессии на другой бизнес: новый JWT, скоупленный целевым тенантом.
    */

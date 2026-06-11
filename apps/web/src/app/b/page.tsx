@@ -1,7 +1,12 @@
 'use client';
 
-import { BackofficeShell } from '@/components/backoffice/BackofficeShell';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function BackOfficePage() {
-  return <BackofficeShell />;
+export default function BackofficeIndexPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/b/dashboard/');
+  }, [router]);
+  return null;
 }

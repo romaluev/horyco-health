@@ -86,4 +86,8 @@ export class BusinessCustomersRepository extends TransactionalRepository<Busines
     }
     return map;
   }
+
+  async removeByClientId(clientId: string): Promise<void> {
+    await this.repo.delete({ clientId });
+  }
 }

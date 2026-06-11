@@ -225,11 +225,55 @@ export function useCreateBusiness() {
       slug: string;
       ownerName: string;
       ownerPhone: string;
-      ownerPassword: string;
-    }) => api<PlatformBusiness>('/platform/businesses', { method: 'POST', body }),
+      ownerPassword?: string;
+      tzOffsetHours?: number;
+      dailyReportHour?: number;
+    }) =>
+      api<CreateBusinessResult>('/platform/businesses', { method: 'POST', body }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['platform'] });
     },
+  });
+}
+
+export interface CreateBusinessResult {
+  business: PlatformBusiness;
+  owner: { name: string; phone: string; existingAccount: boolean };
+  loginUrl: string;
+}
+
+export function usePlatformSetupStatus() {
+  return useQuery({
+    queryKey: ['platform', 'setup-status'],
+    queryFn: () => api<{ needsSetup: boolean }>('/platform/setup-status', { token: '' }),
+  });
+}
+
+export function usePlatformBusiness(id: string | null) {
+  return useQuery({
+    queryKey: ['platform', 'business', id],
+    queryFn: () => api<PlatformBusiness>(`/platform/businesses/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
+export function usePlatformBusinessHealth(id: string | null) {
+  return useQuery({
+    queryKey: ['platform', 'business-health', id],
+    queryFn: () =>
+      api<{ botStatus: string; botUsername: string | null; connected: boolean }>(
+        `/platform/businesses/${id}/health`,
+      ),
+    enabled: Boolean(id),
+  });
+}
+
+export function useUpdatePlatformBusiness() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; name?: string; tzOffsetHours?: number; dailyReportHour?: number }) =>
+      api<PlatformBusiness>(`/platform/businesses/${id}`, { method: 'PUT', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['platform'] }),
   });
 }
 

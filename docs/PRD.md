@@ -99,7 +99,9 @@ Platform-admin seed: `ADMIN_TELEGRAM_IDS` (env). Остальные роли —
 | Endpoint | Описание |
 |----------|----------|
 | `GET /platform/metrics` | Агрегаты + GMV/orders per business |
-| CRUD `/platform/businesses` | Жизненный цикл бизнеса |
+| CRUD `/platform/businesses` | Жизненный цикл бизнеса (+ `{ business, owner, loginUrl }` on create) |
+| `GET /platform/setup-status` | `{ needsSetup }` — public |
+| `POST /platform/setup` | First platform admin — public, once |
 
 ### 4.4 Auth
 
@@ -123,20 +125,37 @@ Platform-admin seed: `ADMIN_TELEGRAM_IDS` (env). Остальные роли —
 
 ### 5.2 Back office `/b`
 
-| Tab | Функции |
-|-----|---------|
-| Dashboard | Revenue, AOV, top items, offer funnel, new/repeat |
-| Orders | FSM, cancel+refund |
-| Menu | Full CRUD + channel publish dish |
-| Combos | List + channel publish combo |
-| Offers | Cart composer + CRM send |
-| Modifiers | Groups CRUD |
-| Customers | CRM, balance |
-| Staff / Settings | Bot token, **reconnect bot**, bot status badge, onboarding checklist with hints, groups, TZ, report hour |
+### 5.2 Back office `/b/*`
 
-### 5.3 Platform `/platform`
+Sidebar routes (static export):
 
-Businesses table with **botStatus badge**, create/suspend/activate, GMV per business. Platform admin login: phone + password (set in Mini App profile); `ADMIN_TELEGRAM_IDS` grants access without business membership.
+| Route | Tab |
+|-------|-----|
+| `/b/dashboard/` | Dashboard — revenue, AOV, top items, offer funnel |
+| `/b/orders/` | Orders FSM, cancel+refund |
+| `/b/menu/` | Menu CRUD + channel publish |
+| `/b/combos/` | Combos + channel publish |
+| `/b/offers/` | Cart composer + CRM send |
+| `/b/modifiers/` | Modifier groups CRUD |
+| `/b/customers/` | CRM, balance (staff roles → Settings → Staff) |
+| `/b/onboarding/` | Stepper: bot token → `/bind` groups → menu → staff → go-live |
+| `/b/settings/` | Bot reconnect, TZ, report hour, staff invites, groups |
+
+Role-aware nav: cook/courier → Orders only; owner/manager → full admin tabs; platform admin → all tabs + link to `/platform`.
+
+Onboarding banner on dashboard while `business.status === onboarding`.
+
+### 5.3 Platform `/platform/*`
+
+| Route | Function |
+|-------|----------|
+| `/platform/setup/` | First-run wizard (`GET/POST /api/platform/setup-status`, `/setup`) |
+| `/platform/` | GMV metrics dashboard |
+| `/platform/businesses/` | List, suspend/activate, bot health badge |
+| `/platform/businesses/new/` | Create business + owner credentials handoff |
+| `/platform/businesses/view/?id=` | Edit name/TZ/report hour, health check |
+
+Login: phone + password → JWT `kind=platform`. Env `PLATFORM_ADMIN_*` or setup wizard for cold start; `ADMIN_TELEGRAM_IDS` still promotes via Telegram.
 
 ---
 

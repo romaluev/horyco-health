@@ -14,7 +14,7 @@ import {
   useBusinessChats,
 } from '@/lib/backoffice-queries';
 import { useT } from '@/lib/i18n';
-import { OnboardingWizard } from './OnboardingWizard';
+import Link from 'next/link';
 
 export function BackofficeSettings() {
   const t = useT();
@@ -54,7 +54,7 @@ export function BackofficeSettings() {
     }
   }, [settings]);
 
-  const showWizard = settings && !settings.hasBotToken;
+  const showWizardLink = settings && settings.status === 'onboarding';
 
   const botStatusLabel = (status: string) => {
     switch (status) {
@@ -77,7 +77,14 @@ export function BackofficeSettings() {
 
   return (
     <div>
-      {showWizard && <OnboardingWizard />}
+      {showWizardLink && (
+        <div className="adm-banner" style={{ marginBottom: 16 }}>
+          <span>{t('bo_onboarding_banner')}</span>
+          <Link href="/b/onboarding/" className="adm-btn adm-btn-sm adm-btn-primary">
+            {t('bo_onboarding_continue')}
+          </Link>
+        </div>
+      )}
 
       {settings?.hasBotToken && (
         <div className="card" style={{ marginBottom: 16 }}>
@@ -102,7 +109,7 @@ export function BackofficeSettings() {
         </div>
       )}
 
-      {!showWizard && !settings?.hasBotToken && (
+      {!settings?.hasBotToken && (
         <div className="field">
           <label>{t('bo_bot_token')}</label>
           <input

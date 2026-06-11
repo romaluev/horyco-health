@@ -22,6 +22,7 @@ import { RolesGuard } from './guards/roles.guard';
     }),
   ],
   controllers: [AuthController],
+  exports: [AuthService],
   providers: [
     AuthService,
     // Глобальные guard'ы: сначала аутентификация, затем авторизация по ролям.

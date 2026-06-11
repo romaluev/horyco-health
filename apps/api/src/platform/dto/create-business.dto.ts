@@ -17,9 +17,11 @@ export class CreateBusinessDto {
   @MinLength(5)
   ownerPhone!: string;
 
+  /** Обязателен только для нового владельца; при привязке существующего — опционален. */
+  @IsOptional()
   @IsString()
   @MinLength(6)
-  ownerPassword!: string;
+  ownerPassword?: string;
 
   @IsOptional()
   @IsInt()

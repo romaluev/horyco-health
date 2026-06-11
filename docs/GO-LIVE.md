@@ -46,6 +46,11 @@ Set in Coolify → Application → Environment Variables.
 | `BOT_ENABLED` | `true` |
 | `BOT_MODE` | `webhook` |
 | `ADMIN_TELEGRAM_IDS` | Your Telegram user id (comma-separated if several founders) |
+| `PLATFORM_ADMIN_PHONE` | *(optional)* browser login for first platform admin |
+| `PLATFORM_ADMIN_PASSWORD` | *(optional)* min 6 chars — auto-seed on boot if no admin exists |
+| `PLATFORM_ADMIN_PHONE` | *(optional)* Bootstrap first platform admin at boot (with password below) |
+| `PLATFORM_ADMIN_PASSWORD` | *(optional)* Password for env-seeded platform admin |
+| `PLATFORM_ADMIN_NAME` | *(optional)* Display name for env-seeded admin (default: Platform Admin) |
 
 ### Strongly recommended on first deploy (seeds Business #1)
 
@@ -103,21 +108,37 @@ cd apps/api && npm run e2e:smoke
 
 ## 3. Post-deploy setup (Business #1)
 
-### 3.1 Platform admin
+### 3.1 Platform admin (cold start)
 
-1. Send `/start` to your Eat&fit bot from the Telegram account in `ADMIN_TELEGRAM_IDS` — complete registration (language → phone → **share location pin** → optional landmark).
-2. Set web password in **Mini App → Профиль → «Пароль для сайта»** (optional for ordering; required for `/platform` and `/b` login from browser).
-3. Log in at `https://health.horyco.com/platform` with **phone + password** from step 2.
+**Option A — env seed (recommended for prod):**
 
-> Platform admin rights come from `ADMIN_TELEGRAM_IDS` (Telegram ID), not from registration alone. Do **not** register a separate web account if you already use the bot — that creates a duplicate client.
+| Variable | Value |
+|----------|--------|
+| `PLATFORM_ADMIN_PHONE` | E.164-style phone for browser login |
+| `PLATFORM_ADMIN_PASSWORD` | Min 6 chars |
+| `PLATFORM_ADMIN_NAME` | *(optional)* display name |
+
+On first boot (no platform admin with password in DB), the API creates the account automatically.
+
+**Option B — setup wizard:** open `https://health.horyco.com/platform/setup/` once after migrations.
+
+**Option C — Telegram (legacy):**
+
+1. Send `/start` from the Telegram account in `ADMIN_TELEGRAM_IDS`.
+2. Set web password in **Mini App → Profile**.
+3. Log in at `https://health.horyco.com/platform`.
+
+> Web-only platform admin no longer requires Telegram. If you use both, register the **same phone** in the bot — the API merges Telegram ↔ web identity on phone verification.
 
 ### 3.2 Back office
 
-Open **`https://health.horyco.com/b/?biz=eatfit`** → staff login (owner phone + password from business creation, or your Mini App profile password).
+Open **`https://health.horyco.com/b/`** → staff login (owner phone + password from business creation, or Mini App profile password). Tenant is determined by JWT + business switcher (no `?biz=` on `/b`).
+
+Onboarding wizard: **`/b/onboarding/`** — connect bot → bind groups → menu → staff → go-live checklist.
 
 If bot was **not** in env at migration time:
 
-- **Settings → Onboarding** → paste BotFather token → Connect (registers webhook automatically).
+- **`/b/onboarding/`** or **Settings** → paste BotFather token → Connect.
 
 If bot is connected but **silent** (no reply to `/start`):
 
