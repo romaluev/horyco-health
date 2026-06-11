@@ -2,6 +2,7 @@ import { Controller, Get, Param, ParseUUIDPipe, Query, Res } from '@nestjs/commo
 import type { Response } from 'express';
 import { Public } from '../common/decorators/public.decorator';
 import { NotFoundError } from '../common/errors/domain-error';
+import { ModifiersService } from '../modifiers/modifiers.service';
 import { MenuService } from './menu.service';
 import { MenuPhotoService } from './menu-photo.service';
 import { MenuQueryDto } from './dto/menu-query.dto';
@@ -12,12 +13,19 @@ export class MenuController {
   constructor(
     private readonly menu: MenuService,
     private readonly photo: MenuPhotoService,
+    private readonly modifiers: ModifiersService,
   ) {}
 
   @Public()
   @Get()
   list(@Query() query: MenuQueryDto) {
     return this.menu.showcase(query.category);
+  }
+
+  @Public()
+  @Get(':id/modifier-groups')
+  modifierGroups(@Param('id', ParseUUIDPipe) id: string) {
+    return this.modifiers.getGroupsForMenuItem(id);
   }
 
   @Public()

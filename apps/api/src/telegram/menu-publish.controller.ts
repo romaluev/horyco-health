@@ -13,4 +13,9 @@ export class MenuPublishController {
   publishToChannel(@Param('id', ParseUUIDPipe) id: string) {
     return this.publish.publishToChannel(id);
   }
+
+  @Post('combos/:id/publish')
+  publishCombo(@Param('id', ParseUUIDPipe) id: string) {
+    return this.publish.publishCombo(id);
+  }
 }

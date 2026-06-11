@@ -2,46 +2,46 @@
 
 import { useEffect } from 'react';
 import { getStartParam } from '@/lib/telegram';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
-import { RegistrationForm } from './RegistrationForm';
 import { BottomNav } from './BottomNav';
 import { MenuScreen } from './screens/MenuScreen';
 import { DishDetail } from './screens/DishDetail';
 import { CartScreen } from './screens/CartScreen';
 import { OrdersScreen } from './screens/OrdersScreen';
+import { ComboDetail } from './screens/ComboDetail';
 import { ProfileScreen } from './screens/ProfileScreen';
-import { AdminScreen } from './screens/AdminScreen';
 
-/** Каркас Mini App: гейт регистрации, затем вкладки + нижняя навигация. */
+/** Каркас Mini App: вкладки + нижняя навигация (регистрация — при checkout в CartScreen). */
 export function AppShell() {
   const client = useAuthStore((s) => s.client);
   const tab = useUiStore((s) => s.tab);
   const detailId = useUiStore((s) => s.detailId);
   const openDetail = useUiStore((s) => s.openDetail);
 
-  // Deep-link из бота/канала: открыть деталь блюда. Источники:
-  //  - web_app кнопка в боте: ?dish=<id> в URL;
-  //  - startapp-ссылка под постом в канал: start_param = "dish_<id>".
+  const openCombo = useUiStore((s) => s.openCombo);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const fromQuery = new URLSearchParams(window.location.search).get('dish');
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = params.get('dish');
+    const comboQuery = params.get('combo');
+    const offerQuery = params.get('offer');
     const sp = getStartParam();
     const fromStart = sp.startsWith('dish_') ? sp.slice('dish_'.length) : null;
+    const comboStart = sp.startsWith('combo_') ? sp.slice('combo_'.length) : null;
     const id = fromQuery || fromStart;
     if (id) openDetail(id);
-  }, [openDetail]);
+    else if (comboQuery || comboStart) openCombo(comboQuery ?? comboStart!);
+    if (offerQuery) {
+      void api(`/cart/from-offer/${offerQuery}`, { method: 'POST' }).then(() => {
+        useUiStore.getState().setTab('cart');
+      });
+    }
+  }, [openDetail, openCombo]);
 
   if (!client) return null;
-
-  const registered = Boolean(client.phone && client.address);
-  if (!registered) {
-    return (
-      <div className="app">
-        <RegistrationForm />
-      </div>
-    );
-  }
 
   return (
     <div className="app">
@@ -50,10 +50,10 @@ export function AppShell() {
         {tab === 'cart' && <CartScreen />}
         {tab === 'orders' && <OrdersScreen />}
         {tab === 'profile' && <ProfileScreen />}
-        {tab === 'admin' && <AdminScreen />}
       </div>
       <BottomNav />
       {detailId && <DishDetail />}
+      <ComboDetail />
     </div>
   );
 }

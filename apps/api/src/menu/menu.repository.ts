@@ -72,4 +72,12 @@ export class MenuRepository extends TransactionalRepository<MenuItem> {
   async delete(businessId: string, id: string): Promise<void> {
     await this.repo.softDelete({ id, businessId });
   }
+
+  countActive(businessId: string): Promise<number> {
+    return this.repo.count({ where: { businessId, isActive: true } });
+  }
+
+  async clearPhotoFileIds(businessId: string): Promise<void> {
+    await this.repo.update({ businessId }, { photoFileId: null });
+  }
 }

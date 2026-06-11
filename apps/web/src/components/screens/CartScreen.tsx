@@ -8,12 +8,15 @@ import { useUiStore } from '@/store/ui.store';
 import { useT } from '@/lib/i18n';
 import { formatMoney, pick } from '@/lib/format';
 import { Stepper } from '@/components/Stepper';
+import { RegistrationForm } from '@/components/RegistrationForm';
 import { ApiError } from '@/lib/api';
 
 export function CartScreen() {
   const t = useT();
-  const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
-  const balance = Number(useAuthStore((s) => s.client?.balance ?? '0'));
+  const client = useAuthStore((s) => s.client);
+  const lang = client?.language ?? Language.Ru;
+  const balance = Number(client?.balance ?? '0');
+  const needsRegistration = !client?.phone || !client?.address;
   const { data: cart, isLoading } = useCart();
   const setQty = useSetQuantity();
   const checkout = useCheckout();
@@ -23,6 +26,18 @@ export function CartScreen() {
 
   if (isLoading) return <div className="center">{t('loading')}</div>;
   if (!cart?.items.length) return <div className="center">{t('cart_empty')}</div>;
+
+  if (needsRegistration) {
+    return (
+      <div>
+        <h2>{t('checkout')}</h2>
+        <p className="muted" style={{ marginBottom: 16 }}>
+          {t('register_hint')}
+        </p>
+        <RegistrationForm />
+      </div>
+    );
+  }
 
   const total = Number(cart.total);
 
@@ -47,7 +62,7 @@ export function CartScreen() {
     <div>
       <h2>{t('nav_cart')}</h2>
       {cart.items.map((it) => (
-        <div className="card" key={`${it.menuItemId}:${it.portion}`}>
+        <div className="card" key={it.lineId ?? `${it.menuItemId}:${it.portion}`}>
           <div className="row">
             <div>
               <div className="dish-name">
@@ -59,6 +74,16 @@ export function CartScreen() {
                   </span>
                 )}
               </div>
+              {it.modifiers?.map((m) => (
+                <div className="dish-desc" key={m.id}>
+                  ＋ {pick(lang, m.nameRu, m.nameUz)}
+                </div>
+              ))}
+              {it.comboSlots?.map((s, i) => (
+                <div className="dish-desc" key={i}>
+                  ▸ {s.itemNameRu}
+                </div>
+              ))}
               <div className="dish-desc">
                 {formatMoney(it.lineTotal)} {t('currency')}
               </div>
@@ -68,6 +93,7 @@ export function CartScreen() {
               addLabel={t('add')}
               busy={setQty.isPending}
               onChange={(q) =>
+                it.menuItemId &&
                 setQty.mutate({ menuItemId: it.menuItemId, quantity: q, portion: it.portion })
               }
             />

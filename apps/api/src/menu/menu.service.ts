@@ -8,6 +8,7 @@ import { Money } from '../common/money/money';
 import { currentIsoWeekday } from '../common/time/weekday';
 import { MenuRepository } from './menu.repository';
 import { MenuItem } from './entities/menu-item.entity';
+import { ModifiersService } from '../modifiers/modifiers.service';
 import { CreateMenuItemDto } from './dto/create-menu-item.dto';
 import { AllergensDto, IngredientDto, NutritionDto } from './dto/menu-detail.dto';
 import { UpdateMenuItemDto } from './dto/update-menu-item.dto';
@@ -20,6 +21,7 @@ export class MenuService {
     private readonly config: ConfigService,
     private readonly actorCtx: ActorContextService,
     private readonly defaultBusiness: DefaultBusinessService,
+    private readonly modifiers: ModifiersService,
   ) {}
 
   /** Резолв businessId: из актора (API) или дефолтный (публичная витрина — актора нет). */
@@ -31,7 +33,10 @@ export class MenuService {
     // Витрина — только блюда на сегодняшний день недели (по локальному TZ).
     const bizId = await this.bizId();
     const items = await this.repo.findActive(bizId, category, this.currentIsoWeekday());
-    return items.map((i) => new MenuItemResponseDto(i));
+    const requiredIds = await this.modifiers.requiredModifierMenuItemIds();
+    return items.map(
+      (i) => new MenuItemResponseDto(i, { hasRequiredModifiers: requiredIds.has(i.id) }),
+    );
   }
 
   /** Текущий день недели ISO (1=Пн…7=Вс) с учётом часового пояса приложения. */
@@ -53,7 +58,9 @@ export class MenuService {
   }
 
   async getOne(id: string): Promise<MenuItemResponseDto> {
-    return new MenuItemResponseDto(await this.getEntityOrThrow(id));
+    const item = await this.getEntityOrThrow(id);
+    const hasRequiredModifiers = await this.modifiers.hasRequiredModifiers(id);
+    return new MenuItemResponseDto(item, { hasRequiredModifiers });
   }
 
   async create(dto: CreateMenuItemDto): Promise<MenuItemResponseDto> {

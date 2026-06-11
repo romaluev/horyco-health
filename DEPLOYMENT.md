@@ -1,12 +1,12 @@
 # horyco-health Deployment Guide
 
-Eat&fit — Telegram bot + Mini App monolith (NestJS API, Next.js static SPA, Telegraf bot) deployed on Coolify (HyperApp Cloud).
+Eat&fit — Telegram bot + Mini App monolith (NestJS API, Next.js static SPA, multi-bot Telegraf engine) deployed on Coolify (HyperApp Cloud).
 
 One container serves:
 
 - REST API at `/api/*`
 - Telegram Mini App / website at `/`
-- Telegram bot (long polling) in the same process
+- Per-business Telegram bots (webhook mode in prod)
 
 ## Quick Start
 
@@ -14,8 +14,8 @@ One container serves:
 2. Add a **PostgreSQL** database resource in the same environment.
 3. Set environment variables (see below).
 4. Map domain + SSL, enable **Auto Deploy** with GitHub webhook.
-5. After first deploy, set `WEB_APP_URL` to the public HTTPS domain and redeploy.
-6. Update BotFather Mini App URL to match production.
+5. After first deploy, set `WEB_APP_URL` and `PUBLIC_URL` to the public HTTPS domain and redeploy.
+6. Connect each business bot via back office (`/b` → Settings → bot token); webhooks register when `PUBLIC_URL` is set.
 
 ## Environments
 
@@ -33,7 +33,7 @@ One container serves:
 | Port | `3000` |
 | Health check path | `/api/health` |
 | Health check start period | **60s** (DB sync + bot startup) |
-| Replicas | **1** (Telegram allows one long-polling connection per bot token) |
+| Replicas | **1** (webhook mode: one process handles all business bots) |
 
 Build command is handled by the Dockerfile: `npm run build` (shared → web → api).
 
@@ -60,7 +60,9 @@ Set in Coolify → Application → **Environment Variables**.
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string (internal Coolify hostname) |
 | `JWT_SECRET` | JWT signing secret, **minimum 32 characters** |
-| `BOT_TOKEN` | Telegram bot token from [@BotFather](https://t.me/BotFather) |
+| `TOKEN_ENC_KEY` | 64 hex chars (`openssl rand -hex 32`) — encrypts per-business bot tokens |
+| `PUBLIC_URL` | Public HTTPS URL (webhooks: `{PUBLIC_URL}/api/tg/wh/:businessId`) |
+| `WEB_APP_URL` | Mini App URL (usually same as public domain root) |
 
 ### Recommended
 
@@ -69,26 +71,28 @@ Set in Coolify → Application → **Environment Variables**.
 | `NODE_ENV` | `production` | `production` |
 | `DATABASE_SSL` | `false` | `false` |
 | `WEB_APP_URL` | `https://dev-health.horyco.com` | `https://health.horyco.com` |
+| `PUBLIC_URL` | `https://dev-health.horyco.com` | `https://health.horyco.com` |
 | `CORS_ORIGINS` | `https://dev-health.horyco.com` | `https://health.horyco.com` |
 | `TYPEORM_SYNC` | `false` | `false` (schema is migration-managed) |
 | `TYPEORM_MIGRATIONS_RUN` | `true` | `true` (after one-time baseline registration, see Migrations) |
 | `BOT_ENABLED` | `true` | `true` |
+| `BOT_MODE` | `webhook` | `webhook` |
+| `CSP_REPORT_ONLY` | `true` | `true` → `false` after CSP audit |
 
-### Optional
+### Optional / transitional
 
 | Variable | Description |
 |----------|-------------|
-| `BOT_USERNAME` | Bot username without `@` (deep links for channel posts) |
-| `ADMIN_TELEGRAM_IDS` | Comma-separated Telegram user IDs for admin access |
-| `CHANNEL_ID` | Channel for direct dish posts (`@channel` or `-100...`) |
-| `COOK_GROUP_ID` | Cook group for new orders |
-| `COURIER_GROUP_ID` | Courier group for ready orders |
-| `ADMIN_GROUP_ID` | Admin group: live order cards, balance ops, daily report |
-| `TZ_OFFSET_HOURS` | Timezone offset from UTC (default `5`, Uzbekistan) |
-| `DAILY_REPORT_HOUR` | Local hour for daily summary (default `19`) |
+| `BOT_TOKEN` | Fallback bot token for initData HMAC if business has no encrypted token yet |
+| `BOT_USERNAME` | Legacy deep-link fallback |
+| `ADMIN_TELEGRAM_IDS` | Comma-separated Telegram IDs — **platform admin seed only** |
+| `TELEGRAM_WEBHOOK_SECRET` | Global webhook secret fallback (per-business secrets preferred) |
+| `TZ_OFFSET_HOURS` | Default TZ offset (default `5`); per-business TZ in settings |
+| `DAILY_REPORT_HOUR` | Default report hour; per-business override in settings |
 | `JWT_EXPIRES_IN` | JWT lifetime (default `7d`) |
-| `TELEGRAM_WEBHOOK_SECRET` | Webhook secret (optional; required if using webhooks in prod) |
 | `PORT` | Container port (Coolify sets this; default `3000`) |
+
+**Removed (multi-tenant):** `CHANNEL_ID`, `COOK_GROUP_ID`, `COURIER_GROUP_ID`, `ADMIN_GROUP_ID` — bind groups per business via `/bind` in Telegram.
 
 ## Migrations
 
@@ -122,6 +126,16 @@ already has the tables would fail. Register it as already-applied instead:
 
 Fresh databases need none of this — migrations run normally from the start.
 
+## Production cutover runbook (~30 min)
+
+1. **Prep:** backup `TOKEN_ENC_KEY` offline; `pg_dump` production DB; notify Business #1.
+2. **Deploy:** `TYPEORM_SYNC=false`, `TYPEORM_MIGRATIONS_RUN=true`, `BOT_MODE=webhook`, `PUBLIC_URL`, `WEB_APP_URL`, `TOKEN_ENC_KEY`.
+3. **Smoke per business:** bot token + checklist; `/start`; test order FSM; deposit; CRM offer ✅; channel dish + combo publish; daily report.
+4. **Platform:** `/platform/metrics` GMV; cross-tenant probes; CSP headers; `curl /api/health`.
+5. **Rollback:** `pg_restore` + redeploy previous image / `single-tenant-lkg`; deleteWebhook if needed.
+
+Keep `single-tenant-lkg` branch **1 week** post-prod.
+
 ## Domain and SSL
 
 1. Coolify → Application → **Domains**
@@ -131,7 +145,7 @@ Fresh databases need none of this — migrations run normally from the start.
 
 After domain is live:
 
-1. Set `WEB_APP_URL` to `https://<domain>`
+1. Set `WEB_APP_URL` and `PUBLIC_URL` to `https://<domain>`
 2. Set `CORS_ORIGINS` to `https://<domain>` (comma-separated if multiple)
 3. Redeploy
 4. In BotFather: `/setmenubutton` or configure Mini App URL → `https://<domain>/`
@@ -151,12 +165,20 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs `npm ci` + `npm run build` o
 
 ## Single Replica Requirement
 
-Telegram allows **one long-polling connection** per bot token. Running multiple replicas with `BOT_ENABLED=true` causes **409 Conflict** errors.
+In **webhook mode** (prod default), one replica handles all business bots via `POST /api/tg/wh/:businessId`.
 
-- Keep **replicas = 1** in Coolify for production, or assign `BOT_ENABLED=true` to exactly one replica when scaling.
-- Other replicas: `BOT_ENABLED=false` — REST API and outbound `TelegramNotifier` still work; polling and bot handlers do not.
-- **Daily report cron** runs on every replica (not gated by `BOT_ENABLED`). With multiple replicas, expect duplicate reports unless only one scheduler instance is deployed.
-- After deploy on the bot owner: log line `Планировщик итогов дня: ...` confirms cron registration.
+In **polling mode** (local dev), Telegram allows **one long-polling connection** per bot token.
+
+- Keep **replicas = 1** in Coolify for production
+- **Daily report cron** runs on every replica — with multiple replicas expect duplicate reports unless only one scheduler instance is deployed
+
+## Security hardening (Phase 10)
+
+| Control | Config |
+|---------|--------|
+| CSP | Helmet; `CSP_REPORT_ONLY=true` (default) → `false` to enforce |
+| Rate limit | `@nestjs/throttler`: auth 15/min, webhooks 600/min |
+| Tenant isolation | Business-scoped JWT; run `cd apps/api && npm test` |
 
 ## Verification Checklist
 
@@ -180,6 +202,12 @@ Check container logs for:
 Eat&fit API запущен на порту 3000
 ```
 
+Run API tests:
+
+```bash
+cd apps/api && npm test
+```
+
 ## Troubleshooting
 
 ### Health check fails / 502
@@ -195,10 +223,16 @@ Eat&fit API запущен на порту 3000
 - Set `DATABASE_SSL=false` for internal networking
 - Ensure Postgres resource is in the same Coolify environment as the app
 
-### Telegram 409 Conflict
+### Telegram webhook not receiving updates
+
+- Verify `PUBLIC_URL` is HTTPS and reachable from Telegram
+- Check business bot token in back office settings
+- Inspect logs for `Webhook rejected` (secret mismatch)
+
+### Telegram 409 Conflict (polling mode only)
 
 - Multiple containers polling the same `BOT_TOKEN`
-- Set replicas to 1, or disable bot on extra instances (`BOT_ENABLED=false`)
+- Use webhook mode in prod, or set replicas to 1 in polling dev
 
 ### Mini App button missing
 
@@ -207,14 +241,14 @@ Eat&fit API запущен на порту 3000
 
 ### Schema / migration issues
 
-- Initial deploy: `TYPEORM_SYNC=true` (schema from entities)
-- Production follow-up: add TypeORM migrations and set `TYPEORM_SYNC=false`
+- Never use `TYPEORM_SYNC=true` in production
+- For live DB cutover see **One-time cutover** section above
 
 ## Local Development
 
 ```bash
 docker compose up -d          # Postgres only
-cp .env.example .env          # fill values
+cp .env.example .env          # fill TOKEN_ENC_KEY, JWT_SECRET, optional BOT_TOKEN
 npm install
 npm run dev                   # NestJS watch mode
 ```
@@ -228,6 +262,7 @@ docker build -t horyco-health .
 docker run --rm -p 3000:3000 \
   -e DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/eatfit \
   -e JWT_SECRET=local-dev-secret-minimum-32-chars \
+  -e TOKEN_ENC_KEY=$(openssl rand -hex 32) \
   -e BOT_TOKEN=your-bot-token \
   horyco-health
 ```

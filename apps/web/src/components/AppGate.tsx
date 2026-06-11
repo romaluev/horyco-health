@@ -3,6 +3,7 @@
 import { useAuthStore } from '@/store/auth.store';
 import { bootstrapAuth } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
+import { isLikelyTelegram } from '@/lib/telegram';
 import { WebAuth } from './WebAuth';
 
 function Center({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,14 @@ export function AppGate({ children }: { children: React.ReactNode }) {
   const t = useT();
 
   if (status === 'idle' || status === 'loading') return <Center>{t('loading')}</Center>;
+  if (status === 'missing-biz' || (status === 'web-anon' && isLikelyTelegram())) {
+    return (
+      <Center>
+        <div style={{ fontSize: 18, color: 'var(--text)' }}>{t('missing_biz')}</div>
+        <div>{t('missing_biz_hint')}</div>
+      </Center>
+    );
+  }
   if (status === 'web-anon') return <WebAuth />;
   if (status === 'error') {
     return (

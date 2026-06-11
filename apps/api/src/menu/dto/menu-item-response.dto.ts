@@ -25,9 +25,10 @@ export class MenuItemResponseDto {
   allergens: Allergens | null;
   nutrition: Nutrition | null;
   nutrition2: Nutrition | null;
+  hasRequiredModifiers: boolean;
   createdAt: Date;
 
-  constructor(item: MenuItem) {
+  constructor(item: MenuItem, opts?: { hasRequiredModifiers?: boolean }) {
     this.id = item.id;
     this.category = item.category;
     this.nameRu = item.nameRu;
@@ -46,6 +47,7 @@ export class MenuItemResponseDto {
     this.allergens = item.allergens ?? null;
     this.nutrition = item.nutrition ?? null;
     this.nutrition2 = item.nutrition2 ?? null;
+    this.hasRequiredModifiers = opts?.hasRequiredModifiers ?? false;
     this.createdAt = item.createdAt;
   }
 }

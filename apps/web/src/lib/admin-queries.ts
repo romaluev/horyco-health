@@ -119,6 +119,103 @@ export function usePublishDish() {
   });
 }
 
+export interface ComboSlotOptionBody {
+  menuItemId: string;
+  priceOverride?: string;
+  isDefault?: boolean;
+}
+
+export interface ComboSlotBody {
+  nameRu: string;
+  nameUz: string;
+  options: ComboSlotOptionBody[];
+}
+
+export interface ComboBody {
+  nameRu: string;
+  nameUz: string;
+  descriptionRu?: string;
+  descriptionUz?: string;
+  price: string;
+  originalPrice?: string | null;
+  photoUrl?: string | null;
+  isActive?: boolean;
+  days?: number[];
+  slots?: ComboSlotBody[];
+  modifierGroupIds?: string[];
+}
+
+export interface AdminComboDetailDto {
+  id: string;
+  nameRu: string;
+  nameUz: string;
+  descriptionRu: string | null;
+  descriptionUz: string | null;
+  price: string;
+  originalPrice: string | null;
+  photoUrl: string | null;
+  isActive: boolean;
+  days: number[];
+  modifierGroupIds: string[];
+  slots: Array<{
+    id: string;
+    nameRu: string;
+    nameUz: string;
+    options: Array<{
+      id: string;
+      menuItemId: string;
+      priceOverride: string;
+      isDefault: boolean;
+      menuItem?: { id: string; nameRu: string; nameUz: string };
+    }>;
+  }>;
+}
+
+export function useAdminCombos() {
+  return useQuery({
+    queryKey: ['b', 'combos'],
+    queryFn: () =>
+      api<Array<{ id: string; nameRu: string; nameUz: string; price: string; isActive: boolean }>>(
+        '/b/combos',
+      ),
+  });
+}
+
+export function useAdminComboDetail(id: string | null) {
+  return useQuery({
+    queryKey: ['b', 'combos', id],
+    queryFn: () => api<AdminComboDetailDto>(`/b/combos/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCreateCombo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ComboBody) => api<AdminComboDetailDto>('/b/combos', { method: 'POST', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['b', 'combos'] }),
+  });
+}
+
+export function useUpdateCombo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: Partial<ComboBody> }) =>
+      api<AdminComboDetailDto>(`/b/combos/${v.id}`, { method: 'PATCH', body: v.body }),
+    onSuccess: (_, v) => {
+      qc.invalidateQueries({ queryKey: ['b', 'combos'] });
+      qc.invalidateQueries({ queryKey: ['b', 'combos', v.id] });
+    },
+  });
+}
+
+export function usePublishCombo() {
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<{ published: true }>(`/admin/menu/combos/${id}/publish`, { method: 'POST' }),
+  });
+}
+
 /* ── пользователи ── */
 export function useAdminUsers(query: string) {
   return useQuery({

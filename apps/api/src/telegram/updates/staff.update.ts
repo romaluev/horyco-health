@@ -1,14 +1,15 @@
-import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Update, Action, Command, Ctx } from 'nestjs-telegraf';
+import { Injectable, Logger } from '@nestjs/common';
 import { Markup } from 'telegraf';
 import type { Context } from 'telegraf';
-import { Category, OrderStatus } from '@eatfit/shared';
+import { Category, ChatKind, OrderStatus } from '@eatfit/shared';
 import { ClientRepository } from '../../clients/clients.repository';
 import { Client } from '../../clients/entities/client.entity';
 import { MenuRepository } from '../../menu/menu.repository';
 import { MenuItem } from '../../menu/entities/menu-item.entity';
-import { DefaultBusinessService } from '../../businesses/default-business.service';
+import { ActorContextService } from '../../common/cls/actor-context.service';
+import { BusinessChatsRepository } from '../../businesses/business-chats.repository';
+import { BusinessMembersRepository } from '../../businesses/business-members.repository';
+import { isOwnerOrManager } from '../../businesses/membership.util';
 import { OrdersService } from '../../orders/orders.service';
 import { ReportsService } from '../../reports/reports.service';
 import { SettingsService } from '../../settings/settings.service';
@@ -22,11 +23,8 @@ import { channelPostText, orderDeepLinkButton } from '../channel-post';
 
 /**
  * Действия персонала (повар/курьер/админ): смена статуса заказа из inline-кнопок панели.
- * Единый обработчик `ord:set:<orderId>:<targetStatus>` — права проверяет домен
- * (OrdersService.transition → assertTransition по роли актора из CLS), а не callback_data.
- * Отдельный @Update-класс: только @Action, без общих @On('text') — конфликтов нет.
  */
-@Update()
+@Injectable()
 export class StaffUpdate {
   private readonly logger = new Logger(StaffUpdate.name);
 
@@ -39,15 +37,16 @@ export class StaffUpdate {
     private readonly reports: ReportsService,
     private readonly settings: SettingsService,
     private readonly menu: MenuRepository,
-    private readonly config: ConfigService,
     private readonly menuAdmin: BotMenuAdminService,
-    private readonly defaultBusiness: DefaultBusinessService,
+    private readonly actorCtx: ActorContextService,
+    private readonly chats: BusinessChatsRepository,
+    private readonly members: BusinessMembersRepository,
   ) {}
 
   /** Резолв админа из апдейта; иначе гасит callback и возвращает null. */
   private async requireAdmin(ctx: Context): Promise<Client | null> {
     const client = await this.clients.findByTelegramId(String(ctx.from?.id));
-    if (!client || !this.ui.isAdmin(client)) {
+    if (!client || !(await this.ui.isAdmin(client))) {
       await ctx.answerCbQuery();
       return null;
     }
@@ -60,88 +59,77 @@ export class StaffUpdate {
 
   // ───────────────────────────── управление меню (FR-M3/M4) ─────────────────────────────
 
-  @Action('amenu:list')
-  async onMenuList(@Ctx() ctx: Context): Promise<void> {
+  async onMenuList(ctx: Context): Promise<void> {
     const c = await this.requireAdmin(ctx);
     if (!c) return;
     await ctx.answerCbQuery();
     await this.menuAdmin.showList(ctx, c);
   }
 
-  @Action('amenu:add')
-  async onMenuAdd(@Ctx() ctx: Context): Promise<void> {
+  async onMenuAdd(ctx: Context): Promise<void> {
     const c = await this.requireAdmin(ctx);
     if (!c) return;
     await ctx.answerCbQuery();
     await this.menuAdmin.startAdd(ctx, c);
   }
 
-  @Action(/^amenu:cat:(main|drink|dessert)$/)
-  async onMenuAddCat(@Ctx() ctx: Context): Promise<void> {
+  async onMenuAddCat(ctx: Context): Promise<void> {
     const c = await this.requireAdmin(ctx);
     if (!c) return;
     await ctx.answerCbQuery();
     await this.menuAdmin.setAddCategory(ctx, c, this.cbArg(ctx, 1) as Category);
   }
 
-  @Action(/^amenu:edit:(.+)$/)
-  async onMenuEdit(@Ctx() ctx: Context): Promise<void> {
+  async onMenuEdit(ctx: Context): Promise<void> {
     const c = await this.requireAdmin(ctx);
     if (!c) return;
     await ctx.answerCbQuery();
     await this.menuAdmin.startEdit(ctx, c, this.cbArg(ctx, 1));
   }
 
-  @Action(/^amenu:fld:(.+):([a-z_]+)$/)
-  async onMenuField(@Ctx() ctx: Context): Promise<void> {
+  async onMenuField(ctx: Context): Promise<void> {
     const c = await this.requireAdmin(ctx);
     if (!c) return;
     await ctx.answerCbQuery();
     await this.menuAdmin.chooseField(ctx, c, this.cbArg(ctx, 1), this.cbArg(ctx, 2));
   }
 
-  @Action(/^amenu:ecat:(.+):(main|drink|dessert)$/)
-  async onMenuEditCat(@Ctx() ctx: Context): Promise<void> {
+  async onMenuEditCat(ctx: Context): Promise<void> {
     const c = await this.requireAdmin(ctx);
     if (!c) return;
     await ctx.answerCbQuery();
     await this.menuAdmin.setEditCategory(ctx, c, this.cbArg(ctx, 1), this.cbArg(ctx, 2) as Category);
   }
 
-  @Action(/^amenu:days:(.+)$/)
-  async onMenuDays(@Ctx() ctx: Context): Promise<void> {
+  async onMenuDays(ctx: Context): Promise<void> {
     const c = await this.requireAdmin(ctx);
     if (!c) return;
     await ctx.answerCbQuery();
     await this.menuAdmin.showDaysEditor(ctx, c, this.cbArg(ctx, 1));
   }
 
-  @Action(/^amenu:dayt:(.+):(\d)$/)
-  async onMenuDayToggle(@Ctx() ctx: Context): Promise<void> {
+  async onMenuDayToggle(ctx: Context): Promise<void> {
     const c = await this.requireAdmin(ctx);
     if (!c) return;
     await ctx.answerCbQuery();
     await this.menuAdmin.toggleDay(ctx, c, this.cbArg(ctx, 1), Number(this.cbArg(ctx, 2)));
   }
 
-  @Action(/^amenu:toggle:(.+)$/)
-  async onMenuToggle(@Ctx() ctx: Context): Promise<void> {
+  async onMenuToggle(ctx: Context): Promise<void> {
     const c = await this.requireAdmin(ctx);
     if (!c) return;
     await ctx.answerCbQuery();
     await this.menuAdmin.toggle(ctx, c, this.cbArg(ctx, 1));
   }
 
-  @Action(/^amenu:del:(.+)$/)
-  async onMenuDel(@Ctx() ctx: Context): Promise<void> {
+  async onMenuDel(ctx: Context): Promise<void> {
     const c = await this.requireAdmin(ctx);
     if (!c) return;
     await ctx.answerCbQuery();
     await this.menuAdmin.confirmDelete(ctx, c, this.cbArg(ctx, 1));
   }
 
-  @Action(/^amenu:delyes:(.+)$/)
-  async onMenuDelYes(@Ctx() ctx: Context): Promise<void> {
+  async onMenuDelYes(ctx: Context): Promise<void> {
     const c = await this.requireAdmin(ctx);
     if (!c) return;
     await ctx.answerCbQuery();
@@ -154,8 +142,7 @@ export class StaffUpdate {
    * Показать ID текущего чата — нужно для настройки COOK_GROUP_ID / COURIER_GROUP_ID.
    * Работает в любом чате (в т.ч. группе): добавьте бота в группу и вызовите /chatid.
    */
-  @Command('chatid')
-  async onChatId(@Ctx() ctx: Context): Promise<void> {
+  async onChatId(ctx: Context): Promise<void> {
     const chat = ctx.chat;
     if (!chat) return;
     const title = 'title' in chat ? chat.title : ('username' in chat ? chat.username : '') ?? '';
@@ -169,17 +156,15 @@ export class StaffUpdate {
 
   // ───────────────────────────── вход в админ-панель ─────────────────────────────
 
-  @Command('admin')
-  async onAdminCommand(@Ctx() ctx: Context): Promise<void> {
+  async onAdminCommand(ctx: Context): Promise<void> {
     const client = await this.clients.findByTelegramId(String(ctx.from?.id));
-    if (client && this.ui.isAdmin(client)) await this.staff.showAdminOrders(ctx, client);
+    if (client && (await this.ui.isAdmin(client))) await this.staff.showAdminOrders(ctx, client);
     // обычным пользователям — молча (команда им недоступна).
   }
 
   // ───────────────────────────── пополнение баланса (FR-D1) ─────────────────────────────
 
-  @Action('admin:deposit')
-  async onDeposit(@Ctx() ctx: Context): Promise<void> {
+  async onDeposit(ctx: Context): Promise<void> {
     const from = ctx.from;
     const client = await this.requireAdmin(ctx);
     if (!from || !client) return;
@@ -188,8 +173,7 @@ export class StaffUpdate {
     await ctx.reply(t(client.language, 'deposit_ask_client'));
   }
 
-  @Action('admin:withdraw')
-  async onWithdraw(@Ctx() ctx: Context): Promise<void> {
+  async onWithdraw(ctx: Context): Promise<void> {
     const from = ctx.from;
     const client = await this.requireAdmin(ctx);
     if (!from || !client) return;
@@ -199,8 +183,7 @@ export class StaffUpdate {
   }
 
   /** Выбор клиента из списка совпадений (FR-D1, L5) — переводит FSM депозита к вводу суммы. */
-  @Action(/^dep:pick:(.+)$/)
-  async onDepositPick(@Ctx() ctx: Context): Promise<void> {
+  async onDepositPick(ctx: Context): Promise<void> {
     const from = ctx.from;
     const admin = await this.requireAdmin(ctx);
     if (!from || !admin) return;
@@ -220,8 +203,7 @@ export class StaffUpdate {
     await ctx.reply(t(lang, 'deposit_ask_amount'));
   }
 
-  @Action(/^wdr:pick:(.+)$/)
-  async onWithdrawPick(@Ctx() ctx: Context): Promise<void> {
+  async onWithdrawPick(ctx: Context): Promise<void> {
     const from = ctx.from;
     const admin = await this.requireAdmin(ctx);
     if (!from || !admin) return;
@@ -243,14 +225,13 @@ export class StaffUpdate {
 
   // ───────────────────────────── посты в канал (FR-B4) ─────────────────────────────
 
-  @Action('admin:post')
-  async onPostList(@Ctx() ctx: Context): Promise<void> {
+  async onPostList(ctx: Context): Promise<void> {
     const client = await this.requireAdmin(ctx);
     if (!client) return;
     await ctx.answerCbQuery();
     const lang = client.language;
     // Актор может отсутствовать в некоторых путях — используем дефолтный бизнес.
-    const items = await this.menu.findActive(await this.defaultBusiness.getId());
+    const items = await this.menu.findActive(this.actorCtx.getBusinessIdOrThrow());
     if (!items.length) {
       await ctx.reply(t(lang, 'menu_empty'));
       return;
@@ -261,14 +242,13 @@ export class StaffUpdate {
     await ctx.reply(t(lang, 'gen_post_choose'), Markup.inlineKeyboard(rows));
   }
 
-  @Action(/^admin:post:(.+)$/)
-  async onPostPreview(@Ctx() ctx: Context): Promise<void> {
+  async onPostPreview(ctx: Context): Promise<void> {
     const client = await this.requireAdmin(ctx);
     if (!client) return;
     await ctx.answerCbQuery();
     const lang = client.language;
     const id = (ctx as Context & { match?: RegExpExecArray }).match?.[1] ?? '';
-    const item = await this.menu.findById(await this.defaultBusiness.getId(), id);
+    const item = await this.menu.findById(this.actorCtx.getBusinessIdOrThrow(), id);
     if (!item) {
       await ctx.reply(t(lang, 'dish_not_found'));
       return;
@@ -285,19 +265,19 @@ export class StaffUpdate {
     }
   }
 
-  @Action(/^admin:publish:(.+)$/)
-  async onPublish(@Ctx() ctx: Context): Promise<void> {
+  async onPublish(ctx: Context): Promise<void> {
     const client = await this.requireAdmin(ctx);
     if (!client) return;
     const lang = client.language;
-    const channelId = this.config.get<string>('telegram.channelId');
-    if (!channelId) {
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const channel = await this.chats.findActive(businessId, ChatKind.Channel);
+    if (!channel) {
       await ctx.answerCbQuery();
       await ctx.reply(t(lang, 'channel_not_set'));
       return;
     }
     const id = (ctx as Context & { match?: RegExpExecArray }).match?.[1] ?? '';
-    const item = await this.menu.findById(await this.defaultBusiness.getId(), id);
+    const item = await this.menu.findById(this.actorCtx.getBusinessIdOrThrow(), id);
     if (!item) {
       await ctx.answerCbQuery(t(lang, 'dish_not_found'));
       return;
@@ -307,9 +287,9 @@ export class StaffUpdate {
       const photo = await this.ui.photoInput(item);
       const extra = { parse_mode: 'HTML' as const, ...this.orderButton(item, lang) };
       if (photo) {
-        await ctx.telegram.sendPhoto(channelId, photo, { caption: text, ...extra });
+        await ctx.telegram.sendPhoto(channel.chatId, photo, { caption: text, ...extra });
       } else {
-        await ctx.telegram.sendMessage(channelId, text, extra);
+        await ctx.telegram.sendMessage(channel.chatId, text, extra);
       }
       await ctx.answerCbQuery(t(lang, 'published_ok'));
     } catch (err) {
@@ -325,15 +305,15 @@ export class StaffUpdate {
 
   /** Inline-кнопка «Заказать» с deep link (общий билдер channel-post). */
   private orderButton(item: MenuItem, lang: Lang) {
-    return orderDeepLinkButton(item, lang, this.config.get<string>('bot.username'));
+    const botUsername = this.actorCtx.getBotBusiness()?.botUsername ?? undefined;
+    return orderDeepLinkButton(item, lang, botUsername);
   }
 
   // ───────────────────────────── настройки (админ) ─────────────────────────────
 
-  @Action('admin:settings')
-  async onSettings(@Ctx() ctx: Context): Promise<void> {
+  async onSettings(ctx: Context): Promise<void> {
     const client = await this.clients.findByTelegramId(String(ctx.from?.id));
-    if (!client || !this.ui.isAdmin(client)) {
+    if (!client || !(await this.ui.isAdmin(client))) {
       await ctx.answerCbQuery();
       return;
     }
@@ -357,11 +337,10 @@ export class StaffUpdate {
     });
   }
 
-  @Action(/^admin:set:(topup_tg|topup_phone|support)$/)
-  async onSettingEdit(@Ctx() ctx: Context): Promise<void> {
+  async onSettingEdit(ctx: Context): Promise<void> {
     const from = ctx.from;
     const client = await this.clients.findByTelegramId(String(from?.id));
-    if (!from || !client || !this.ui.isAdmin(client)) {
+    if (!from || !client || !(await this.ui.isAdmin(client))) {
       await ctx.answerCbQuery();
       return;
     }
@@ -375,16 +354,14 @@ export class StaffUpdate {
 
   // ───────────────────────────── итоги дня (админ) ─────────────────────────────
 
-  @Command('report')
-  async onReportCommand(@Ctx() ctx: Context): Promise<void> {
+  async onReportCommand(ctx: Context): Promise<void> {
     const client = await this.clients.findByTelegramId(String(ctx.from?.id));
-    if (client && this.ui.isAdmin(client)) await this.sendReport(ctx, client);
+    if (client && (await this.ui.isAdmin(client))) await this.sendReport(ctx, client);
   }
 
-  @Action('admin:report')
-  async onReportAction(@Ctx() ctx: Context): Promise<void> {
+  async onReportAction(ctx: Context): Promise<void> {
     const client = await this.clients.findByTelegramId(String(ctx.from?.id));
-    if (!client || !this.ui.isAdmin(client)) {
+    if (!client || !(await this.ui.isAdmin(client))) {
       await ctx.answerCbQuery();
       return;
     }
@@ -395,17 +372,97 @@ export class StaffUpdate {
   /** Показать отчёт админу и продублировать в админ-группу (если настроена). */
   private async sendReport(ctx: Context, client: Client): Promise<void> {
     try {
-      const text = await this.reports.buildDailyReportText();
+      const businessId = this.actorCtx.getBusinessIdOrThrow();
+      const text = await this.reports.buildDailyReportText(businessId);
       await ctx.reply(text, { parse_mode: 'HTML' });
-      await this.reports.sendDailyReportToAdmins();
+      await this.reports.sendDailyReportToAdmins(businessId);
     } catch (err) {
       this.logger.error(`Отчёт: ${(err as Error).message}`);
       await ctx.reply(t(client.language, 'error_generic'));
     }
   }
 
-  @Action(/^ord:set:(.+?):([a-z]+)(?::([a-z]+))?$/)
-  async onTransition(@Ctx() ctx: Context): Promise<void> {
+  // ───────────────────────────── привязка групп (/bind) ─────────────────────────────
+
+  /**
+   * Бота добавили в группу — подсказка owner/manager привязать роль.
+   */
+  async onMyChatMember(ctx: Context): Promise<void> {
+    const update = ctx.myChatMember;
+    if (!update) return;
+    const chat = update.chat;
+    if (chat.type !== 'group' && chat.type !== 'supergroup') return;
+
+    const newStatus = update.new_chat_member.status;
+    const oldStatus = update.old_chat_member.status;
+
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const chatId = String(chat.id);
+    const title = 'title' in chat ? chat.title : null;
+
+    if (newStatus === 'left' || newStatus === 'kicked') {
+      await this.chats.markBroken(businessId, chatId);
+      this.logger.warn(`Бот выгнан из чата ${chatId} (${title ?? '—'})`);
+      return;
+    }
+
+    if (
+      (oldStatus === 'left' || oldStatus === 'kicked') &&
+      (newStatus === 'member' || newStatus === 'administrator')
+    ) {
+      await ctx.telegram.sendMessage(
+        chatId,
+        '👋 Бот добавлен в группу.\n\nВладелец или менеджер: выполните команду\n<code>/bind cook</code>, <code>/bind courier</code> или <code>/bind admin</code>',
+        { parse_mode: 'HTML' },
+      );
+    }
+  }
+
+  /** /bind cook|courier|admin — только owner/manager, только в группах. */
+  async onBindCommand(ctx: Context): Promise<void> {
+    const from = ctx.from;
+    const chat = ctx.chat;
+    if (!from || !chat) return;
+    if (chat.type !== 'group' && chat.type !== 'supergroup') {
+      await ctx.reply('Привязка работает только в группах.');
+      return;
+    }
+
+    const client = await this.clients.findByTelegramId(String(from.id));
+    if (!client) {
+      await ctx.reply('Сначала напишите боту в личку /start');
+      return;
+    }
+
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const membership = await this.members.findActive(businessId, client.id);
+    if (!membership || !isOwnerOrManager(membership.role)) {
+      if (!client.isPlatformAdmin) {
+        await ctx.reply('Только владелец или менеджер может привязать группу.');
+        return;
+      }
+    }
+
+    const text = ctx.message && 'text' in ctx.message ? ctx.message.text : '';
+    const arg = text.split(/\s+/)[1]?.toLowerCase();
+    const kindMap: Record<string, ChatKind> = {
+      cook: ChatKind.Cook,
+      courier: ChatKind.Courier,
+      admin: ChatKind.Admin,
+      channel: ChatKind.Channel,
+    };
+    const kind = arg ? kindMap[arg] : undefined;
+    if (!kind) {
+      await ctx.reply('Использование: /bind cook | courier | admin');
+      return;
+    }
+
+    const title = 'title' in chat ? chat.title : null;
+    await this.chats.bind(businessId, kind, String(chat.id), title);
+    await ctx.reply(`✅ Группа привязана как <b>${esc(arg!)}</b>`, { parse_mode: 'HTML' });
+  }
+
+  async onTransition(ctx: Context): Promise<void> {
     const cbId = (ctx.callbackQuery as { id?: string } | undefined)?.id;
     if (cbId && this.state.isDuplicateCallback(cbId, Date.now())) {
       await ctx.answerCbQuery();

@@ -35,7 +35,6 @@
     "joi": "^17.13.3",
     "nestjs-cls": "^6.2.0",
     "nestjs-i18n": "^10.5.0",
-    "nestjs-telegraf": "^2.9.1",
     "pg": "^8.12.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",

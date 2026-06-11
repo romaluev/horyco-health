@@ -10,7 +10,6 @@ import { Business } from '../../businesses/entities/business.entity';
 @Index(['clientId', 'status'])
 @Index(['businessId', 'status'])
 @Index(['businessId', 'createdAt'])
-// Номер уникален в пределах бизнеса (счётчик businesses.last_order_no, без sequence).
 @Index('uq_order_number_per_business', ['businessId', 'orderNumber'], { unique: true })
 export class Order extends BaseEntity {
   @ManyToOne(() => Business, { nullable: false })
@@ -20,9 +19,6 @@ export class Order extends BaseEntity {
   @Column({ type: 'uuid' })
   businessId!: string;
 
-  // Короткий последовательный номер заказа (для человека — удобно писать/диктовать).
-  // id остаётся uuid (анти-IDOR), а в UI/уведомлениях показываем orderNumber.
-  // Выдаётся в транзакции через BusinessesRepository.allocateOrderNumber.
   @Column({ type: 'int' })
   orderNumber!: number;
 
@@ -48,7 +44,9 @@ export class Order extends BaseEntity {
   @Column({ type: 'enum', enum: PaymentMethod })
   paymentMethod!: PaymentMethod;
 
-  // id сообщений карточек заказа в группах для live-обновления (FR-O5).
+  @Column({ type: 'uuid', nullable: true })
+  offerId!: string | null;
+
   @Column({ type: 'bigint', nullable: true })
   adminMsgId!: string | null;
 

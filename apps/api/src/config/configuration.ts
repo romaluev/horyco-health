@@ -23,22 +23,23 @@ export default () => ({
   },
   security: {
     tokenEncKey: process.env.TOKEN_ENC_KEY,
+    cspReportOnly: (process.env.CSP_REPORT_ONLY ?? 'true') === 'true',
   },
   bot: {
+    /** Переходный фолбэк для initData/HMAC, если у бизнеса ещё нет bot_token_enc. */
     token: process.env.BOT_TOKEN,
     username: process.env.BOT_USERNAME,
     webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET,
     // Один инстанс получает апдейты (AR-14): на остальных BOT_ENABLED=false.
     enabled: (process.env.BOT_ENABLED ?? 'true') === 'true',
+    publicUrl: process.env.PUBLIC_URL,
+    mode: (process.env.BOT_MODE ?? 'webhook') as 'webhook' | 'polling',
     // Публичный URL Mini App (кнопка открытия приложения в боте).
     webAppUrl: process.env.WEB_APP_URL,
   },
   telegram: {
+    /** Seed platform-admin флага is_platform_admin при первом /start. */
     adminIds: parseIds(process.env.ADMIN_TELEGRAM_IDS),
-    channelId: process.env.CHANNEL_ID,
-    cooksGroupId: process.env.COOK_GROUP_ID,
-    couriersGroupId: process.env.COURIER_GROUP_ID,
-    adminGroupId: process.env.ADMIN_GROUP_ID,
   },
   cors: {
     origins: parseIds(process.env.CORS_ORIGINS),

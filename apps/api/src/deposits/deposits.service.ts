@@ -25,6 +25,7 @@ export interface AdminDepositResult {
 }
 
 interface BalanceNotifyPayload {
+  businessId: string;
   target: Client;
   amount: Money;
   /** Баланс кошелька после операции. */
@@ -84,7 +85,7 @@ export class DepositsService {
 
     return {
       result: { deposit: new DepositResponseDto(deposit), balance: newBalance.toString() },
-      notify: { target, amount, newBalance, direction: 'deposit' },
+      notify: { businessId, target, amount, newBalance, direction: 'deposit' },
     };
   }
 
@@ -116,12 +117,12 @@ export class DepositsService {
 
     return {
       balance: newBalance.toString(),
-      notify: { target, amount, newBalance, direction: 'debit' },
+      notify: { businessId, target, amount, newBalance, direction: 'debit' },
     };
   }
 
   private async notifyBalanceChange(payload: BalanceNotifyPayload): Promise<void> {
-    const { target, amount, newBalance, direction } = payload;
+    const { businessId, target, amount, newBalance, direction } = payload;
     const amt = amount.toString();
     const bal = newBalance.toString();
     const safeName = escapeHtml(target.name);
@@ -136,9 +137,9 @@ export class DepositsService {
         : balanceWithdrawAdminMessage(safeName, amt, bal);
 
     if (target.telegramId) {
-      await this.notifier?.notifyUser(target.telegramId, userMsg);
+      await this.notifier?.notifyUser(businessId, target.telegramId, userMsg);
     }
-    await this.notifier?.notifyGroup(NotifyGroup.Admins, adminMsg);
+    await this.notifier?.notifyGroup(businessId, NotifyGroup.Admins, adminMsg);
   }
 
   async myHistory(): Promise<DepositResponseDto[]> {

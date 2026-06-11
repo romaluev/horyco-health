@@ -19,8 +19,17 @@ export interface ActorContext {
   source: 'bot' | 'api';
 }
 
+/** Бизнес, чей бот принял текущий апдейт (ставится bot-middleware на КАЖДЫЙ апдейт). */
+export interface BotBusinessContext {
+  id: string;
+  slug: string;
+  botUsername: string | null;
+}
+
 /** Типизированное хранилище CLS приложения. */
 export interface AppClsStore extends ClsStore {
   correlationId: string;
   actor?: ActorContext;
+  /** Тенант текущего бот-апдейта — существует и ДО регистрации клиента (actor ещё пуст). */
+  botBusiness?: BotBusinessContext;
 }

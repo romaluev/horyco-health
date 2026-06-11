@@ -2,14 +2,17 @@
 
 import { useState, type ReactNode } from 'react';
 import { Language } from '@eatfit/shared';
-import { useMenuItem, useCart, useAddToCart, useSetQuantity } from '@/lib/queries';
+import { useQuery } from '@tanstack/react-query';
+import { useMenuItem, useCart } from '@/lib/queries';
+import { useUpsertCartLine } from '@/lib/offers-queries';
 import { useUiStore } from '@/store/ui.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/lib/i18n';
 import { formatMoney, pick } from '@/lib/format';
 import { Stepper } from '@/components/Stepper';
+import { ModifierPicker, type ModifierGroupDto } from '@/components/backoffice/ModifierPicker';
+import { api } from '@/lib/api';
 
-/** Сворачиваемая секция (состав / аллергены / КБЖУ). По умолчанию раскрыта. */
 function Accordion({ title, children }: { title: string; children: ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
@@ -23,11 +26,6 @@ function Accordion({ title, children }: { title: string; children: ReactNode }) 
   );
 }
 
-/**
- * Детальная карточка блюда (раскладка по референсу): шапка с «Назад», фото, блок названия
- * с описанием, цена + вес + дедлайн, аккордеоны состав/аллергены/КБЖУ, снизу — добавление в корзину.
- * Стили — свои (тема Mini App), из референса взята только компоновка.
- */
 export function DishDetail() {
   const t = useT();
   const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
@@ -35,20 +33,48 @@ export function DishDetail() {
   const close = useUiStore((s) => s.closeDetail);
   const { data: item, isLoading } = useMenuItem(id);
   const { data: cart } = useCart();
-  const add = useAddToCart();
-  const setQty = useSetQuantity();
-  const busy = add.isPending || setQty.isPending;
-  // Выбранная порция (1 — обычная, 2 — вторая со своей ценой).
+  const upsertLine = useUpsertCartLine();
   const [portion, setPortion] = useState(1);
+  const [modifierIds, setModifierIds] = useState<string[]>([]);
+
+  const { data: modifierGroups } = useQuery({
+    queryKey: ['menu', id, 'modifier-groups'],
+    queryFn: () => api<ModifierGroupDto[]>(`/menu/${id}/modifier-groups`),
+    enabled: Boolean(id),
+  });
 
   if (!id) return null;
 
-  const qty =
-    cart?.items.find((i) => i.menuItemId === id && i.portion === portion)?.quantity ?? 0;
+  const line = cart?.items.find(
+    (i) =>
+      i.kind === 'dish' &&
+      i.menuItemId === id &&
+      i.portion === portion &&
+      JSON.stringify(i.modifiers.map((m) => m.id).sort()) === JSON.stringify([...modifierIds].sort()),
+  );
+  const qty = line?.quantity ?? 0;
+  const busy = upsertLine.isPending;
+
   const change = (q: number) => {
-    if (q <= 0) setQty.mutate({ menuItemId: id, quantity: 0, portion });
-    else if (qty === 0) add.mutate({ menuItemId: id, portion });
-    else setQty.mutate({ menuItemId: id, quantity: q, portion });
+    if (q <= 0 && line) {
+      upsertLine.mutate({
+        kind: 'dish',
+        menuItemId: id,
+        portion,
+        modifierIds,
+        quantity: 0,
+        lineId: line.lineId,
+      });
+      return;
+    }
+    upsertLine.mutate({
+      kind: 'dish',
+      menuItemId: id,
+      portion,
+      modifierIds,
+      quantity: q,
+      lineId: line?.lineId,
+    });
   };
 
   const header = (
@@ -76,17 +102,23 @@ export function DishDetail() {
   const desc = pick(lang, item.descriptionRu, item.descriptionUz);
   const contains = pick(lang, item.allergens?.containsRu, item.allergens?.containsUz);
   const mayContain = pick(lang, item.allergens?.mayContainRu, item.allergens?.mayContainUz);
-  // КБЖУ — по выбранной порции (у порций разные вес/цена/КБЖУ; состав общий).
   const nut = portion === 2 ? item.nutrition2 : item.nutrition;
   const hasNutrition =
     nut && (nut.calories != null || nut.protein != null || nut.fat != null || nut.carbs != null);
-
-  // Вторая порция доступна, когда задана price2. Цена/вес — по выбранной порции.
   const has2 = item.price2 != null;
   const curPrice = portion === 2 && item.price2 != null ? item.price2 : item.price;
   const curWeight = portion === 2 ? item.weightGrams2 : item.weightGrams;
   const portionLabel = (p: number, w: number | null, price: string) =>
     `${w != null ? `${w} ${t('unit_gram')}` : `${t('portion')} ${p}`} · ${formatMoney(price)} ${t('currency')}`;
+
+  const modDelta =
+    modifierGroups?.reduce((sum, g) => {
+      for (const m of g.modifiers) {
+        if (modifierIds.includes(m.id)) sum += Number(m.priceDelta);
+      }
+      return sum;
+    }, 0) ?? 0;
+  const displayPrice = Number(curPrice) + modDelta;
 
   return (
     <div className="dd">
@@ -112,26 +144,24 @@ export function DishDetail() {
           <div className="dd-portions">
             <div className="dd-portions-title">{t('portion_choose')}</div>
             <div className="seg">
-              <button
-                className={portion === 1 ? 'active' : ''}
-                onClick={() => setPortion(1)}
-              >
+              <button className={portion === 1 ? 'active' : ''} onClick={() => setPortion(1)}>
                 {portionLabel(1, item.weightGrams, item.price)}
               </button>
-              <button
-                className={portion === 2 ? 'active' : ''}
-                onClick={() => setPortion(2)}
-              >
+              <button className={portion === 2 ? 'active' : ''} onClick={() => setPortion(2)}>
                 {portionLabel(2, item.weightGrams2, item.price2 as string)}
               </button>
             </div>
           </div>
         )}
 
+        {modifierGroups && modifierGroups.length > 0 && (
+          <ModifierPicker groups={modifierGroups} selectedIds={modifierIds} onChange={setModifierIds} />
+        )}
+
         <div className="dd-price-row">
           <div>
             <div className="dd-price">
-              {formatMoney(curPrice)} {t('currency')}
+              {formatMoney(String(displayPrice))} {t('currency')}
             </div>
             {curWeight != null && (
               <div className="dd-weight">
@@ -189,33 +219,25 @@ export function DishDetail() {
                 {nut!.calories != null && (
                   <tr>
                     <td>{t('nut_calories')}</td>
-                    <td>
-                      {nut!.calories} {t('unit_kcal')}
-                    </td>
+                    <td>{nut!.calories} {t('unit_kcal')}</td>
                   </tr>
                 )}
                 {nut!.protein != null && (
                   <tr>
                     <td>{t('nut_protein')}</td>
-                    <td>
-                      {nut!.protein} {t('unit_gram')}
-                    </td>
+                    <td>{nut!.protein} {t('unit_gram')}</td>
                   </tr>
                 )}
                 {nut!.fat != null && (
                   <tr>
                     <td>{t('nut_fat')}</td>
-                    <td>
-                      {nut!.fat} {t('unit_gram')}
-                    </td>
+                    <td>{nut!.fat} {t('unit_gram')}</td>
                   </tr>
                 )}
                 {nut!.carbs != null && (
                   <tr>
                     <td>{t('nut_carbs')}</td>
-                    <td>
-                      {nut!.carbs} {t('unit_gram')}
-                    </td>
+                    <td>{nut!.carbs} {t('unit_gram')}</td>
                   </tr>
                 )}
               </tbody>

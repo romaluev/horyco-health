@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Transactional } from '@nestjs-cls/transactional';
-import { Language, MemberRole, Role } from '@eatfit/shared';
+import { Language, Role } from '@eatfit/shared';
 import { ConflictError } from '../common/errors/domain-error';
+import { ActorContextService } from '../common/cls/actor-context.service';
 import { ClientRepository } from '../clients/clients.repository';
 import { Client } from '../clients/entities/client.entity';
 import { BalanceService } from '../clients/balance/balance.service';
@@ -12,24 +13,20 @@ import { BusinessesRepository } from '../businesses/businesses.repository';
 import { BusinessCustomersRepository } from '../businesses/business-customers.repository';
 import { BusinessMembersRepository } from '../businesses/business-members.repository';
 import { DefaultBusinessService } from '../businesses/default-business.service';
+import { deriveActorRole } from '../businesses/membership.util';
 import { decryptToken, parseEncKey } from '../businesses/token-crypto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { StaffBusinessDto } from './dto/staff-business.dto';
+import { StaffLoginResponseDto } from './dto/staff-login-response.dto';
+import { SwitchBusinessDto } from './dto/switch-business.dto';
 import { ActorKind, JwtPayload } from './jwt-payload';
 import { hashPassword, verifyPassword } from './password';
 import { verifyTelegramInitData } from './telegram-initdata';
 
 // initData валиден ограниченное время (анти-replay).
 const INITDATA_MAX_AGE_SECONDS = 86400;
-
-/** Членство → производная legacy-роль для токена/гардов. */
-const MEMBER_TO_ROLE: Record<MemberRole, Role> = {
-  [MemberRole.Owner]: Role.Admin,
-  [MemberRole.Manager]: Role.Admin,
-  [MemberRole.Cook]: Role.Cook,
-  [MemberRole.Courier]: Role.Courier,
-};
 
 @Injectable()
 export class AuthService {
@@ -42,6 +39,7 @@ export class AuthService {
     private readonly balanceSvc: BalanceService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly actorCtx: ActorContextService,
   ) {}
 
   /**
@@ -121,6 +119,81 @@ export class AuthService {
     return this.issue(client, business.id);
   }
 
+  /**
+   * Вход сотрудника (back office): телефон+пароль → список активных членств →
+   * JWT v2 (kind: staff) для первого бизнеса в списке.
+   */
+  @Transactional()
+  async staffLogin(dto: LoginDto): Promise<StaffLoginResponseDto> {
+    const client = await this.clients.findWebByPhone(dto.phone);
+    if (!client?.passwordHash || !verifyPassword(dto.password, client.passwordHash)) {
+      throw new UnauthorizedException('Неверный телефон или пароль');
+    }
+
+    const memberships = await this.members.findActiveByClient(client.id);
+    if (!memberships.length) {
+      throw new UnauthorizedException('Нет активных мест работы');
+    }
+
+    const staffBusinesses: StaffBusinessDto[] = [];
+    for (const member of memberships) {
+      const business = await this.businesses.findById(member.businessId);
+      if (business) staffBusinesses.push(new StaffBusinessDto(member, business));
+    }
+    if (!staffBusinesses.length) {
+      throw new UnauthorizedException('Нет активных мест работы');
+    }
+
+    const primary = staffBusinesses[0];
+    const { accessToken, balance } = await this.issueStaff(client, primary.businessId);
+    return new StaffLoginResponseDto(accessToken, client, balance, staffBusinesses);
+  }
+
+  /**
+   * Переключение staff-сессии на другой бизнес: новый JWT, скоупленный целевым тенантом.
+   */
+  @Transactional()
+  async switchBusiness(dto: SwitchBusinessDto): Promise<AuthResponseDto> {
+    const actor = this.actorCtx.getOrThrow();
+    if (actor.kind !== 'staff' && actor.kind !== 'platform') {
+      throw new ForbiddenException('Только для сотрудников');
+    }
+
+    const client = await this.clients.findById(actor.userId);
+    if (!client) {
+      throw new UnauthorizedException('Пользователь не найден');
+    }
+
+    const business = await this.resolveSwitchTarget(dto);
+    if (!client.isPlatformAdmin) {
+      const membership = await this.members.findActive(business.id, client.id);
+      if (!membership) {
+        throw new ForbiddenException('Нет доступа к этому бизнесу');
+      }
+    }
+
+    await this.customers.ensureExists(business.id, client.id);
+    return this.issue(client, business.id);
+  }
+
+  private async resolveSwitchTarget(dto: SwitchBusinessDto): Promise<Business> {
+    if (dto.biz?.trim()) {
+      const business = await this.businesses.findBySlug(dto.biz.trim());
+      if (!business) {
+        throw new UnauthorizedException('Неизвестный бизнес');
+      }
+      return business;
+    }
+    if (dto.businessId) {
+      const business = await this.businesses.findById(dto.businessId);
+      if (!business) {
+        throw new UnauthorizedException('Неизвестный бизнес');
+      }
+      return business;
+    }
+    throw new UnauthorizedException('Укажите biz или businessId');
+  }
+
   private async resolveBusiness(slug?: string): Promise<Business> {
     if (slug?.trim()) {
       const business = await this.businesses.findBySlug(slug.trim());
@@ -152,14 +225,21 @@ export class AuthService {
   }
 
   private async issue(client: Client, businessId: string): Promise<AuthResponseDto> {
-    // Роль и kind — производные от членства/платформенного флага на МОМЕНТ входа.
-    const membership = await this.members.findActive(businessId, client.id);
-    const role = membership ? MEMBER_TO_ROLE[membership.role] : Role.Client;
-    const kind: ActorKind = client.isPlatformAdmin ? 'platform' : membership ? 'staff' : 'customer';
+    const { accessToken, balance } = await this.issueStaff(client, businessId);
+    return new AuthResponseDto(accessToken, client, balance);
+  }
 
-    // Переходная страховка (до Phase 4): легаси-роль admin без членства тоже даёт админа,
-    // чтобы существующие админы (бэкфилл) не потеряли доступ при рассинхроне.
-    const effectiveRole = role === Role.Client && client.role !== Role.Client ? client.role : role;
+  private async issueStaff(
+    client: Client,
+    businessId: string,
+  ): Promise<{ accessToken: string; balance: Awaited<ReturnType<BalanceService['balanceOf']>> }> {
+    const membership = await this.members.findActive(businessId, client.id);
+    const effectiveRole = deriveActorRole(membership, client);
+    const kind: ActorKind = client.isPlatformAdmin
+      ? 'platform'
+      : membership
+        ? 'staff'
+        : 'customer';
 
     const payload: JwtPayload = {
       v: 2,
@@ -170,9 +250,7 @@ export class AuthService {
       kind: kind === 'customer' && effectiveRole !== Role.Client ? 'staff' : kind,
     };
     const accessToken = await this.jwt.signAsync(payload);
-    // Баланс кошелька для скоупленного бизнеса — включаем в ответ, чтобы фронт
-    // отобразил его без дополнительного /me запроса.
     const balance = await this.balanceSvc.balanceOf(client.id, businessId);
-    return new AuthResponseDto(accessToken, client, balance);
+    return { accessToken, balance };
   }
 }

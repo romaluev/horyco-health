@@ -1,24 +1,27 @@
 import { Category } from '@eatfit/shared';
+import { ModifierSnapshot, ComboSlotSnapshot } from '../../pricing/line-pricing.types';
 
 export interface CartItemView {
-  menuItemId: string;
-  category: Category;
+  lineId: string;
+  kind: 'dish' | 'combo';
+  menuItemId: string | null;
+  comboId: string | null;
+  category: Category | null;
   nameRu: string;
   nameUz: string;
   price: string;
   quantity: number;
   lineTotal: string;
-  // Выбранная порция и её вес (для отображения и идентичности строки).
   portion: number;
   weightGrams: number | null;
-  // Калорийность 1 шт выбранной порции (ккал); null, если КБЖУ не задан.
   calories: number | null;
+  modifiers: ModifierSnapshot[];
+  comboSlots: ComboSlotSnapshot[];
 }
 
 export class CartResponseDto {
   items: CartItemView[];
   total: string;
-  // Суммарная калорийность корзины (Σ калории×кол-во); null, если ни у одной позиции нет КБЖУ.
   totalCalories: number | null;
 
   constructor(items: CartItemView[], total: string) {

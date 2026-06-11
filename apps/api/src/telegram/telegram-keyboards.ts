@@ -95,3 +95,21 @@ export function detailButtonRow(
   const url = `${webAppUrl}${sep}dish=${encodeURIComponent(itemId)}`;
   return [Markup.button.webApp(t(lang, 'btn_details'), url)];
 }
+
+/** web_app → ComboDetail (?combo=id). */
+export function comboButtonRow(
+  lang: Lang,
+  comboId: string,
+  webAppUrl?: string,
+): InlineKeyboardButton[] | null {
+  if (!webAppUrl || !webAppUrl.startsWith('https://')) return null;
+  const sep = webAppUrl.includes('?') ? '&' : '?';
+  const url = `${webAppUrl}${sep}combo=${encodeURIComponent(comboId)}`;
+  return [Markup.button.webApp(t(lang, 'btn_webapp'), url)];
+}
+
+/** web_app → профиль / checkout registration. */
+export function profileButtonRow(lang: Lang, webAppUrl?: string): InlineKeyboardButton[] | null {
+  if (!webAppUrl || !webAppUrl.startsWith('https://')) return null;
+  return [Markup.button.webApp(t(lang, 'btn_profile'), webAppUrl)];
+}

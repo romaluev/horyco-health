@@ -1,5 +1,4 @@
-import { Logger } from '@nestjs/common';
-import { Update, Start, Command, Action, On, Ctx, Next } from 'nestjs-telegraf';
+import { Injectable, Logger } from '@nestjs/common';
 import { Markup } from 'telegraf';
 import type { Context } from 'telegraf';
 import type { Message, InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
@@ -7,7 +6,12 @@ import { Language, OrderStatus, PaymentMethod, Role } from '@eatfit/shared';
 import { Client } from '../../clients/entities/client.entity';
 import { ClientRepository } from '../../clients/clients.repository';
 import { MenuRepository } from '../../menu/menu.repository';
-import { DefaultBusinessService } from '../../businesses/default-business.service';
+import { ActorContextService } from '../../common/cls/actor-context.service';
+import { BusinessCustomersRepository } from '../../businesses/business-customers.repository';
+import { BusinessMembersRepository } from '../../businesses/business-members.repository';
+import { ModifiersRepository } from '../../modifiers/modifiers.repository';
+import { OffersService } from '../../offers/offers.service';
+import { MemberStatus } from '@eatfit/shared';
 import { CartService } from '../../orders/cart/cart.service';
 import { OrdersService } from '../../orders/orders.service';
 import { CartResponseDto } from '../../orders/cart/dto/cart-response.dto';
@@ -31,22 +35,18 @@ import {
 import { languageKeyboard, shareContactKeyboard } from '../telegram-keyboards';
 
 /**
- * Клиентские флоу бота (FR-B1/B2, FR-C, FR-M2, FR-O1/O8): /start + deep link, регистрация
- * (язык → имя → телефон → адрес), витрина меню со степпером корзины, профиль с
- * редактированием, баланс, поддержка, «мои заказы».
- *
- * Это ЕДИНСТВЕННЫЙ держатель общих @On('text'/'contact') — иначе telegraf разослал бы
- * апдейт нескольким классам. Доменные действия идут через сервисы (CartService/OrdersService),
- * которые берут actor из CLS (поставлен middleware) — bot-callback authz по роли/ownership.
+ * Клиентские флоу бота (FR-B1/B2, FR-C, FR-M2, FR-O1/O8): /start + deep link, регистрация,
+ * витрина меню, профиль, баланс, поддержка, «мои заказы».
+ * Единственный держатель общих on('text'/'contact') — text-router пробрасывает /команды дальше.
  */
-@Update()
+@Injectable()
 export class ClientUpdate {
   private readonly logger = new Logger(ClientUpdate.name);
 
   constructor(
     private readonly clients: ClientRepository,
     private readonly menu: MenuRepository,
-    private readonly defaultBusiness: DefaultBusinessService,
+    private readonly actorCtx: ActorContextService,
     private readonly cart: CartService,
     private readonly orders: OrdersService,
     private readonly state: BotStateService,
@@ -56,25 +56,19 @@ export class ClientUpdate {
     private readonly deposits: DepositsService,
     private readonly menuAdmin: BotMenuAdminService,
     private readonly balance: BalanceService,
+    private readonly customers: BusinessCustomersRepository,
+    private readonly members: BusinessMembersRepository,
+    private readonly modifiers: ModifiersRepository,
+    private readonly offers: OffersService,
   ) {}
 
   // ─────────────────────────── /start + deep link ───────────────────────────
 
-  @Start()
-  async onStart(@Ctx() ctx: Context): Promise<void> {
+  async onStart(ctx: Context): Promise<void> {
     const from = ctx.from;
     if (!from) return;
     const telegramId = String(from.id);
 
-    const text = this.text(ctx) ?? '';
-    const payload = text.split(' ').slice(1).join(' ').trim();
-    const m = payload.match(/^item_(.+)$/);
-    const deepItemId = m ? m[1] : null;
-    // «Подробнее» из поста в канал: /start detail_<id> → откроем деталь блюда (web_app в личке).
-    const md = payload.match(/^detail_(.+)$/);
-    const deepDetailId = md ? md[1] : null;
-
-    // Заготовка клиента для нового пользователя (роль client; админ-промоут — при auth).
     let client = await this.clients.findByTelegramId(telegramId);
     if (!client) {
       client = await this.clients.create({
@@ -88,22 +82,69 @@ export class ClientUpdate {
       client = await this.clients.save(client);
     }
 
-    // Регистрация не завершена — запускаем диалог (deep-link откроем после).
-    if (!this.isRegistered(client)) {
-      this.state.setSession(telegramId, 'register', 'language', { deepItemId, deepDetailId });
-      await ctx.reply(t(this.ui.langOf(client), 'choose_language'), languageKeyboard());
+    const text = this.text(ctx) ?? '';
+    const payload = text.split(' ').slice(1).join(' ').trim();
+
+    // Приглашение staff: /start staff_<token>
+    const staffMatch = payload.match(/^staff_(.+)$/);
+    if (staffMatch) {
+      await this.acceptStaffInvite(ctx, client, staffMatch[1], telegramId);
       return;
     }
 
+    const m = payload.match(/^item_(.+)$/);
+    const deepItemId = m ? m[1] : null;
+    const md = payload.match(/^detail_(.+)$/);
+    const deepDetailId = md ? md[1] : null;
+    const mc = payload.match(/^combo_(.+)$/);
+    const deepComboId = mc ? mc[1] : null;
+
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    await this.customers.ensureExists(businessId, client.id);
+
+    // B2C: меню сразу, регистрация только при checkout в Mini App.
     await this.ui.showMainMenu(ctx, client);
     if (deepItemId) await this.openDish(ctx, client, deepItemId);
     else if (deepDetailId) await this.openDishDetail(ctx, client, deepDetailId);
+    else if (deepComboId) await this.openComboDetail(ctx, client, deepComboId);
+  }
+
+  /** Активация приглашения staff по deep link. */
+  private async acceptStaffInvite(
+    ctx: Context,
+    client: Client,
+    token: string,
+    telegramId: string,
+  ): Promise<void> {
+    const lang = this.ui.langOf(client);
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const member = await this.members.findByInviteToken(token);
+    if (!member || member.businessId !== businessId) {
+      await ctx.reply(t(lang, 'error_generic'));
+      return;
+    }
+    if (!client.telegramId) {
+      client.telegramId = telegramId;
+      await this.clients.save(client);
+    }
+    if (member.clientId !== client.id) {
+      const invited = await this.clients.findById(member.clientId);
+      if (invited?.telegramId && invited.telegramId !== telegramId) {
+        await ctx.reply('Это приглашение предназначено другому аккаунту.');
+        return;
+      }
+      member.clientId = client.id;
+    }
+    member.status = MemberStatus.Active;
+    member.inviteToken = null;
+    await this.members.save(member);
+    await ctx.reply('✅ Вы приняли приглашение в команду!');
+    await this.ui.showMainMenu(ctx, client);
   }
 
   // ───────────────────────────── выбор языка ─────────────────────────────
 
-  @Action(/^lang:(ru|uz)$/)
-  async onLanguage(@Ctx() ctx: Context): Promise<void> {
+  async onLanguage(ctx: Context): Promise<void> {
     await ctx.answerCbQuery();
     const from = ctx.from;
     if (!from) return;
@@ -129,27 +170,23 @@ export class ClientUpdate {
 
   // ───────────────────────────── команды/кнопки ─────────────────────────────
 
-  @Command('menu')
-  async onMenuCommand(@Ctx() ctx: Context): Promise<void> {
+  async onMenuCommand(ctx: Context): Promise<void> {
     const client = await this.requireRegistered(ctx);
     if (client) await this.ui.renderMenu(ctx, client);
   }
 
-  @Command('profile')
-  async onProfileCommand(@Ctx() ctx: Context): Promise<void> {
+  async onProfileCommand(ctx: Context): Promise<void> {
     const client = await this.requireRegistered(ctx);
     if (client) await this.showProfile(ctx, client);
   }
 
   // ──────────────────── степпер витрины (edit-in-place) ────────────────────
 
-  @Action('qty:noop')
-  async onQtyNoop(@Ctx() ctx: Context): Promise<void> {
+  async onQtyNoop(ctx: Context): Promise<void> {
     await ctx.answerCbQuery();
   }
 
-  @Action(/^qty:(inc|dec):(.+):(\d+)$/)
-  async onQtyStep(@Ctx() ctx: Context): Promise<void> {
+  async onQtyStep(ctx: Context): Promise<void> {
     if (await this.dupCallback(ctx)) return;
     const dir = this.match(ctx, 1);
     const itemId = this.match(ctx, 2);
@@ -159,7 +196,7 @@ export class ClientUpdate {
     const lang = this.ui.langOf(client);
     try {
       // Актор может отсутствовать до регистрации — используем дефолтный бизнес.
-      const item = await this.menu.findById(await this.defaultBusiness.getId(), itemId);
+      const item = await this.menu.findById(this.actorCtx.getBusinessIdOrThrow(), itemId);
       if (!item) return void (await ctx.answerCbQuery());
       const qty = this.qtyInCart(await this.cart.getCart(), itemId, portion);
       const next = dir === 'inc' ? qty + 1 : Math.max(0, qty - 1);
@@ -174,8 +211,7 @@ export class ClientUpdate {
   }
 
   /** Переключение активной порции в карточке: перерисовываем подпись (цена/вес) + клавиатуру. */
-  @Action(/^portion:sel:(.+):(\d+)$/)
-  async onPortionSelect(@Ctx() ctx: Context): Promise<void> {
+  async onPortionSelect(ctx: Context): Promise<void> {
     if (await this.dupCallback(ctx)) return;
     const itemId = this.match(ctx, 1);
     const portion = Number(this.match(ctx, 2));
@@ -184,7 +220,7 @@ export class ClientUpdate {
     const lang = this.ui.langOf(client);
     await ctx.answerCbQuery();
     // Актор может отсутствовать до регистрации — используем дефолтный бизнес.
-    const item = await this.menu.findById(await this.defaultBusiness.getId(), itemId);
+    const item = await this.menu.findById(this.actorCtx.getBusinessIdOrThrow(), itemId);
     if (!item) return;
     const qty = this.qtyInCart(await this.cart.getCart(), itemId, portion);
     await this.ui.editDishCard(ctx, lang, item, portion, qty);
@@ -197,8 +233,7 @@ export class ClientUpdate {
 
   // ──────────────────── оформление заказа ────────────────────
 
-  @Action('cart:checkout')
-  async onCheckout(@Ctx() ctx: Context): Promise<void> {
+  async onCheckout(ctx: Context): Promise<void> {
     await ctx.answerCbQuery();
     const client = await this.requireRegistered(ctx);
     if (!client) return;
@@ -214,7 +249,7 @@ export class ClientUpdate {
       return;
     }
     await this.ui.deleteMenu(ctx, client.telegramId!); // витрина исчезает
-    const businessId = await this.defaultBusiness.getId();
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
     const balance = Number((await this.balance.balanceOf(client.id, businessId)).toString());
     const total = Number(cart.total);
     const rows: InlineKeyboardButton[][] = [];
@@ -227,8 +262,7 @@ export class ClientUpdate {
     });
   }
 
-  @Action('checkout:cancel')
-  async onCheckoutCancel(@Ctx() ctx: Context): Promise<void> {
+  async onCheckoutCancel(ctx: Context): Promise<void> {
     await ctx.answerCbQuery();
     try {
       await ctx.deleteMessage();
@@ -239,8 +273,7 @@ export class ClientUpdate {
     if (client) await this.ui.renderMenu(ctx, client);
   }
 
-  @Action(/^checkout:pay:(balance|cash)$/)
-  async onCheckoutPay(@Ctx() ctx: Context): Promise<void> {
+  async onCheckoutPay(ctx: Context): Promise<void> {
     await ctx.answerCbQuery();
     const client = await this.clients.findByTelegramId(String(ctx.from?.id));
     if (!client) return;
@@ -260,8 +293,7 @@ export class ClientUpdate {
 
   // ───────────────────────────── профиль ─────────────────────────────
 
-  @Action('profile:edit')
-  async onProfileEdit(@Ctx() ctx: Context): Promise<void> {
+  async onProfileEdit(ctx: Context): Promise<void> {
     await ctx.answerCbQuery();
     const client = await this.requireRegistered(ctx);
     if (!client) return;
@@ -278,8 +310,7 @@ export class ClientUpdate {
     );
   }
 
-  @Action(/^pedit:(name|phone|address|lang|password)$/)
-  async onProfileEditField(@Ctx() ctx: Context): Promise<void> {
+  async onProfileEditField(ctx: Context): Promise<void> {
     await ctx.answerCbQuery();
     const from = ctx.from;
     if (!from) return;
@@ -299,8 +330,7 @@ export class ClientUpdate {
     else await ctx.reply(t(lang, 'profile_ask_address'));
   }
 
-  @Action('topup')
-  async onTopup(@Ctx() ctx: Context): Promise<void> {
+  async onTopup(ctx: Context): Promise<void> {
     await ctx.answerCbQuery();
     const client = await this.clients.findByTelegramId(String(ctx.from?.id));
     if (!client) return;
@@ -321,8 +351,7 @@ export class ClientUpdate {
 
   // ───────────────────── общий роутер текста и контакта ─────────────────────
 
-  @On('contact')
-  async onContact(@Ctx() ctx: Context): Promise<void> {
+  async onContact(ctx: Context): Promise<void> {
     const from = ctx.from;
     if (!from) return;
     const session = this.state.getSession(from.id);
@@ -331,14 +360,13 @@ export class ClientUpdate {
     if (phone) await this.applyPhone(ctx, session.flow, String(phone));
   }
 
-  @On('photo')
-  async onPhoto(@Ctx() ctx: Context): Promise<void> {
+  async onPhoto(ctx: Context): Promise<void> {
     const from = ctx.from;
     if (!from) return;
     const session = this.state.getSession(from.id);
     if (session?.flow !== 'menu_add' && session?.flow !== 'menu_edit') return;
     const client = await this.clients.findByTelegramId(String(from.id));
-    if (!client || !this.ui.isAdmin(client)) return;
+    if (!client || !(await this.ui.isAdmin(client))) return;
     const photo = (ctx.message as Message.PhotoMessage | undefined)?.photo;
     if (photo?.length) await this.menuAdmin.setPhoto(ctx, client, photo[photo.length - 1].file_id);
   }
@@ -353,7 +381,7 @@ export class ClientUpdate {
   ): Promise<void> {
     const from = ctx.from!;
     const client = await this.clients.findByTelegramId(String(from.id));
-    if (!client || !this.ui.isAdmin(client)) {
+    if (!client || !(await this.ui.isAdmin(client))) {
       this.state.clearSession(from.id);
       return;
     }
@@ -361,8 +389,7 @@ export class ClientUpdate {
     else if (dishId) await this.menuAdmin.editText(ctx, client, dishId, step, text);
   }
 
-  @On('text')
-  async onText(@Ctx() ctx: Context, @Next() next: () => Promise<void>): Promise<void> {
+  async onText(ctx: Context, next: () => Promise<void>): Promise<void> {
     const from = ctx.from;
     // Команды (/start, /menu, /admin, ...) пробрасываем дальше — иначе этот общий
     // text-хендлер «проглотит» их, и @Command/@Start не сработают (в т.ч. в StaffUpdate).
@@ -403,13 +430,13 @@ export class ClientUpdate {
       case 'support':
         return this.showSupport(ctx, client);
       case 'cook':
-        if (this.hasRole(client, Role.Cook)) return this.staff.showCookPanel(ctx, client);
+        if (await this.hasRole(client, Role.Cook)) return this.staff.showCookPanel(ctx, client);
         return;
       case 'courier':
-        if (this.hasRole(client, Role.Courier)) return this.staff.showCourierPanel(ctx, client);
+        if (await this.hasRole(client, Role.Courier)) return this.staff.showCourierPanel(ctx, client);
         return;
       case 'admin':
-        if (this.ui.isAdmin(client)) return this.staff.showAdminOrders(ctx, client);
+        if (await this.ui.isAdmin(client)) return this.staff.showAdminOrders(ctx, client);
         return;
       default:
         return;
@@ -417,8 +444,8 @@ export class ClientUpdate {
   }
 
   /** Роль персонала: своя роль или админ (админ видит все панели). */
-  private hasRole(client: Client, role: Role): boolean {
-    return client.role === role || this.ui.isAdmin(client);
+  private async hasRole(client: Client, role: Role): Promise<boolean> {
+    return client.role === role || (await this.ui.isAdmin(client));
   }
 
   // ───────────────────────────── FSM шаги ─────────────────────────────
@@ -521,7 +548,7 @@ export class ClientUpdate {
   private async depositStep(ctx: Context, step: string, text: string): Promise<void> {
     const from = ctx.from!;
     const client = await this.clients.findByTelegramId(String(from.id));
-    if (!client || !this.ui.isAdmin(client)) {
+    if (!client || !(await this.ui.isAdmin(client))) {
       this.state.clearSession(from.id);
       return;
     }
@@ -578,7 +605,7 @@ export class ClientUpdate {
   private async withdrawStep(ctx: Context, step: string, text: string): Promise<void> {
     const from = ctx.from!;
     const client = await this.clients.findByTelegramId(String(from.id));
-    if (!client || !this.ui.isAdmin(client)) {
+    if (!client || !(await this.ui.isAdmin(client))) {
       this.state.clearSession(from.id);
       return;
     }
@@ -639,7 +666,7 @@ export class ClientUpdate {
   private async settingsEditStep(ctx: Context, step: string, text: string): Promise<void> {
     const from = ctx.from!;
     const client = await this.clients.findByTelegramId(String(from.id));
-    if (!client || !this.ui.isAdmin(client)) {
+    if (!client || !(await this.ui.isAdmin(client))) {
       this.state.clearSession(from.id);
       return;
     }
@@ -660,7 +687,7 @@ export class ClientUpdate {
   private async showProfile(ctx: Context, client: Client): Promise<void> {
     const lang = this.ui.langOf(client);
     const dash = '—';
-    const businessId = await this.defaultBusiness.getId();
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
     const bal = await this.balance.balanceOf(client.id, businessId);
     const lines = [
       `<b>${esc(t(lang, 'profile_title'))}</b>`,
@@ -677,7 +704,7 @@ export class ClientUpdate {
 
   private async showBalance(ctx: Context, client: Client): Promise<void> {
     const lang = this.ui.langOf(client);
-    const businessId = await this.defaultBusiness.getId();
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
     const bal = await this.balance.balanceOf(client.id, businessId);
     const text = `<b>${esc(t(lang, 'balance_title'))}</b>\n${esc(formatMoney(bal.toString()))} ${esc(t(lang, 'currency'))}`;
     await ctx.reply(text, {
@@ -742,13 +769,58 @@ export class ClientUpdate {
     });
   }
 
+  /** One-tap accept CRM offer (offer:accept:recipientId). */
+  async onOfferAccept(ctx: Context): Promise<void> {
+    const from = ctx.from;
+    if (!from) return;
+    const client = await this.clients.findByTelegramId(String(from.id));
+    if (!client) return;
+    const lang = this.ui.langOf(client);
+    const data = (ctx.callbackQuery as { data?: string })?.data ?? '';
+    const m = data.match(/^offer:accept:(.+)$/);
+    if (!m) return;
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    try {
+      const result = await this.offers.acceptOffer(m[1], businessId);
+      if (result.alreadyOrdered) {
+        await ctx.answerCbQuery('Уже оформлен');
+        return;
+      }
+      let msg = `✅ Заказ принят`;
+      if (result.priceNotice) {
+        msg += `\nЦена изменилась: ${result.priceNotice}`;
+      }
+      await ctx.answerCbQuery();
+      await ctx.reply(msg);
+    } catch (e) {
+      const err = e as DomainError;
+      if (err.message === 'NEED_ADDRESS') {
+        await ctx.answerCbQuery();
+        await this.ui.sendProfileLink(ctx, client);
+        return;
+      }
+      await ctx.answerCbQuery(this.errText(e, lang));
+    }
+  }
+
+  private async openComboDetail(ctx: Context, client: Client, comboId: string): Promise<void> {
+    const lang = this.ui.langOf(client);
+    await this.ui.sendComboLink(ctx, client, comboId);
+    void lang;
+  }
+
   /** Открыть блюдо из deep link: добавить 1 шт и показать витрину. */
   private async openDish(ctx: Context, client: Client, itemId: string): Promise<void> {
     const lang = this.ui.langOf(client);
-    // Актор может отсутствовать до регистрации — используем дефолтный бизнес.
-    const item = await this.menu.findById(await this.defaultBusiness.getId(), itemId);
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const item = await this.menu.findById(businessId, itemId);
     if (!item || !item.isActive) {
       await ctx.reply(t(lang, 'dish_not_found'));
+      return;
+    }
+    const required = await this.modifiers.hasRequiredModifiers(businessId, itemId);
+    if (required) {
+      await this.ui.sendDetailLink(ctx, client, item);
       return;
     }
     try {
@@ -764,7 +836,7 @@ export class ClientUpdate {
   private async openDishDetail(ctx: Context, client: Client, itemId: string): Promise<void> {
     const lang = this.ui.langOf(client);
     // Актор может отсутствовать до регистрации — используем дефолтный бизнес.
-    const item = await this.menu.findById(await this.defaultBusiness.getId(), itemId);
+    const item = await this.menu.findById(this.actorCtx.getBusinessIdOrThrow(), itemId);
     if (!item || !item.isActive) {
       await ctx.reply(t(lang, 'dish_not_found'));
       return;

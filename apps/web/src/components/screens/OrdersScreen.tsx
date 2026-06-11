@@ -24,7 +24,10 @@ export function OrdersScreen() {
             <span className="muted">{st(o.status)}</span>
           </div>
           <div className="dish-desc" style={{ marginTop: 6 }}>
-            {o.items.map((it) => `${it.nameRu} ×${it.quantity}`).join(', ')}
+            {o.items.map((it) => {
+              const mods = it.modifiers?.length ? ` (+${it.modifiers.length})` : '';
+              return `${it.nameRu}${mods} ×${it.quantity}`;
+            }).join(', ')}
           </div>
           <div className="row" style={{ marginTop: 6 }}>
             <span className="muted">{new Date(o.createdAt).toLocaleString()}</span>

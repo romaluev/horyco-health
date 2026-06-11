@@ -31,6 +31,14 @@ export class BusinessMembersRepository extends TransactionalRepository<BusinessM
     return this.repo.findOne({ where: { inviteToken: token } });
   }
 
+  findById(id: string): Promise<BusinessMember | null> {
+    return this.repo.findOne({ where: { id } });
+  }
+
+  findAny(businessId: string, clientId: string): Promise<BusinessMember | null> {
+    return this.repo.findOne({ where: { businessId, clientId } });
+  }
+
   create(data: Partial<BusinessMember>): Promise<BusinessMember> {
     return this.repo.save(this.repo.create(data));
   }

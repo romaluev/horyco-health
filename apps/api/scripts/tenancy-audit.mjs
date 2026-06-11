@@ -33,6 +33,7 @@ const EXEMPT_METHODS_GLOBAL = new Set([
 /** Исключения для конкретного файла: { filename → Set<methodName> } */
 const EXEMPT_FILE_METHODS = {
   'balance.repository.ts': new Set(['findByIdempotencyKey', 'create']),
+  'offers.repository.ts': new Set(['findSendingOffers']),
 };
 
 // ─────────────── обход файлов ───────────────
