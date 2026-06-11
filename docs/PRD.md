@@ -1,261 +1,211 @@
-# PRD — Рефакторинг Eat&fit (NestJS + TypeORM + Next.js SPA)
+# PRD — Eat&fit Platform (horyco-health)
 
 | | |
 |---|---|
-| **Продукт** | Eat&fit — сервис доставки еды: Telegram-бот + Mini App + сайт-витрина |
-| **Документ** | Требования к полному рефакторингу архитектуры |
-| **Версия** | 1.0 |
-| **Статус** | Черновик к реализации |
+| **Продукт** | Eat&fit — B2B2C маркетплейс dark-kitchen: Telegram-бот + Mini App + back office |
+| **Документ** | Полная продуктовая спецификация платформы |
+| **Версия** | 2.0 |
+| **Статус** | Launch-ready (Phases 0–10) |
 | **Язык продукта** | RU / UZ |
 
 ---
 
-## 1. Контекст и проблема
+## 1. Видение продукта
 
-### 1.1 Текущее состояние (as-is)
-- **Backend:** Node.js (CommonJS), `node-telegram-bot-api` (long polling), Express для Mini App, **сырые SQL-запросы** через `pg`. Бизнес-логика размазана по `handlers/*` и `web/*`, общее изменяемое состояние в `state.js`.
-- **Frontend:** vanilla JS (один `app.js`), без сборки, ручной рендер строками HTML.
-- **Авторизация:** Telegram `initData` (HMAC) проверяется в каждом запросе.
-- **БД:** PostgreSQL, схема в `db/schema.sql`, идемпотентный `migrate()` при старте (без версионируемых миграций).
-- **Деплой:** Railway, один процесс (бот + веб-сервер).
+**Eat&fit** — white-label платформа для dark-kitchen операторов. Каждый B2B-клиент получает:
 
-### 1.2 Проблемы
-- Нет слоёв и типобезопасности → сложно поддерживать и тестировать.
-- Дублирование логики между ботом и API; глобальное состояние.
-- Нет DTO-валидации, версионируемых миграций, автодокументации.
-- Фронтенд без компонентов/состояния/типов плохо масштабируется.
+- Собственный Telegram-бот и Mini App (`?biz=slug`)
+- Back office `/b`: меню, CRM, рассылки заказов, комбо, модификаторы, аналитика
+- Автоматизацию кухни/курьера через группы Telegram
+- Кошелёк клиента и отчёты
 
-### 1.3 Цель (to-be)
-Переписать систему на **NestJS + TypeORM** с трёхслойной архитектурой **Controller → Service → Repository**, принципами **SOLID / DRY / Singleton**, **DTO-валидацией** и **JWT-авторизацией**; фронтенд — **Next.js как SPA без SSR**, потребляющий API. Поведение для конечного пользователя сохраняется (паритет функций).
+B2C-клиент: `/start` → меню сразу, one-tap офферы, кастомизация только когда нужна.
 
 ---
 
-## 2. Цели и не-цели
+## 2. Пользователи и роли
 
-### 2.1 Цели
-- G1. Чистая модульная архитектура (Nest, 3 слоя, SOLID/DRY).
-- G2. Типобезопасность end-to-end (TypeScript + общие типы фронт/бэк).
-- G3. JWT-авторизация поверх проверки Telegram `initData`; ролевой доступ.
-- G4. Валидация входных данных (DTO) и единый формат ошибок.
-- G5. Чисто спроектированная схема БД (можно изменить полностью) + версионируемые миграции TypeORM.
-- G6. Frontend как поддерживаемый SPA (Next.js, CSR) с компонентами/состоянием.
-- G7. Полный паритет функционала бота и Mini App.
-- G8. Автодокументация API (Swagger).
+| Роль | Где | Возможности |
+|------|-----|-------------|
+| **client** | бот, Mini App | меню, корзина (линии + модификаторы), комбо, заказы, профиль, баланс |
+| **cook / courier** | бот (membership) | FSM заказов в группах |
+| **owner / manager** | `/b`, бот | меню, CRM, рассылки, комбо, модификаторы, staff, настройки, дашборд |
+| **platform admin** | `/platform` | создание/ suspend бизнесов, GMV-метрики |
 
-### 2.2 Не-цели (out of scope этого рефактора)
-- Новые продуктовые фичи (только перенос существующих).
-- Смена СУБД-движка (остаёмся на PostgreSQL — но **схему БД можно проектировать заново**, см. §2.3 и §5.3).
-- Платёжный шлюз/онлайн-оплата (оплата как сейчас: баланс / при получении).
-- Микросервисы (остаёмся в модульном монолите).
-
-### 2.3 Допущения проекта (этап до продакшна)
-Продукт **ещё не в продакшне**, поэтому:
-- **A1. Тесты пропускаем** на этом этапе — приоритет скорости рефактора. Автотесты (unit/e2e) и CI — на будущее.
-- **A2. Данные одноразовые** — текущую БД можно дропнуть/пересоздать; миграция/сохранение существующих записей не требуется.
-- **A3. Схему БД можно полностью перепроектировать** — не обязаны повторять текущую структуру; делаем чистую, нормализованную модель с правильными типами/enum/индексами/именованием.
-- **A4. Допустим `synchronize: true` в dev** для скорости; перед продом фиксируем схему первой миграцией и переходим на `synchronize: false`.
+Platform-admin seed: `ADMIN_TELEGRAM_IDS` (env). Остальные роли — через `business_members`.
 
 ---
 
-## 3. Пользователи и роли
-| Роль | Где работает | Возможности |
-|---|---|---|
-| **client** | бот, Mini App, сайт | меню, корзина, заказы, профиль, баланс, поддержка |
-| **cook** | бот | приём заказов в работу → готово |
-| **courier** | бот | взять доставку → доставлено |
-| **admin** | бот, Mini App | меню (CRUD/фото), пользователи (роли), депозиты, заказы (статусы/отмена с возвратом), посты в канал, настройки, итоги дня |
+## 3. Модель данных (ключевое)
 
-Админ определяется списком `ADMIN_TELEGRAM_IDS` (env). Роли cook/courier — назначаются админом.
+### 3.1 Блюдо (`menu_items`)
 
----
+Поля: ru/uz название и описание, цена, dual portions (`price2`, `weightGrams2`), `ingredients[]`, `allergens`, `nutrition`/`nutrition2`, `days[]`, `orderDeadline`, фото.
 
-## 4. Функциональные требования (паритет + улучшения)
+**Модификаторы:** join `menu_item_modifier_groups` → группы SINGLE/MULTIPLE, FREE/PAID, `is_required`.
 
-### 4.1 Авторизация
-- **FR-A1.** `POST /auth/telegram { initData }` — проверка HMAC по `BOT_TOKEN`, апсерт клиента, выдача **JWT** (`sub=telegram_id`, `role`, exp). Хранение/обновление `username`.
-- **FR-A2.** Защита ручек `JwtAuthGuard`; публичные помечаются `@Public()`.
-- **FR-A3.** Ролевой доступ `@Roles(...)` + `RolesGuard` (admin/cook/courier).
-- **FR-A4.** Бот идентифицирует пользователя по Telegram-апдейтам (внутренний доступ, без JWT).
+**Витрина:** `hasRequiredModifiers` на DTO — бот открывает web_app вместо stepper.
 
-### 4.2 Клиенты / профиль
-- **FR-C1.** Регистрация (имя, телефон, адрес, язык) — в боте (пошагово) и в Mini App (форма).
-- **FR-C2.** Просмотр/редактирование профиля; смена языка (ru/uz).
-- **FR-C3.** Баланс: просмотр; кнопка «Пополнить» с контактами из настроек.
-- **FR-C4.** Поиск клиентов админом по телефону / `@username` / telegram_id.
+### 3.2 Комбо (`combos`, `combo_slots`, `combo_slot_options`)
 
-### 4.3 Меню
-- **FR-M1.** Категории: main / drink / dessert; поля ru/uz (название, описание), цена, фото, активность.
-- **FR-M2.** Витрина активных блюд (бот, Mini App, сайт).
-- **FR-M3.** Админ-CRUD: создать / изменить / скрыть-показать / удалить.
-- **FR-M4.** Фото блюда: хранится как URL или Telegram `file_id`; отдаётся эндпоинтом `GET /menu/:id/photo` (резолв `file_id` через Bot API, проксирование). Загрузка фото из Mini App (`POST /admin/upload`) и из бота.
+Цена комбо + surcharges по слотам + модификаторы. `original_price` — display-only. Канал: `?start=combo_<id>`.
 
-### 4.4 Корзина и заказы
-- **FR-O1.** Корзина: добавление/изменение количества (степпер), пересчёт суммы.
-- **FR-O2.** Оформление: адрес (из профиля), комментарий (или без), выбор оплаты (с баланса / при получении).
-- **FR-O3.** Создание заказа — **атомарно** (транзакция): проверка/списание баланса (`FOR UPDATE`), `order` + `order_items`; цены берутся из БД.
-- **FR-O4.** Жизненный цикл статусов: `pending → confirmed → cooking → ready → delivering → done | cancelled` (конечный автомат, валидные переходы в одном месте).
-- **FR-O5.** Уведомления: клиенту о смене статуса (RU/UZ, milestone-тексты); в группу поваров (новый заказ); в группу курьеров (готов); в админ-группу (карточка заказа с live-обновлением по `admin_msg_id`, также `cook_msg_id` / `courier_msg_id` для групп поваров/курьеров).
-- **FR-O6.** Отмена админом — статус `cancelled` + **возврат** оплаченного с баланса + уведомления.
-- **FR-O7.** «Мои заказы» (клиент) и обзор/управление заказами (админ).
-- **FR-O8.** Deep link `?start=item_<id>` — блюдо в корзину (1 шт) и открытие меню.
+### 3.3 Корзина и заказы
 
-### 4.5 Депозиты
-- **FR-D1.** Пополнение баланса админом (поиск клиента + сумма), транзакция + запись в `deposits`, уведомление клиенту и в админ-группу.
-- **FR-D2.** История пополнений (бот).
+- `CartLine`: `lineId`, `kind` (dish|combo), `portion`, `modifierIds[]`, `slotSelections`, `quantity`
+- Legacy `POST /cart/items` — для bot stepper (без модификаторов)
+- `POST /cart/lines` — Mini App и offer composer
 
-### 4.6 Настройки
-- **FR-S1.** `app_settings` (key/value): контакты пополнения (Telegram/телефон), назначение кнопки «Поддержка». Чтение/изменение из бота и Mini App-админки.
+**Снапшоты в `order_items`:** `name_*_snapshot`, `nutrition_snapshot`, `ingredients_snapshot`, `allergens_snapshot`, `modifiers_snapshot`, `combo_selections_snapshot` — история заказов не теряет детали при изменении меню.
 
-### 4.7 Бот
-- **FR-B1.** Команды: `/start` (+deep link), `/menu`, `/orders`, `/profile`, `/admin`.
-- **FR-B2.** Reply-клавиатура главного меню по роли; кнопка/menu-button открытия Mini App.
-- **FR-B3.** Все интерфейсы повара/курьера/админа (inline-кнопки) — паритет с текущим.
-- **FR-B4.** Генерация и публикация постов блюд в канал (`CHANNEL_ID`), кнопка «Заказать» (deep link).
+### 3.4 CRM / Offers
 
-### 4.8 Отчёты
-- **FR-R1.** Итоги дня в админ-группу: авто по cron (`TZ_OFFSET_HOURS`, `DAILY_REPORT_HOUR`, по умолч. 19:00 UTC+5) и по кнопке.
+- `offers` + `offer_recipients` (sent → opened → ordered)
+- Back office: compose cart → select CRM → broadcast FIFO
+- Customer DM: ✅ one-tap (`offer:accept:<id>`) | ✏️ customize (prefilled cart)
 
-### 4.9 Frontend (Mini App / сайт)
-- **FR-F1.** Экраны: Меню, Корзина, Заказы, Профиль, Регистрация, Админка (разделы: заказы, меню, пользователи, депозиты, настройки).
-- **FR-F2.** Внутри Telegram — полный функционал; в браузере без Telegram — витрина с «Открыть в Telegram».
-- **FR-F3.** Гейт регистрации: незарегистрированный клиент видит форму регистрации.
-- **FR-F4.** Вкладка «Админ» — только зарегистрированным админам.
-- **FR-F5.** i18n RU/UZ; темы: авто / светлая / тёмная (переключатель + системная/Telegram).
-- **FR-F6.** Список пользователей в админке — все, поиск как живой фильтр.
+### 3.5 Тенантность
+
+- `businesses`, `business_customers` (кошелёк per-business), `business_members`, `business_chats`
+- Per-business bot token (AES-256-GCM, `TOKEN_ENC_KEY`)
+- Webhook: `POST /api/tg/wh/:businessId`
 
 ---
 
-## 5. Нефункциональные требования
+## 4. API (основные поверхности)
 
-### 5.1 Архитектура (NestJS)
-- **NFR-1 (3 слоя).** Каждый домен: `Controller` (HTTP/DTO) → `Service` (бизнес-логика/транзакции) → `Repository` (доступ к данным). Контроллеры тонкие.
-- **NFR-2 (SOLID).**
-  - *SRP:* один модуль/сервис — одна ответственность.
-  - *OCP:* стратегия оплаты, конечный автомат статусов — расширяемы без правки существующего.
-  - *LSP/ISP:* мелкие интерфейсы (`INotifier`, `IOrderRepository`, `IPaymentStrategy`).
-  - *DIP:* сервисы зависят от абстракций (интерфейсы + DI-токены), не от TypeORM/Telegram напрямую.
-- **NFR-3 (DRY).** Базовые `BaseCrudService<T>` / `BaseRepository<T>`; общая бизнес-логика переиспользуется ботом и API; общие типы в `libs/shared`.
-- **NFR-4 (Singleton).** Провайдеры Nest — синглтоны DI-контейнера (пул БД, бот, конфиг, сервисы). Глобальный `state.js` заменяется провайдером с состоянием (`CartService`).
+### 4.1 Публичные / клиент
 
-### 5.2 Валидация и ошибки
-- **NFR-5.** DTO + `class-validator`/`class-transformer`, глобальный `ValidationPipe({ whitelist: true, transform: true })`.
-- **NFR-6.** Глобальный `ExceptionFilter` → `{ statusCode, error, message }`; коды ошибок согласованы с фронтом.
-- **NFR-7.** Swagger-документация API (`@nestjs/swagger`).
+| Endpoint | Описание |
+|----------|----------|
+| `GET /menu` | Витрина + `hasRequiredModifiers` |
+| `GET /menu/:id/modifier-groups` | Группы модификаторов блюда |
+| `POST /cart/lines` | Upsert строки корзины |
+| `POST /orders` | Checkout |
+| `GET /combos/:id` | Детали комбо |
 
-### 5.3 Данные
-- **NFR-8.** TypeORM. **Схему проектируем заново** (чистая модель, см. §2.3-A3): корректные типы, `enum` для роли/статуса/категории/языка, внешние ключи, индексы под выборки, аудит-поля (`created_at`/`updated_at`), консистентное именование. В dev допустим `synchronize: true`; перед продом — фиксируем первой миграцией и переключаемся на `synchronize: false` (только миграции).
-- **NFR-9.** Денежные суммы — `decimal` с числовым трансформером; создание заказа и пополнение/возврат — в транзакции с `FOR UPDATE` на балансе.
+### 4.2 Back office `/b`
 
-### 5.4 Безопасность
-- **NFR-10.** Проверка `initData` HMAC; `JWT_SECRET` в env; короткий TTL access-токена; роли в токене проверяются гвардом (не доверяем клиенту).
-- **NFR-11.** Токен бота не утекает клиенту (фото проксируется сервером).
-- **NFR-12.** CORS настроен под домен(ы) фронта.
+| Endpoint | Описание |
+|----------|----------|
+| `GET /b/analytics?range=today\|7d\|30d` | Дашборд: выручка, AOV, топ, воронка офферов |
+| `GET/POST /b/offers` | CRM-рассылки |
+| `GET/POST /b/modifiers` | CRUD модификаторов |
+| `GET/POST /b/combos` | CRUD комбо |
+| `GET /b/settings`, `/b/staff`, `/b/checklist` | Онбординг и staff |
 
-### 5.5 Frontend
-- **NFR-13.** Next.js **без SSR** (CSR / `output: export`): никаких серверных компонентов/`getServerSideProps`.
-- **NFR-14.** TypeScript; состояние — Zustand; запросы/кеш — TanStack Query; формы — react-hook-form + zod; типы из `libs/shared`.
-- **NFR-15.** Доступность темизации (Telegram theme vars + ручной выбор), адаптив (мобайл/десктоп).
+### 4.3 Platform `/platform`
 
-### 5.6 Прочее
-- **NFR-16.** Структурное логирование (Nest Logger/pino).
-- **NFR-17.** Конфиг через `@nestjs/config` с валидацией env (Joi/zod) на старте.
-- **NFR-18.** Совместимость деплоя с Railway.
+| Endpoint | Описание |
+|----------|----------|
+| `GET /platform/metrics` | Агрегаты + GMV/orders per business |
+| CRUD `/platform/businesses` | Жизненный цикл бизнеса |
 
----
+### 4.4 Auth
 
-## 6. Техническая архитектура
-
-### 6.1 Монорепозиторий
-```
-eatfit/
-├─ apps/api/      # NestJS: REST API + Telegram-бот
-├─ apps/web/      # Next.js SPA
-├─ libs/shared/   # общие DTO/типы/enum
-└─ npm workspaces
-```
-
-### 6.2 Backend-модули
-`ConfigModule`, `DatabaseModule`, `AuthModule`, `ClientsModule`, `MenuModule`, `OrdersModule`, `DepositsModule`, `SettingsModule`, `TelegramModule`, `ReportsModule`, `CommonModule`.
-
-### 6.3 Сущности
-`Client`, `MenuItem`, `Order`, `OrderItem`, `Deposit`, `AppSetting` + enum `Role`, `OrderStatus`, `Category`, `Language`. Связи: `Order→Client`, `OrderItem→Order/MenuItem`, `Deposit→Client`.
-
-### 6.4 API (черновой контур)
-```
-POST   /auth/telegram
-GET    /menu                 GET /menu/:id/photo
-GET    /me                   PUT /me
-GET    /orders               POST /orders
-GET    /config
-# admin (Roles=admin)
-GET    /admin/stats
-GET    /admin/orders         POST /admin/orders/:id/status
-GET/POST/PUT/DELETE /admin/menu(/:id)   POST /admin/upload
-GET    /admin/users          POST /admin/users/:id/role
-POST   /admin/deposits
-GET/PUT /admin/settings
-```
-
-### 6.5 Telegram-бот
-`nestjs-telegraf` (рекомендация); Update-классы/провайдеры переиспользуют доменные сервисы. `NotificationService implements INotifier`.
-
-### 6.6 Frontend
-Next.js App Router (client-only), `lib/api` (типизированный клиент + JWT), `lib/auth` (обмен initData→JWT), `lib/telegram` (WebApp SDK/тема), `store` (Zustand), компоненты по фичам.
-
-### 6.7 Деплой
-**Вариант A (по умолчанию):** один сервис — Nest отдаёт собранный статический Next + API + бот. Env + `JWT_SECRET`, `JWT_EXPIRES_IN`.
+| Endpoint | Throttle |
+|----------|----------|
+| `POST /auth/*` | 15 req/min |
+| Webhook `/tg/wh/*` | 600 req/min per IP |
 
 ---
 
-## 7. Этапы и вехи (бот остаётся рабочим)
-1. **M1 — Каркас:** монорепо, Nest-скелет, TypeORM DataSource (dev: `synchronize: true`), ConfigModule.
-2. **M2 — Данные:** заново спроектированные сущности + репозитории (чистая схема, БД пересоздаётся).
-3. **M3 — Auth:** initData→JWT, guards, roles.
-4. **M4 — API-домены:** Menu → Clients → Orders → Deposits → Settings (DTO/валидация, паритет `/api/*`).
-5. **M5 — Бот:** перенос хендлеров на общие сервисы (паритет).
-6. **M6 — Отчёты:** cron итогов дня.
-7. **M7 — Frontend:** Next SPA, все экраны на API+JWT.
-8. **M8 — Свитч деплоя**, регрессии, удаление старого стека (`src/`, `public/`, raw `pg`).
+## 5. UX-поверхности
 
-Каждая веха — отдельный PR с зелёными тестами; старый стек жив до закрытия паритета.
+### 5.1 B2C Mini App
 
----
+- **MenuScreen** — категории, калории (optional)
+- **DishDetail** — KBJU, аллергены, порции, **ModifierPicker** → `POST /cart/lines`
+- **ComboDetail** — slot pickers
+- **CartScreen** — sub-lines модификаторов, calorie total
+- **AppGate** — friendly screen без `?biz=`
 
-## 8. Критерии приёмки (Definition of Done)
-- **AC-1.** Все FR из §4 работают с паритетом текущему поведению (бот + Mini App + сайт).
-- **AC-2.** Каждый домен реализован в 3 слоя; контроллеры не содержат бизнес-логики.
-- **AC-3.** Все входные данные валидируются DTO; ошибки в едином формате.
-- **AC-4.** Авторизация по JWT + роли; админ-ручки недоступны не-админам (проверено тестом).
-- **AC-5.** Схема создаётся из сущностей; перед продом зафиксирована первой миграцией, `synchronize=false`. (Сохранение текущих данных не требуется — §2.3-A2.)
-- **AC-6.** Frontend — SPA без SSR; собирается и работает в Telegram и в браузере.
-- **AC-7.** Ручная проверка паритета по чек-листу `FR-*` пройдена. (Автотесты — вне охвата, §2.3-A1.)
-- **AC-8.** Swagger доступен; README/доки обновлены.
-- **AC-9.** Деплой на Railway работает; бот, API и фронт функционируют.
+### 5.2 Back office `/b`
 
----
+| Tab | Функции |
+|-----|---------|
+| Dashboard | Revenue, AOV, top items, offer funnel, new/repeat |
+| Orders | FSM, cancel+refund |
+| Menu | Full CRUD + channel publish dish |
+| Combos | List + channel publish combo |
+| Offers | Cart composer + CRM send |
+| Modifiers | Groups CRUD |
+| Customers | CRM, balance |
+| Staff / Settings | Bot token, groups, TZ, report hour |
 
-## 9. Риски и митигация
-| Риск | Митигация |
-|---|---|
-| Большой объём переноса логики бота | Поэтапно, переиспользование доменных сервисов, ручной чек-лист паритета `FR-*` |
-| Регрессии без автотестов (§2.3-A1) | Чек-лист паритета по `FR-*`, ручная проверка ключевых сценариев перед свитчем |
-| Корзина в памяти при нескольких инстансах | `CartService` (Map) сейчас; интерфейс под Redis на будущее |
-| Расхождение типов фронт/бэк | Общие DTO/типы в `libs/shared` |
-| Простой бота во время рефактора | Старый стек работает до закрытия паритета новым |
+### 5.3 Platform `/platform`
+
+Businesses table, create/suspend/activate, GMV per business.
 
 ---
 
-## 10. Принятые решения (defaults, можно пересмотреть)
-1. **Бот:** `nestjs-telegraf` (Telegraf).
-2. **Деплой:** один сервис (Nest отдаёт статику Next).
-3. **Монорепо:** npm workspaces.
-4. **Состояние фронта:** Zustand + TanStack Query; формы — react-hook-form + zod.
-5. **Корзина:** in-memory (`CartService`) с интерфейсом под будущий Redis.
-6. **JWT:** access с коротким TTL (refresh — опционально, позже).
-7. **Тесты:** пропускаем на этапе рефактора (§2.3-A1); добавим позже.
-8. **БД:** проектируем схему заново, текущие данные одноразовы (§2.3-A2/A3); dev — `synchronize: true`, перед продом — миграции.
+## 6. Бот
+
+- Multi-bot engine: registry, composer, per-business webhook
+- `/start` → menu immediately; deep links: `item_`, `detail_`, `combo_`
+- Required modifiers → web_app «Выбрать →»
+- `/bind cook|courier|admin` in group
+- Daily report: orders + revenue + top + **offer funnel line**
 
 ---
 
-## 11. Вне охвата / на будущее
-- Онлайн-оплата, push-уведомления вне Telegram, аналитика/дашборды, мультигородность, Redis-сессии, CI/CD пайплайн.
+## 7. Нефункциональные требования
+
+- **NFR-DB:** TypeORM migrations, `TYPEORM_SYNC=false` in prod
+- **NFR-Money:** `Money` VO, transactional balance with `FOR UPDATE`
+- **NFR-Security:** JWT, tenant isolation, helmet CSP (`self` + telegram.org + `data:` images; `CSP_REPORT_ONLY` default true)
+- **NFR-Rate-limit:** `@nestjs/throttler` on auth and webhooks
+- **NFR-Tenancy:** cross-tenant probes in `npm test` (tenancy-audit)
+
+---
+
+## 8. Аналитика
+
+`GET /b/analytics?range=today|7d|30d`:
+
+- Revenue by payment method
+- Orders by status, AOV
+- Top items (snapshot names)
+- New vs repeat (`business_customers.first_order_at`)
+- Offer funnel: sent → opened → ordered
+
+Platform: GMV and order count per business.
+
+---
+
+## 9. Go-live checklist
+
+**Per business (wizard):**
+
+- Bot token valid, webhook 200s
+- Cook + admin groups bound
+- ≥1 active menu item with nutrition
+- Test order E2E
+- TZ + report hour set
+- Test CRM broadcast to self
+
+**Platform:**
+
+- `TOKEN_ENC_KEY` backed up
+- `TYPEORM_SYNC=false`, migrations run
+- Throttler + CSP (enforce when ready)
+- Cross-tenant probes green
+- DB backups scheduled
+
+---
+
+## 10. Known limitations (launch)
+
+- Modifier price deltas do not adjust base KBJU display
+- Offer composer combo slot pickers: defaults only (full slot UI in Mini App customize path)
+- CSP Report-Only by default until inline-script audit complete
+
+---
+
+## 11. Архитектура (NestJS monolith)
+
+Controller → Service → Repository; modular monolith: `businesses`, `menu`, `orders`, `offers`, `modifiers`, `combos`, `analytics`, `platform`, `telegram/engine`.
+
+Frontend: Next.js static SPA (`apps/web/out`), served from same container as API.
+
+Shared types: `libs/shared`.

@@ -1,58 +1,112 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { InjectBot } from 'nestjs-telegraf';
-import { Telegraf } from 'telegraf';
-import { ConflictError } from '../common/errors/domain-error';
+import { ChatKind } from '@eatfit/shared';
+import { ActorContextService } from '../common/cls/actor-context.service';
+import { ConflictError, NotFoundError } from '../common/errors/domain-error';
+import { BusinessChatsRepository } from '../businesses/business-chats.repository';
+import { BusinessesRepository } from '../businesses/businesses.repository';
+import { CombosRepository } from '../combos/combos.repository';
 import { MenuService } from '../menu/menu.service';
+import { BotRegistryService } from './engine/bot-registry.service';
 import { Lang } from './i18n/bot-i18n';
-import { channelPostText, orderDeepLinkButton } from './channel-post';
+import {
+  channelPostComboText,
+  channelPostText,
+  comboDeepLinkButton,
+  orderDeepLinkButton,
+} from './channel-post';
 
 /**
- * Публикация блюда в Telegram-канал из веб-админки (паритет с ботом /admin → 📢).
- * Живёт в telegram-модуле: канал, токен бота и формат поста — здесь (меню зависеть от
- * бота не может — был бы цикл). Фото: file_id/URL как есть, либо загруженный байт-буфер.
+ * Публикация блюда в Telegram-канал из веб-админки.
+ * Использует per-business bot из registry и deep links с ?biz= через bot username.
  */
 @Injectable()
 export class MenuPublishService {
   constructor(
-    @InjectBot() private readonly bot: Telegraf,
-    private readonly config: ConfigService,
+    private readonly registry: BotRegistryService,
     private readonly menu: MenuService,
+    private readonly combos: CombosRepository,
+    private readonly actorCtx: ActorContextService,
+    private readonly businesses: BusinessesRepository,
+    private readonly chats: BusinessChatsRepository,
   ) {}
 
   async publishToChannel(itemId: string): Promise<{ published: true }> {
-    const channelId = this.config.get<string>('telegram.channelId');
-    if (!channelId) {
-      throw new ConflictError('Канал не настроен (CHANNEL_ID)');
+    const businessId = this.actorCtx.getOrThrow().businessId;
+    const channel = await this.chats.findActive(businessId, ChatKind.Channel);
+    if (!channel) {
+      throw new ConflictError('Канал не привязан (business_chats.channel)');
     }
 
-    const item = await this.menu.getEntityOrThrow(itemId); // 404, если нет
+    const business = await this.businesses.findById(businessId);
+    const item = await this.menu.getEntityOrThrow(itemId);
     const lang = 'ru' as Lang;
     const text = channelPostText(item);
     const extra = {
       parse_mode: 'HTML' as const,
-      ...orderDeepLinkButton(item, lang, this.config.get<string>('bot.username')),
+      ...orderDeepLinkButton(item, lang, business?.botUsername ?? undefined),
     };
 
-    // Фото: приоритет file_id/внешний URL; иначе загруженный в БД байт-буфер; иначе без фото.
+    const telegram = this.registry.telegram(businessId);
+
     if (item.photoFileId || item.photoUrl) {
-      await this.bot.telegram.sendPhoto(channelId, (item.photoFileId || item.photoUrl)!, {
+      await telegram.sendPhoto(channel.chatId, (item.photoFileId || item.photoUrl)!, {
         caption: text,
         ...extra,
       });
     } else if (item.photoMime) {
       const bytes = await this.menu.loadPhotoBytes(item.id);
       if (bytes) {
-        await this.bot.telegram.sendPhoto(
-          channelId,
+        await telegram.sendPhoto(
+          channel.chatId,
           { source: bytes.data },
           { caption: text, ...extra },
         );
       } else {
-        await this.bot.telegram.sendMessage(channelId, text, extra);
+        await telegram.sendMessage(channel.chatId, text, extra);
       }
     } else {
-      await this.bot.telegram.sendMessage(channelId, text, extra);
+      await telegram.sendMessage(channel.chatId, text, extra);
+    }
+
+    return { published: true };
+  }
+
+  async publishCombo(comboId: string): Promise<{ published: true }> {
+    const businessId = this.actorCtx.getOrThrow().businessId;
+    const channel = await this.chats.findActive(businessId, ChatKind.Channel);
+    if (!channel) {
+      throw new ConflictError('Канал не привязан (business_chats.channel)');
+    }
+
+    const business = await this.businesses.findById(businessId);
+    const combo = await this.combos.findByIdWithDetails(businessId, comboId, {
+      activeOptionsOnly: true,
+    });
+    if (!combo || !combo.isActive) {
+      throw new NotFoundError('Комбо не найдено');
+    }
+    for (const slot of combo.slots) {
+      if (slot.options.length === 0) {
+        throw new ConflictError(`Слот «${slot.nameRu}» не содержит активных блюд`);
+      }
+    }
+
+    const lang = 'ru' as Lang;
+    const text = channelPostComboText(combo);
+    const extra = {
+      parse_mode: 'HTML' as const,
+      ...comboDeepLinkButton(combo.id, lang, business?.botUsername ?? undefined),
+    };
+
+    const telegram = this.registry.telegram(businessId);
+
+    if (combo.photoFileId || combo.photoUrl) {
+      await telegram.sendPhoto(channel.chatId, (combo.photoFileId || combo.photoUrl)!, {
+        caption: text,
+        ...extra,
+      });
+    } else {
+      await telegram.sendMessage(channel.chatId, text, extra);
     }
 
     return { published: true };

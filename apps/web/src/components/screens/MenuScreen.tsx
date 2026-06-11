@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Category, Language } from '@eatfit/shared';
-import { useMenu, useCart, useAddToCart, useSetQuantity } from '@/lib/queries';
+import { useMenu, useMenuCombos, useCart, useAddToCart, useSetQuantity } from '@/lib/queries';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
 import { useT, type I18nKey } from '@/lib/i18n';
@@ -20,7 +20,9 @@ export function MenuScreen() {
   const t = useT();
   const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
   const openDetail = useUiStore((s) => s.openDetail);
+  const openCombo = useUiStore((s) => s.openCombo);
   const { data: menu, isLoading } = useMenu();
+  const { data: combos } = useMenuCombos();
   const { data: cart } = useCart();
   const add = useAddToCart();
   const setQty = useSetQuantity();
@@ -41,10 +43,22 @@ export function MenuScreen() {
       )
     : menu;
 
+  const activeCombos = (combos ?? []).filter((c) => c.isActive);
+  const filteredCombos = needle
+    ? activeCombos.filter((c) => `${c.nameRu} ${c.nameUz}`.toLowerCase().includes(needle))
+    : activeCombos;
+
   const portionOf = (id: string) => selPortion[id] ?? 1;
-  // Количество выбранной порции блюда в корзине.
+  // Количество ПРОСТОЙ строки блюда (без модификаторов) выбранной порции — степпер
+  // в списке управляет именно ею; строки с модификаторами/комбо считаются отдельно.
   const qtyOf = (id: string) =>
-    cart?.items.find((i) => i.menuItemId === id && i.portion === portionOf(id))?.quantity ?? 0;
+    cart?.items.find(
+      (i) =>
+        i.kind === 'dish' &&
+        i.menuItemId === id &&
+        i.portion === portionOf(id) &&
+        i.modifiers.length === 0,
+    )?.quantity ?? 0;
 
   const change = (item: MenuItemDto, q: number) => {
     const portion = portionOf(item.id);
@@ -83,7 +97,57 @@ export function MenuScreen() {
         onChange={(e) => setQ(e.target.value)}
         style={{ marginBottom: 12 }}
       />
-      {needle && !filtered.length && <div className="center">{t('nothing_found')}</div>}
+      {needle && !filtered.length && !filteredCombos.length && (
+        <div className="center">{t('nothing_found')}</div>
+      )}
+
+      {filteredCombos.length > 0 && (
+        <div>
+          <div className="cat-title">{t('cat_combo')}</div>
+          {filteredCombos.map((c) => (
+            <div className="card" key={c.id}>
+              <div className="dish">
+                {c.photoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    className="dish-photo dish-tap"
+                    src={c.photoUrl}
+                    alt={pick(lang, c.nameRu, c.nameUz)}
+                    onClick={() => openCombo(c.id)}
+                  />
+                )}
+                <div className="dish-body">
+                  <div className="dish-name dish-tap" onClick={() => openCombo(c.id)}>
+                    {pick(lang, c.nameRu, c.nameUz)}
+                  </div>
+                  {pick(lang, c.descriptionRu, c.descriptionUz) && (
+                    <div className="dish-desc">
+                      {pick(lang, c.descriptionRu, c.descriptionUz)}
+                    </div>
+                  )}
+                  <div className="row">
+                    <span className="dish-price">
+                      {formatMoney(c.price)} {t('currency')}
+                      {c.originalPrice && (
+                        <span
+                          className="muted"
+                          style={{ textDecoration: 'line-through', marginLeft: 6 }}
+                        >
+                          {formatMoney(c.originalPrice)}
+                        </span>
+                      )}
+                    </span>
+                    <button className="btn btn-primary" onClick={() => openCombo(c.id)}>
+                      {t('detail_open')} →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {CATS.map(({ cat, key }) => {
         const items = filtered.filter((i) => i.category === cat);
         if (!items.length) return null;
@@ -98,7 +162,7 @@ export function MenuScreen() {
                     <img
                       className="dish-photo dish-tap"
                       src={`/api/menu/${item.id}/photo`}
-                      alt=""
+                      alt={pick(lang, item.nameRu, item.nameUz)}
                       onClick={() => openDetail(item.id)}
                     />
                   )}

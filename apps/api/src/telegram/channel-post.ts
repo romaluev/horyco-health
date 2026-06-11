@@ -41,3 +41,36 @@ export function orderDeepLinkButton(item: MenuItem, lang: Lang, botUsername?: st
 export function channelPostPhoto(item: MenuItem): string | null {
   return item.photoFileId || item.photoUrl || null;
 }
+
+/** Двуязычный текст поста комбо в канал. */
+export function channelPostComboText(combo: {
+  nameRu: string;
+  nameUz: string;
+  price: { toString(): string };
+  originalPrice?: { toString(): string } | null;
+}): string {
+  const nameRu = combo.nameRu?.trim();
+  const nameUz = combo.nameUz?.trim();
+  const nameLine =
+    nameRu && nameUz && nameRu !== nameUz ? `${nameUz} / ${nameRu}` : nameUz || nameRu || '';
+  const lines = [`🍱 <b>${esc(nameLine)}</b>`];
+  if (combo.originalPrice) {
+    lines.push(
+      `💵 <s>${esc(formatMoney(combo.originalPrice.toString()))}</s> ${esc(formatMoney(combo.price.toString()))} сум / so‘m`,
+    );
+  } else {
+    lines.push(`💵 ${esc(formatMoney(combo.price.toString()))} сум / so‘m`);
+  }
+  return lines.join('\n');
+}
+
+/** Inline-кнопки под постом комбо: deep link ?start=combo_<id>. */
+export function comboDeepLinkButton(
+  comboId: string,
+  lang: Lang,
+  botUsername?: string,
+) {
+  if (!botUsername) return {};
+  const orderUrl = `https://t.me/${botUsername}?start=combo_${comboId}`;
+  return Markup.inlineKeyboard([[Markup.button.url(t(lang, 'post_order_btn'), orderUrl)]]);
+}

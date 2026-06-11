@@ -1,11 +1,8 @@
-import { Entity, Column, Check, Index } from 'typeorm';
+import { Entity, Column, Index } from 'typeorm';
 import { Role, Language } from '@eatfit/shared';
 import { BaseEntity } from '../../common/database/base.entity';
-import { Money } from '../../common/money/money';
-import { moneyTransformer } from '../../common/money/money.transformer';
 
 @Entity('clients')
-@Check(`"balance" >= 0`) // инвариант неотрицательности баланса (последний рубеж в БД)
 // Телефон уникален среди веб-аккаунтов (password_hash IS NOT NULL); Telegram-клиенты не мешают.
 @Index('uq_web_phone', ['phone'], { unique: true, where: 'password_hash IS NOT NULL' })
 export class Client extends BaseEntity {
@@ -35,9 +32,13 @@ export class Client extends BaseEntity {
   @Column({ type: 'enum', enum: Language, default: Language.Ru })
   language!: Language;
 
+  // LEGACY: права внутри бизнеса определяет членство (business_members);
+  // колонка остаётся для переходного периода и исторических данных.
+  // Баланс живёт в business_customers (кошелёк per-бизнес), НЕ здесь.
   @Column({ type: 'enum', enum: Role, default: Role.Client })
   role!: Role;
 
-  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0, transformer: moneyTransformer })
-  balance!: Money;
+  // Платформенный админ (основатель): доступ к /api/platform/*, сид через ADMIN_TELEGRAM_IDS.
+  @Column({ type: 'boolean', default: false })
+  isPlatformAdmin!: boolean;
 }

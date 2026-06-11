@@ -9,9 +9,31 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
   const config = app.get(ConfigService);
 
-  // HTTP hardening. CSP отключён: дефолтная политика helmet ломает inline-бутстрап
-  // Next-SPA. TODO(AR-11): корректный SPA-CSP (nonce/hash) на отдаче статики.
-  app.use(helmet({ contentSecurityPolicy: false }));
+  const cspReportOnly = (process.env.CSP_REPORT_ONLY ?? 'true') === 'true';
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: false,
+        reportOnly: cspReportOnly,
+        directives: {
+          defaultSrc: ["'self'"],
+          baseUri: ["'self'"],
+          fontSrc: ["'self'", 'data:'],
+          formAction: ["'self'"],
+          frameAncestors: ["'self'"],
+          imgSrc: ["'self'", 'data:', 'https://telegram.org', 'https://*.telegram.org'],
+          objectSrc: ["'none'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          connectSrc: ["'self'", 'https://telegram.org', 'https://*.telegram.org'],
+          frameSrc: ["'self'", 'https://telegram.org', 'https://*.telegram.org'],
+        },
+      },
+    }),
+  );
+  if (cspReportOnly) {
+    Logger.log('CSP: Report-Only (set CSP_REPORT_ONLY=false to enforce)', 'Bootstrap');
+  }
 
   // CORS строго под домен(ы) фронта. Если список не задан: в dev — открыто (удобно),
   // в prod — ЗАКРЫТО (SPA отдаётся тем же сервером, same-origin, CORS ей не нужен).

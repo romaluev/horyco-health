@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
-import { ActorContext, AppClsStore } from './actor-context';
+import { ActorContext, AppClsStore, BotBusinessContext } from './actor-context';
 
 /**
  * Доступ к актору и correlation-id из CLS. Доменные сервисы получают «кто действует»
@@ -25,6 +25,27 @@ export class ActorContextService {
       throw new UnauthorizedException('Контекст пользователя не установлен');
     }
     return actor;
+  }
+
+  setBotBusiness(biz: BotBusinessContext): void {
+    this.cls.set('botBusiness', biz);
+  }
+
+  /** Бизнес бот-апдейта (есть даже без actor — до регистрации клиента). */
+  getBotBusiness(): BotBusinessContext | undefined {
+    return this.cls.get('botBusiness');
+  }
+
+  /**
+   * Тенант текущей операции: actor (JWT/бот) или бизнес бота (апдейт без клиента).
+   * Единая точка для telegram-слоя вместо DefaultBusinessService.
+   */
+  getBusinessIdOrThrow(): string {
+    const id = this.cls.get('actor')?.businessId ?? this.cls.get('botBusiness')?.id;
+    if (!id) {
+      throw new UnauthorizedException('Контекст бизнеса не установлен');
+    }
+    return id;
   }
 
   getCorrelationId(): string | undefined {

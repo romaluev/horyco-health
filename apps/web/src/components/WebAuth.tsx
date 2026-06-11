@@ -38,7 +38,7 @@ function Field({ label, err, children }: { label: string; err?: string | false; 
     <div className="field">
       <label>{label}</label>
       {children}
-      {err && <div className="err">{err}</div>}
+      {err && <div className="err" role="alert">{err}</div>}
     </div>
   );
 }
@@ -72,7 +72,7 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
       <Field label={t('web_password')} err={errors.password && t('web_password_hint')}>
         <input className="input" type="password" autoComplete="current-password" {...register('password')} />
       </Field>
-      {err && <div className="err" style={{ marginBottom: 10 }}>{err}</div>}
+      {err && <div className="err" role="alert" style={{ marginBottom: 10 }}>{err}</div>}
       <button className="btn btn-primary btn-block" disabled={isSubmitting}>
         {t('web_login')}
       </button>
@@ -123,7 +123,7 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
       <Field label={t('address')}>
         <input className="input" {...register('address')} />
       </Field>
-      {err && <div className="err" style={{ marginBottom: 10 }}>{err}</div>}
+      {err && <div className="err" role="alert" style={{ marginBottom: 10 }}>{err}</div>}
       <button className="btn btn-primary btn-block" disabled={isSubmitting}>
         {t('web_register')}
       </button>

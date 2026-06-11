@@ -39,17 +39,17 @@ export function RegistrationForm() {
         <div className="field">
           <label>{t('name')}</label>
           <input className="input" {...register('name')} />
-          {errors.name && <div className="err">{t('required')}</div>}
+          {errors.name && <div className="err" role="alert">{t('required')}</div>}
         </div>
         <div className="field">
           <label>{t('phone')}</label>
           <input className="input" inputMode="tel" {...register('phone')} />
-          {errors.phone && <div className="err">{t('required')}</div>}
+          {errors.phone && <div className="err" role="alert">{t('required')}</div>}
         </div>
         <div className="field">
           <label>{t('address')}</label>
           <input className="input" {...register('address')} />
-          {errors.address && <div className="err">{t('required')}</div>}
+          {errors.address && <div className="err" role="alert">{t('required')}</div>}
         </div>
         <button className="btn btn-primary btn-block" disabled={update.isPending}>
           {t('save')}

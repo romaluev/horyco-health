@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { ActorContextService } from '../common/cls/actor-context.service';
 
 /**
- * In-memory состояние диалогов бота (пошаговые FSM: регистрация, редактирование профиля,
- * CRUD блюд, депозиты), ключ — telegram_id. Паритет легаси src/state.js (sessions + дедуп
- * callback'ов). Корзина живёт отдельно — в доменном CartService.
+ * In-memory состояние диалогов бота, ключ — `${businessId}:${telegramId}`.
  *
  * Singleton DI; допустимо при одном инстансе бота (AR-14). Замена на Redis — точечная.
  */
@@ -18,11 +17,13 @@ export class BotStateService {
   private readonly sessions = new Map<string, BotSession>();
   private readonly processedCallbacks = new Map<string, number>();
   private static readonly CALLBACK_DEDUP_TTL_MS = 120_000;
-  // id сообщений показанной витрины (карточки блюд + промпт) — удаляются при оформлении.
   private readonly menuMessages = new Map<string, number[]>();
 
+  constructor(private readonly actorCtx: ActorContextService) {}
+
   private key(telegramId: string | number): string {
-    return String(telegramId);
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    return `${businessId}:${String(telegramId)}`;
   }
 
   setMenuMessages(telegramId: string | number, ids: number[]): void {
@@ -61,13 +62,15 @@ export class BotStateService {
    * Время передаётся снаружи (в скриптах/тестах Date.now недоступен) — здесь это рантайм-бот.
    */
   isDuplicateCallback(callbackId: string, now: number): boolean {
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const key = `${businessId}:${callbackId}`;
     for (const [id, ts] of this.processedCallbacks) {
       if (now - ts > BotStateService.CALLBACK_DEDUP_TTL_MS) {
         this.processedCallbacks.delete(id);
       }
     }
-    if (this.processedCallbacks.has(callbackId)) return true;
-    this.processedCallbacks.set(callbackId, now);
+    if (this.processedCallbacks.has(key)) return true;
+    this.processedCallbacks.set(key, now);
     return false;
   }
 }

@@ -16,15 +16,16 @@ export enum NotifyGroup {
 }
 
 export interface INotifier {
-  /** Сообщение конкретному пользователю по Telegram id. */
-  notifyUser(telegramId: string, message: string): Promise<void>;
-  /** Сообщение в рабочую группу (повара/курьеры/админы). */
-  notifyGroup(group: NotifyGroup, message: string): Promise<void>;
+  /** Сообщение конкретному пользователю по Telegram id (бот бизнеса businessId). */
+  notifyUser(businessId: string, telegramId: string, message: string): Promise<void>;
+  /** Сообщение в рабочую группу бизнеса (повара/курьеры/админы). */
+  notifyGroup(businessId: string, group: NotifyGroup, message: string): Promise<void>;
   /**
    * Карточка заказа в рабочую группу с inline-кнопками переходов для роли.
    * Возвращает message_id для live-обновлений (FR-O5).
    */
   notifyGroupOrder(
+    businessId: string,
     group: NotifyGroup,
     order: OrderResponseDto,
     role: Role,
@@ -32,6 +33,7 @@ export interface INotifier {
   ): Promise<string | null>;
   /** Обновить текст и клавиатуру существующей карточки. false — сообщение недоступно (удалено). */
   updateGroupOrder(
+    businessId: string,
     group: NotifyGroup,
     messageId: string,
     order: OrderResponseDto,
@@ -40,6 +42,7 @@ export interface INotifier {
   ): Promise<boolean>;
   /** Обновить текст карточки и убрать inline-кнопки (финальный/отменённый заказ). */
   clearGroupOrderButtons(
+    businessId: string,
     group: NotifyGroup,
     messageId: string,
     order: OrderResponseDto,

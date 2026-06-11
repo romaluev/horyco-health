@@ -1,12 +1,20 @@
-import { Entity, Column, Index, DeleteDateColumn } from 'typeorm';
+import { Entity, Column, Index, DeleteDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Category, Ingredient, Allergens, Nutrition } from '@eatfit/shared';
 import { BaseEntity } from '../../common/database/base.entity';
 import { Money } from '../../common/money/money';
 import { moneyTransformer } from '../../common/money/money.transformer';
+import { Business } from '../../businesses/entities/business.entity';
 
 @Entity('menu_items')
-@Index(['isActive', 'category']) // витрина активных блюд по категориям
+@Index(['businessId', 'isActive', 'category']) // витрина активных блюд бизнеса по категориям
 export class MenuItem extends BaseEntity {
+  @ManyToOne(() => Business, { nullable: false })
+  @JoinColumn({ name: 'business_id' })
+  business!: Business;
+
+  @Column({ type: 'uuid' })
+  businessId!: string;
+
   @Column({ type: 'enum', enum: Category })
   category!: Category;
 

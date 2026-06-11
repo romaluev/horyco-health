@@ -1,9 +1,11 @@
 import { Language, Role } from '@eatfit/shared';
 import { Client } from '../entities/client.entity';
+import { Money } from '../../common/money/money';
 
 /**
  * Response-DTO клиента — белый список полей (по построению). Сущность из контроллера
- * не возвращаем. balance — строка (Money), не number.
+ * не возвращаем. balance — строка (Money), не number. Баланс передаётся снаружи
+ * (из кошелька business_customers), т.к. Client сам по себе его не хранит.
  */
 export class ClientResponseDto {
   id: string;
@@ -17,7 +19,7 @@ export class ClientResponseDto {
   balance: string;
   createdAt: Date;
 
-  constructor(c: Client) {
+  constructor(c: Client, balance: Money) {
     this.id = c.id;
     this.telegramId = c.telegramId;
     this.name = c.name;
@@ -26,7 +28,7 @@ export class ClientResponseDto {
     this.address = c.address;
     this.language = c.language;
     this.role = c.role;
-    this.balance = c.balance.toString();
+    this.balance = balance.toString();
     this.createdAt = c.createdAt;
   }
 }

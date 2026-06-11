@@ -32,6 +32,6 @@ export class DepositsController {
   @Roles(Role.Admin)
   @Get('admin/clients/:id/deposits')
   clientHistory(@Param('id', ParseUUIDPipe) id: string) {
-    return this.deposits.historyFor(id);
+    return this.deposits.historyForAdmin(id);
   }
 }

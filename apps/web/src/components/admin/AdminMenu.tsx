@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Category, Ingredient } from '@eatfit/shared';
+import { useEffect, useRef, useState } from 'react';
+import { Category, Ingredient, Language } from '@eatfit/shared';
+import { useQuery } from '@tanstack/react-query';
 import {
   useAdminMenu,
   useCreateDish,
@@ -14,8 +15,14 @@ import {
   usePublishDish,
   type DishBody,
 } from '@/lib/admin-queries';
+import {
+  useModifierGroupsAdmin,
+  useSetMenuItemModifierGroups,
+} from '@/lib/modifiers-queries';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/store/auth.store';
 import { useT, type I18nKey } from '@/lib/i18n';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, pick } from '@/lib/format';
 import { MenuItemDto } from '@/lib/types';
 
 const CATS: { cat: Category; key: I18nKey }[] = [
@@ -513,7 +520,7 @@ export function AdminMenu() {
             <img
               className="dish-photo"
               src={`/api/menu/${editing.id}/photo?v=${photoVer}`}
-              alt=""
+              alt={form.nameRu || editing.nameRu}
               style={{ marginBottom: 8, borderRadius: 8, maxHeight: 160, objectFit: 'cover' }}
             />
           )}
@@ -521,7 +528,7 @@ export function AdminMenu() {
             <img
               className="dish-photo"
               src={pendingPreview}
-              alt=""
+              alt={form.nameRu}
               style={{ marginBottom: 8, borderRadius: 8, maxHeight: 160, objectFit: 'cover' }}
             />
           )}
@@ -552,6 +559,8 @@ export function AdminMenu() {
             )}
           </div>
         </div>
+        {editing && <ModifierGroupsAttach menuItemId={editing.id} />}
+
         <div className="seg">
           <button className="btn" onClick={close}>
             {t('act_cancel')}
@@ -646,7 +655,7 @@ export function AdminMenu() {
                 <img
                   className="dish-photo"
                   src={`/api/menu/${it.id}/photo`}
-                  alt=""
+                  alt={it.nameRu}
                   style={{ borderRadius: 8, marginBottom: 8, maxHeight: 180, objectFit: 'cover' }}
                 />
               )}
@@ -683,6 +692,65 @@ export function AdminMenu() {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Привязка групп модификаторов к блюду (внутри формы редактирования). */
+function ModifierGroupsAttach({ menuItemId }: { menuItemId: string }) {
+  const t = useT();
+  const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
+  const { data: allGroups } = useModifierGroupsAdmin();
+  const setGroups = useSetMenuItemModifierGroups();
+  const { data: attached } = useQuery({
+    queryKey: ['menu', menuItemId, 'modifier-groups'],
+    queryFn: () => api<Array<{ id: string }>>(`/menu/${menuItemId}/modifier-groups`),
+    enabled: Boolean(menuItemId),
+  });
+
+  const [selected, setSelected] = useState<string[] | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (attached) setSelected(attached.map((g) => g.id));
+  }, [attached]);
+
+  if (!allGroups?.length) return null;
+  const sel = selected ?? [];
+
+  const toggle = (id: string) => {
+    setSaved(false);
+    setSelected((prev) => {
+      const cur = prev ?? [];
+      return cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+    });
+  };
+
+  return (
+    <div className="field">
+      <label>{t('bo_mod_attach')}</label>
+      <div className="card">
+        {allGroups.map((g) => (
+          <label key={g.id} className="row" style={{ cursor: 'pointer' }}>
+            <input type="checkbox" checked={sel.includes(g.id)} onChange={() => toggle(g.id)} />
+            <span>{pick(lang, g.nameRu, g.nameUz)}</span>
+          </label>
+        ))}
+        <button
+          className="btn"
+          type="button"
+          disabled={setGroups.isPending}
+          style={{ marginTop: 8 }}
+          onClick={() =>
+            setGroups.mutate(
+              { menuItemId, groupIds: sel },
+              { onSuccess: () => setSaved(true) },
+            )
+          }
+        >
+          {saved ? t('saved') : t('save')}
+        </button>
+      </div>
     </div>
   );
 }

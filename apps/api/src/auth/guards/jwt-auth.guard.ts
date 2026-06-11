@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { Role } from '@eatfit/shared';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 import { ActorContextService } from '../../common/cls/actor-context.service';
@@ -47,10 +48,26 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Неверный или просроченный токен');
     }
 
+    // Токены старого формата (без v=2/biz) отклоняем: Mini App тихо переавторизуется
+    // через initData, веб-аккаунты входят заново один раз.
+    if (payload.v !== 2 || !payload.biz) {
+      throw new UnauthorizedException('Токен устарел — войдите заново');
+    }
+
+    // Проверка согласованности kind↔role: customer не может нести повышенную роль,
+    // а staff/platform не может иметь роль client. Несогласованный токен отклоняем.
+    const elevated = payload.role !== Role.Client;
+    const privileged = payload.kind === 'staff' || payload.kind === 'platform';
+    if (elevated !== privileged) {
+      throw new UnauthorizedException('Несогласованный токен');
+    }
+
     this.actorCtx.set({
       userId: payload.sub,
       telegramId: payload.telegramId,
       role: payload.role,
+      businessId: payload.biz,
+      kind: payload.kind,
       source: 'api',
     });
     return true;

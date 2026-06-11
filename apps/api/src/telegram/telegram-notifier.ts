@@ -1,19 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { InjectBot } from 'nestjs-telegraf';
-import { Telegraf } from 'telegraf';
-import { Role } from '@eatfit/shared';
+import { ChatKind, Role } from '@eatfit/shared';
+import type { Telegraf } from 'telegraf';
+import { BusinessChatsRepository } from '../businesses/business-chats.repository';
 import { INotifier, NotifyGroup } from '../common/notifications/notifier';
 import { OrderResponseDto } from '../orders/dto/order-response.dto';
 import { Lang } from './i18n/bot-i18n';
 import { orderActionKeyboard, orderCardText } from './order-card';
+import { BotRegistryService } from './engine/bot-registry.service';
 
 /**
- * Реализация порта INotifier поверх Telegram (DIP: домен зависит от абстракции).
- * Доставляет сообщения конкретному пользователю и в рабочие группы (повара/курьеры/админы).
- *
- * Инвариант: уведомление НЕ должно ломать доменную транзакцию — любая ошибка
- * отправки гасится и логируется (заказ/пополнение уже зафиксированы в БД).
+ * Реализация порта INotifier поверх per-business Telegraf (DIP).
+ * Группы резолвятся из business_chats, не из env.
  */
 @Injectable()
 export class TelegramNotifier implements INotifier {
@@ -21,43 +18,42 @@ export class TelegramNotifier implements INotifier {
   private readonly groupLang = 'ru' as Lang;
 
   constructor(
-    @InjectBot() private readonly bot: Telegraf,
-    private readonly config: ConfigService,
+    private readonly registry: BotRegistryService,
+    private readonly chats: BusinessChatsRepository,
   ) {}
 
-  async notifyUser(telegramId: string, message: string): Promise<void> {
-    await this.send(telegramId, message);
+  async notifyUser(businessId: string, telegramId: string, message: string): Promise<void> {
+    await this.send(businessId, telegramId, message);
   }
 
-  async notifyGroup(group: NotifyGroup, message: string): Promise<void> {
-    const chatId = this.resolveGroup(group);
+  async notifyGroup(businessId: string, group: NotifyGroup, message: string): Promise<void> {
+    const chatId = await this.resolveGroup(businessId, group);
     if (!chatId) {
-      this.logger.debug(`Группа ${group} не настроена — уведомление пропущено`);
+      this.logger.debug(`Группа ${group} бизнеса ${businessId} не настроена — пропуск`);
       return;
     }
-    await this.send(chatId, message);
+    await this.send(businessId, chatId, message);
   }
 
   async notifyGroupOrder(
+    businessId: string,
     group: NotifyGroup,
     order: OrderResponseDto,
     role: Role,
     header?: string,
   ): Promise<string | null> {
-    const chatId = this.resolveGroup(group);
+    const chatId = await this.resolveGroup(businessId, group);
     if (!chatId) {
-      this.logger.debug(`Группа ${group} не настроена — уведомление пропущено`);
+      this.logger.debug(`Группа ${group} бизнеса ${businessId} не настроена — пропуск`);
       return null;
     }
+    const tg = this.telegramApi(businessId);
+    if (!tg) return null;
     try {
-      const sent = await this.bot.telegram.sendMessage(
-        chatId,
-        this.cardText(order, header),
-        {
-          parse_mode: 'HTML',
-          ...orderActionKeyboard(this.groupLang, order, role),
-        },
-      );
+      const sent = await tg.sendMessage(chatId, this.cardText(order, header), {
+        parse_mode: 'HTML',
+        ...orderActionKeyboard(this.groupLang, order, role),
+      });
       return String(sent.message_id);
     } catch (err) {
       this.logger.warn(`Не удалось отправить заказ в ${chatId}: ${(err as Error).message}`);
@@ -66,25 +62,22 @@ export class TelegramNotifier implements INotifier {
   }
 
   async updateGroupOrder(
+    businessId: string,
     group: NotifyGroup,
     messageId: string,
     order: OrderResponseDto,
     role: Role,
     header?: string,
   ): Promise<boolean> {
-    const chatId = this.resolveGroup(group);
+    const chatId = await this.resolveGroup(businessId, group);
     if (!chatId) return false;
+    const tg = this.telegramApi(businessId);
+    if (!tg) return false;
     try {
-      await this.bot.telegram.editMessageText(
-        chatId,
-        Number(messageId),
-        undefined,
-        this.cardText(order, header),
-        {
-          parse_mode: 'HTML',
-          ...orderActionKeyboard(this.groupLang, order, role),
-        },
-      );
+      await tg.editMessageText(chatId, Number(messageId), undefined, this.cardText(order, header), {
+        parse_mode: 'HTML',
+        ...orderActionKeyboard(this.groupLang, order, role),
+      });
       return true;
     } catch (err) {
       this.logger.warn(
@@ -95,21 +88,20 @@ export class TelegramNotifier implements INotifier {
   }
 
   async clearGroupOrderButtons(
+    businessId: string,
     group: NotifyGroup,
     messageId: string,
     order: OrderResponseDto,
     header?: string,
   ): Promise<boolean> {
-    const chatId = this.resolveGroup(group);
+    const chatId = await this.resolveGroup(businessId, group);
     if (!chatId) return false;
+    const tg = this.telegramApi(businessId);
+    if (!tg) return false;
     try {
-      await this.bot.telegram.editMessageText(
-        chatId,
-        Number(messageId),
-        undefined,
-        this.cardText(order, header),
-        { parse_mode: 'HTML' },
-      );
+      await tg.editMessageText(chatId, Number(messageId), undefined, this.cardText(order, header), {
+        parse_mode: 'HTML',
+      });
       return true;
     } catch (err) {
       this.logger.warn(
@@ -123,22 +115,44 @@ export class TelegramNotifier implements INotifier {
     return orderCardText(this.groupLang, order, header);
   }
 
-  private resolveGroup(group: NotifyGroup): string | undefined {
+  private async resolveGroup(businessId: string, group: NotifyGroup): Promise<string | undefined> {
+    const kind = this.groupToChatKind(group);
+    const chat = await this.chats.findActive(businessId, kind);
+    return chat?.chatId;
+  }
+
+  private groupToChatKind(group: NotifyGroup): ChatKind {
     switch (group) {
       case NotifyGroup.Cooks:
-        return this.config.get<string>('telegram.cooksGroupId');
+        return ChatKind.Cook;
       case NotifyGroup.Couriers:
-        return this.config.get<string>('telegram.couriersGroupId');
+        return ChatKind.Courier;
       case NotifyGroup.Admins:
-        return this.config.get<string>('telegram.adminGroupId');
-      default:
-        return undefined;
+        return ChatKind.Admin;
+      default: {
+        const _exhaustive: never = group;
+        return _exhaustive;
+      }
     }
   }
 
-  private async send(chatId: string, message: string): Promise<void> {
+  /** null если бот не в реестре (BOT_ENABLED=false, suspend, disconnect). */
+  private telegramApi(businessId: string): Telegraf['telegram'] | null {
+    const bot = this.registry.get(businessId);
+    if (!bot) {
+      this.logger.warn(
+        `telegram.send.skipped bot_not_connected businessId=${businessId}`,
+      );
+      return null;
+    }
+    return bot.telegraf.telegram;
+  }
+
+  private async send(businessId: string, chatId: string, message: string): Promise<void> {
+    const tg = this.telegramApi(businessId);
+    if (!tg) return;
     try {
-      await this.bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
+      await tg.sendMessage(chatId, message, { parse_mode: 'HTML' });
     } catch (err) {
       this.logger.warn(`Не удалось отправить сообщение в ${chatId}: ${(err as Error).message}`);
     }

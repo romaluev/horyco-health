@@ -1,4 +1,4 @@
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 /** Вход веб-аккаунта: телефон + пароль. */
 export class LoginDto {
@@ -11,4 +11,10 @@ export class LoginDto {
   @MinLength(6)
   @MaxLength(72)
   password!: string;
+
+  /** slug бизнеса из ?biz= */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  biz?: string;
 }

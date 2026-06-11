@@ -1,26 +1,35 @@
 import { Language } from '@eatfit/shared';
 import { api } from './api';
-import { waitForInitData } from './telegram';
+import { getBizSlug } from './biz';
+import { decodeJwt } from './jwt';
+import { waitForInitData, isLikelyTelegram } from './telegram';
 import { useAuthStore, getSavedToken } from '@/store/auth.store';
 import { AuthResponse, ClientDto } from './types';
 
 /**
  * Старт сессии:
- *  - в Telegram (есть initData) → JWT через /api/auth/telegram;
+ *  - в Telegram (есть initData) → JWT через /api/auth/telegram (требует ?biz=);
  *  - вне Telegram → пробуем сохранённый веб-токен (валидируем через /me);
  *  - иначе → статус web-anon (показываем вход/регистрацию на сайте).
  */
 export async function bootstrapAuth(): Promise<void> {
   const store = useAuthStore.getState();
-  // Ждём, пока SDK Telegram заполнит initData (иначе внутри Mini App ушли бы в веб-вход).
+  const biz = getBizSlug();
   const initData = await waitForInitData();
+
+  if (initData || isLikelyTelegram()) {
+    if (!biz) {
+      store.setStatus('missing-biz');
+      return;
+    }
+  }
 
   if (initData) {
     store.setStatus('loading');
     try {
       const res = await api<AuthResponse>('/auth/telegram', {
         method: 'POST',
-        body: { initData },
+        body: { initData, biz },
         token: '',
       });
       store.setAuth(res.accessToken, res.client);
@@ -30,15 +39,27 @@ export async function bootstrapAuth(): Promise<void> {
     return;
   }
 
-  const saved = getSavedToken();
+  const saved = getSavedToken(biz);
   if (saved) {
     store.setStatus('loading');
     try {
+      // Сохранённый токен должен принадлежать текущему ?biz=, иначе — переавторизация.
+      if (biz) {
+        const cfg = await api<{ businessId?: string }>(
+          `/config?biz=${encodeURIComponent(biz)}`,
+          { token: '' },
+        );
+        const tokenBiz = decodeJwt(saved)?.biz;
+        if (cfg.businessId && tokenBiz && cfg.businessId !== tokenBiz) {
+          store.logout(); // токен от другого бизнеса — статус web-anon
+          return;
+        }
+      }
       const client = await api<ClientDto>('/me', { token: saved });
       store.setAuth(saved, client);
       return;
     } catch {
-      store.logout(); // токен протух/невалиден
+      store.logout();
     }
   }
   store.setStatus('web-anon');
@@ -53,18 +74,20 @@ export interface WebRegisterInput {
 }
 
 export async function webLogin(phone: string, password: string): Promise<void> {
+  const biz = getBizSlug();
   const res = await api<AuthResponse>('/auth/login', {
     method: 'POST',
-    body: { phone, password },
+    body: biz ? { phone, password, biz } : { phone, password },
     token: '',
   });
   useAuthStore.getState().setAuth(res.accessToken, res.client);
 }
 
 export async function webRegister(input: WebRegisterInput): Promise<void> {
+  const biz = getBizSlug();
   const res = await api<AuthResponse>('/auth/register', {
     method: 'POST',
-    body: input,
+    body: biz ? { ...input, biz } : input,
     token: '',
   });
   useAuthStore.getState().setAuth(res.accessToken, res.client);

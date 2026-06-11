@@ -26,4 +26,10 @@ export class RegisterDto {
   @IsOptional()
   @IsEnum(Language)
   language?: Language;
+
+  /** slug бизнеса из ?biz= */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  biz?: string;
 }

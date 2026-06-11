@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Role } from '@eatfit/shared';
 import { ActorContextService } from '../common/cls/actor-context.service';
-import { ForbiddenError, NotFoundError } from '../common/errors/domain-error';
+import { NotFoundError } from '../common/errors/domain-error';
+import { Money } from '../common/money/money';
+import { BusinessCustomersRepository } from '../businesses/business-customers.repository';
 import { ClientRepository } from './clients.repository';
 import { Client } from './entities/client.entity';
+import { BalanceService } from './balance/balance.service';
 import { ClientResponseDto } from './dto/client-response.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
@@ -12,41 +14,53 @@ export class ClientsService {
   constructor(
     private readonly clients: ClientRepository,
     private readonly actorCtx: ActorContextService,
+    private readonly balance: BalanceService,
+    private readonly wallets: BusinessCustomersRepository,
   ) {}
 
   /** Профиль текущего пользователя (actor из CLS — без IDOR). */
   async getMyProfile(): Promise<ClientResponseDto> {
-    return new ClientResponseDto(await this.loadOrThrow(this.actorCtx.getOrThrow().userId));
+    const actor = this.actorCtx.getOrThrow();
+    const client = await this.loadOrThrow(actor.userId);
+    const bal = await this.balance.balanceOf(actor.userId, actor.businessId);
+    return new ClientResponseDto(client, bal);
   }
 
   async updateMyProfile(dto: UpdateProfileDto): Promise<ClientResponseDto> {
-    const client = await this.loadOrThrow(this.actorCtx.getOrThrow().userId);
+    const actor = this.actorCtx.getOrThrow();
+    const client = await this.loadOrThrow(actor.userId);
     if (dto.name !== undefined) client.name = dto.name;
     if (dto.phone !== undefined) client.phone = dto.phone;
     if (dto.address !== undefined) client.address = dto.address;
     if (dto.language !== undefined) client.language = dto.language;
-    return new ClientResponseDto(await this.clients.save(client));
+    const saved = await this.clients.save(client);
+    const bal = await this.balance.balanceOf(actor.userId, actor.businessId);
+    return new ClientResponseDto(saved, bal);
   }
 
   // --- admin ---
 
   async search(term?: string): Promise<ClientResponseDto[]> {
-    const list = await this.clients.search(term);
-    return list.map((c) => new ClientResponseDto(c));
+    const actor = this.actorCtx.getOrThrow();
+    // Поиск скоуплен бизнесом актора (business_customers): без платформенной утечки клиентов.
+    const list = await this.clients.search(actor.businessId, term);
+    if (!list.length) return [];
+    // Балансы одним запросом — без N+1.
+    const ids = list.map((c) => c.id);
+    const balMap = await this.wallets.balancesFor(actor.businessId, ids);
+    return list.map((c) => new ClientResponseDto(c, balMap.get(c.id) ?? Money.zero()));
   }
 
   async getByIdAdmin(id: string): Promise<ClientResponseDto> {
-    return new ClientResponseDto(await this.loadOrThrow(id));
-  }
-
-  async changeRole(targetId: string, role: Role): Promise<ClientResponseDto> {
     const actor = this.actorCtx.getOrThrow();
-    if (targetId === actor.userId) {
-      throw new ForbiddenError('Нельзя менять собственную роль');
+    // Клиент виден админу, только если есть строка business_customers (actor.businessId, id).
+    const wallet = await this.wallets.find(actor.businessId, id);
+    if (!wallet) {
+      throw new NotFoundError('Клиент не найден');
     }
-    const client = await this.loadOrThrow(targetId);
-    client.role = role;
-    return new ClientResponseDto(await this.clients.save(client));
+    const client = await this.loadOrThrow(id);
+    const bal = await this.balance.balanceOf(id, actor.businessId);
+    return new ClientResponseDto(client, bal);
   }
 
   private async loadOrThrow(id: string): Promise<Client> {

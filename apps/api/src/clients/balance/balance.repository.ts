@@ -17,12 +17,12 @@ export class BalanceRepository extends TransactionalRepository<BalanceTransactio
     return this.repo.save(this.repo.create(data));
   }
 
-  findByClient(clientId: string): Promise<BalanceTransaction[]> {
-    return this.repo.find({ where: { clientId }, order: { createdAt: 'DESC' } });
+  findByClient(businessId: string, clientId: string): Promise<BalanceTransaction[]> {
+    return this.repo.find({ where: { clientId, businessId }, order: { createdAt: 'DESC' } });
   }
 
-  /** Проводка по ключу идемпотентности (для дедупа повторных денежных команд). */
-  findByIdempotencyKey(key: string): Promise<BalanceTransaction | null> {
-    return this.repo.findOne({ where: { idempotencyKey: key } });
+  /** Проводка по ключу идемпотентности (scoped by business for tenant safety). */
+  findByIdempotencyKey(businessId: string, key: string): Promise<BalanceTransaction | null> {
+    return this.repo.findOne({ where: { idempotencyKey: key, businessId } });
   }
 }

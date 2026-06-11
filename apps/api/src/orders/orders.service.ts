@@ -1,49 +1,108 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { OrderStatus, PaymentMethod } from '@eatfit/shared';
+import { BusinessStatus, OrderStatus, PaymentMethod } from '@eatfit/shared';
 import { ActorContextService } from '../common/cls/actor-context.service';
-import { ConflictError, NotFoundError } from '../common/errors/domain-error';
-import { Money } from '../common/money/money';
+import {
+  ConflictError,
+  ForbiddenError,
+  InsufficientBalanceError,
+  NotFoundError,
+} from '../common/errors/domain-error';
 import { ClientRepository } from '../clients/clients.repository';
 import { BalanceService } from '../clients/balance/balance.service';
-import { MenuRepository } from '../menu/menu.repository';
-import { CART_STORE, ICartStore } from './cart/cart-store';
+import { BusinessesRepository } from '../businesses/businesses.repository';
+import { BusinessCustomersRepository } from '../businesses/business-customers.repository';
+import { CART_STORE, CartLine, ICartStore } from './cart/cart-store';
 import { OrderRepository } from './orders.repository';
-import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { assertTransition } from './order-status.machine';
 import { OrderNotificationService } from './order-notification.service';
 import { Order } from './entities/order.entity';
+import { LinePricingService, toOrderItemPartial } from './pricing/build-order-items';
+import { CartLine as CompositionLine } from './cart/cart-line.types';
+
+export interface CreateOrderOptions {
+  lines?: CartLine[];
+  offerId?: string;
+  skipCartClear?: boolean;
+}
 
 @Injectable()
 export class OrdersService {
   constructor(
     private readonly orders: OrderRepository,
-    private readonly menu: MenuRepository,
     private readonly clients: ClientRepository,
     private readonly balance: BalanceService,
     private readonly actorCtx: ActorContextService,
     private readonly orderNotifications: OrderNotificationService,
+    private readonly businesses: BusinessesRepository,
+    private readonly businessCustomers: BusinessCustomersRepository,
+    private readonly linePricing: LinePricingService,
     @Inject(CART_STORE) private readonly cart: ICartStore,
   ) {}
 
-  async create(dto: CreateOrderDto): Promise<OrderResponseDto> {
-    const { response, orderId, status } = await this.createInTransaction(dto);
-    await this.orderNotifications.dispatch(orderId, response, status);
+  async create(dto: CreateOrderDto, opts: CreateOrderOptions = {}): Promise<OrderResponseDto> {
+    const { response, orderId, status, businessId, cartKey, skipCartClear } =
+      await this.createInTransaction(dto, opts);
+    if (!skipCartClear) {
+      this.cart.clear(cartKey);
+    }
+    await this.orderNotifications.dispatch(businessId, orderId, response, status);
     return response;
   }
 
-  /**
-   * Создание заказа атомарно: цены берутся из БД (не от клиента), баланс списывается
-   * в той же транзакции (FOR UPDATE). Ошибка (нет адреса/баланса/блюда) → полный откат.
-   */
+  /** Создание заказа из composition (offers one-tap). */
+  async createFromComposition(
+    businessId: string,
+    clientId: string,
+    lines: CompositionLine[],
+    dto: Pick<CreateOrderDto, 'address' | 'comment' | 'paymentMethod'>,
+    offerId?: string,
+    opts: Pick<CreateOrderOptions, 'skipCartClear'> = {},
+  ): Promise<OrderResponseDto> {
+    const actor = this.actorCtx.getOrThrow();
+    if (actor.businessId !== businessId || actor.userId !== clientId) {
+      throw new ConflictError('Недопустимый контекст');
+    }
+    return this.create(
+      {
+        paymentMethod: dto.paymentMethod,
+        comment: dto.comment,
+        address: dto.address,
+      },
+      { lines, offerId, skipCartClear: opts.skipCartClear },
+    );
+  }
+
   @Transactional()
   private async createInTransaction(
     dto: CreateOrderDto,
-  ): Promise<{ response: OrderResponseDto; orderId: string; status: OrderStatus }> {
-    const clientId = this.actorCtx.getOrThrow().userId;
-    const lines = this.cart.get(clientId);
+    opts: CreateOrderOptions = {},
+  ): Promise<{
+    response: OrderResponseDto;
+    orderId: string;
+    status: OrderStatus;
+    businessId: string;
+    cartKey: string;
+    skipCartClear: boolean;
+  }> {
+    const actor = this.actorCtx.getOrThrow();
+    const clientId = actor.userId;
+    const businessId = actor.businessId;
+    const cartKey = `${businessId}:${clientId}`;
+
+    const business = await this.businesses.findById(businessId);
+    if (!business || business.status === BusinessStatus.Suspended) {
+      throw new ForbiddenError('Бизнес приостановлен');
+    }
+
+    let lines = opts.lines ?? this.cart.get(cartKey);
+    if (!opts.lines && lines.length > 0) {
+      const views = await this.linePricing.buildCartViews(businessId, lines);
+      const keptIds = new Set(views.map((v) => v.lineId));
+      lines = lines.filter((l) => keptIds.has(l.lineId));
+    }
     if (lines.length === 0) {
       throw new ConflictError('Корзина пуста');
     }
@@ -57,112 +116,113 @@ export class OrdersService {
       throw new ConflictError('Укажите адрес доставки');
     }
 
-    let total = Money.zero();
-    const itemsData: Partial<OrderItem>[] = [];
-    for (const line of lines) {
-      const item = await this.menu.findById(line.menuItemId);
-      if (!item || !item.isActive) {
-        throw new ConflictError('Одно из блюд недоступно — обновите корзину');
+    const { items, total } = await this.linePricing.buildOrderItems(businessId, lines);
+
+    if (dto.paymentMethod === PaymentMethod.Balance) {
+      const wallet = await this.businessCustomers.findForUpdateOrCreate(businessId, clientId);
+      if (!wallet.balance.gte(total)) {
+        throw new InsufficientBalanceError();
       }
-      const price = line.portion === 2 ? item.price2 : item.price;
-      if (price === null) {
-        throw new ConflictError('Одно из блюд недоступно — обновите корзину');
-      }
-      const weight = line.portion === 2 ? item.weightGrams2 : item.weightGrams;
-      const nutrition = line.portion === 2 ? item.nutrition2 : item.nutrition;
-      total = total.add(price.multiply(line.quantity));
-      itemsData.push({
-        menuItemId: item.id,
-        quantity: line.quantity,
-        priceAtOrder: price,
-        portion: line.portion,
-        portionWeightGrams: weight,
-        caloriesAtOrder: nutrition?.calories ?? null,
-      });
     }
 
+    const orderNumber = await this.businesses.allocateOrderNumber(businessId);
+
     const order = await this.orders.createOrder({
+      businessId,
+      orderNumber,
       clientId,
       status: OrderStatus.Pending,
       total,
       address,
       comment: dto.comment ?? null,
       paymentMethod: dto.paymentMethod,
+      offerId: opts.offerId ?? null,
     });
-    await this.orders.saveItems(itemsData.map((i) => ({ ...i, orderId: order.id })));
+    await this.orders.saveItems(
+      items.map((i) => ({ ...toOrderItemPartial(i), orderId: order.id })),
+    );
+
+    await this.businessCustomers.ensureExists(businessId, clientId);
+    await this.businessCustomers.bumpOrderStats(businessId, clientId);
 
     if (dto.paymentMethod === PaymentMethod.Balance) {
-      await this.balance.charge(clientId, total, order.id);
+      await this.balance.charge(clientId, businessId, total, order.id);
     }
 
-    this.cart.clear(clientId);
-
-    const response = await this.buildResponse(order.id);
-    return { response, orderId: order.id, status: OrderStatus.Pending };
+    const response = await this.buildResponse(businessId, order.id);
+    return {
+      response,
+      orderId: order.id,
+      status: OrderStatus.Pending,
+      businessId,
+      cartKey,
+      skipCartClear: opts.skipCartClear ?? false,
+    };
   }
 
   async listMy(): Promise<OrderResponseDto[]> {
-    const clientId = this.actorCtx.getOrThrow().userId;
-    const list = await this.orders.findByClient(clientId);
-    return Promise.all(list.map((o) => this.buildResponse(o.id)));
+    const actor = this.actorCtx.getOrThrow();
+    const list = await this.orders.findByClient(actor.businessId, actor.userId);
+    return Promise.all(list.map((o) => this.buildResponse(actor.businessId, o.id)));
   }
 
   async getMy(id: string): Promise<OrderResponseDto> {
-    const clientId = this.actorCtx.getOrThrow().userId;
-    const order = await this.orders.findById(id);
-    if (!order || order.clientId !== clientId) {
+    const actor = this.actorCtx.getOrThrow();
+    const order = await this.orders.findById(actor.businessId, id);
+    if (!order || order.clientId !== actor.userId) {
       throw new NotFoundError('Заказ не найден');
     }
-    return this.buildResponse(order.id);
+    return this.buildResponse(actor.businessId, order.id);
   }
 
   async listAll(status?: OrderStatus): Promise<OrderResponseDto[]> {
-    const list = await this.orders.findAll(status);
-    return Promise.all(list.map((o) => this.buildResponse(o.id)));
+    const actor = this.actorCtx.getOrThrow();
+    const list = await this.orders.findAll(actor.businessId, status);
+    return Promise.all(list.map((o) => this.buildResponse(actor.businessId, o.id)));
   }
 
   async getAdmin(id: string): Promise<OrderResponseDto> {
-    return this.buildResponse(id);
+    const actor = this.actorCtx.getOrThrow();
+    return this.buildResponse(actor.businessId, id);
   }
 
   async transition(id: string, to: OrderStatus): Promise<OrderResponseDto> {
-    const { response, orderId, status } = await this.transitionInTransaction(id, to);
-    await this.orderNotifications.dispatch(orderId, response, status);
+    const { response, orderId, status, businessId } = await this.transitionInTransaction(id, to);
+    await this.orderNotifications.dispatch(businessId, orderId, response, status);
     return response;
   }
 
-  /** Смена статуса с проверкой FSM×роль; возврат денег при отмене (если оплачено балансом). */
   @Transactional()
   private async transitionInTransaction(
     id: string,
     to: OrderStatus,
-  ): Promise<{ response: OrderResponseDto; orderId: string; status: OrderStatus }> {
+  ): Promise<{ response: OrderResponseDto; orderId: string; status: OrderStatus; businessId: string }> {
     const actor = this.actorCtx.getOrThrow();
-    const order = await this.loadForUpdateOrThrow(id);
+    const order = await this.loadForUpdateOrThrow(actor.businessId, id);
 
     assertTransition(order.status, to, actor.role);
 
     if (to === OrderStatus.Cancelled && order.paymentMethod === PaymentMethod.Balance) {
-      await this.balance.refund(order.clientId, order.total, order.id);
+      await this.balance.refund(order.clientId, order.businessId, order.total, order.id);
     }
 
     order.status = to;
     await this.orders.save(order);
 
-    const response = await this.buildResponse(order.id);
-    return { response, orderId: order.id, status: to };
+    const response = await this.buildResponse(order.businessId, order.id);
+    return { response, orderId: order.id, status: to, businessId: order.businessId };
   }
 
-  private async loadForUpdateOrThrow(id: string): Promise<Order> {
-    const order = await this.orders.findByIdForUpdate(id);
+  private async loadForUpdateOrThrow(businessId: string, id: string): Promise<Order> {
+    const order = await this.orders.findByIdForUpdate(businessId, id);
     if (!order) {
       throw new NotFoundError('Заказ не найден');
     }
     return order;
   }
 
-  private async buildResponse(id: string): Promise<OrderResponseDto> {
-    const order = await this.orders.findById(id);
+  private async buildResponse(businessId: string, id: string): Promise<OrderResponseDto> {
+    const order = await this.orders.findById(businessId, id);
     if (!order) {
       throw new NotFoundError('Заказ не найден');
     }

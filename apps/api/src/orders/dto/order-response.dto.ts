@@ -1,24 +1,28 @@
 import { OrderStatus, PaymentMethod } from '@eatfit/shared';
 import { Order } from '../entities/order.entity';
 import { OrderItem } from '../entities/order-item.entity';
+import { ModifierSnapshot, ComboSlotSnapshot } from '../pricing/line-pricing.types';
 
 export interface OrderItemView {
-  menuItemId: string;
+  kind: 'dish' | 'combo';
+  menuItemId: string | null;
+  comboId: string | null;
   nameRu: string;
   nameUz: string;
   quantity: number;
   priceAtOrder: string;
   lineTotal: string;
-  // Порция и её вес (для отображения размера порции).
   portion: number;
   weightGrams: number | null;
-  // Снимок калорийности 1 шт выбранной порции (ккал); null, если КБЖУ не задан.
   calories: number | null;
+  nutrition: import('@eatfit/shared').Nutrition | null;
+  modifiers: ModifierSnapshot[];
+  comboSlots: ComboSlotSnapshot[];
 }
 
 export class OrderResponseDto {
   id: string;
-  number: number; // короткий последовательный номер для UI
+  number: number;
   status: OrderStatus;
   total: string;
   address: string;
@@ -28,8 +32,8 @@ export class OrderResponseDto {
   customerName: string | null;
   customerPhone: string | null;
   items: OrderItemView[];
-  // Суммарная калорийность заказа (Σ калории×кол-во); null, если ни у одной позиции нет КБЖУ.
   totalCalories: number | null;
+  offerId: string | null;
 
   constructor(
     order: Order,
@@ -46,22 +50,33 @@ export class OrderResponseDto {
     this.createdAt = order.createdAt;
     this.customerName = customer?.name ?? null;
     this.customerPhone = customer?.phone ?? null;
-    this.items = items.map((it) => ({
-      menuItemId: it.menuItemId,
-      nameRu: it.menuItem?.nameRu ?? '',
-      nameUz: it.menuItem?.nameUz ?? '',
-      quantity: it.quantity,
-      priceAtOrder: it.priceAtOrder.toString(),
-      lineTotal: it.priceAtOrder.multiply(it.quantity).toString(),
-      portion: it.portion ?? 1,
-      weightGrams: it.portionWeightGrams ?? null,
-      calories: it.caloriesAtOrder ?? null,
-    }));
+    this.offerId = order.offerId ?? null;
+    this.items = items.map(mapOrderItemView);
     this.totalCalories = sumCalories(this.items);
   }
 }
 
-/** Σ калорий по позициям (калории×кол-во); null, если ни у одной позиции нет КБЖУ. */
+function mapOrderItemView(it: OrderItem): OrderItemView {
+  const nameRu = it.nameRuSnapshot || it.menuItem?.nameRu || '';
+  const nameUz = it.nameUzSnapshot || it.menuItem?.nameUz || '';
+  return {
+    kind: it.kind ?? 'dish',
+    menuItemId: it.menuItemId,
+    comboId: it.comboId,
+    nameRu,
+    nameUz,
+    quantity: it.quantity,
+    priceAtOrder: it.priceAtOrder.toString(),
+    lineTotal: it.priceAtOrder.multiply(it.quantity).toString(),
+    portion: it.portion ?? 1,
+    weightGrams: it.portionWeightGrams ?? null,
+    calories: it.caloriesAtOrder ?? null,
+    nutrition: it.nutritionSnapshot ?? null,
+    modifiers: it.modifiersSnapshot ?? [],
+    comboSlots: it.comboSelectionsSnapshot ?? [],
+  };
+}
+
 function sumCalories(items: OrderItemView[]): number | null {
   let sum = 0;
   let any = false;
@@ -72,4 +87,28 @@ function sumCalories(items: OrderItemView[]): number | null {
     }
   }
   return any ? sum : null;
+}
+
+/** Текст позиции для kitchen/telegram cards с sub-lines. */
+export function formatOrderItemLines(
+  lang: 'ru' | 'uz',
+  item: OrderItemView,
+): string[] {
+  const name = lang === 'uz' ? item.nameUz : item.nameRu;
+  const w = item.weightGrams ? ` (${item.weightGrams} ${lang === 'uz' ? 'g' : 'г'})` : '';
+  const lines = [`• ${name}${w} ×${item.quantity}`];
+  for (const mod of item.modifiers) {
+    const modName = lang === 'uz' ? mod.nameUz : mod.nameRu;
+    lines.push(`  ＋ ${modName}`);
+  }
+  for (const slot of item.comboSlots) {
+    const slotLabel = lang === 'uz' ? slot.slotNameUz : slot.slotNameRu;
+    const itemLabel = lang === 'uz' ? slot.itemNameUz : slot.itemNameRu;
+    lines.push(`  ▸ ${slotLabel}: ${itemLabel}`);
+    for (const mod of slot.modifiers) {
+      const modName = lang === 'uz' ? mod.nameUz : mod.nameRu;
+      lines.push(`    ＋ ${modName}`);
+    }
+  }
+  return lines;
 }

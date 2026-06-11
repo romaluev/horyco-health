@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ClientRepository } from './clients.repository';
 import { ClientsService } from './clients.service';
 import { ClientsController } from './clients.controller';
@@ -9,8 +9,10 @@ import { BalanceService } from './balance/balance.service';
 /**
  * Клиенты: профиль (/me), админ-управление (/admin/clients) и денежное ядро
  * (BalanceService + ledger). BalanceService/ClientRepository экспортируются для
- * Deposits и Orders.
+ * Deposits и Orders. @Global: ClientRepository нужен guard'ам (re-validate isPlatformAdmin),
+ * которые инстанцируются в контексте чужих модулей.
  */
+@Global()
 @Module({
   controllers: [ClientsController, ClientsAdminController],
   providers: [ClientRepository, ClientsService, BalanceRepository, BalanceService],

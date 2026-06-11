@@ -1,16 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Category, Language, Role } from '@eatfit/shared';
+import { Category, Language } from '@eatfit/shared';
 import type { Context } from 'telegraf';
 import type { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
 import { Client } from '../clients/entities/client.entity';
 import { MenuItem } from '../menu/entities/menu-item.entity';
 import { MenuRepository } from '../menu/menu.repository';
+import { BusinessMembersRepository } from '../businesses/business-members.repository';
+import { ActorContextService } from '../common/cls/actor-context.service';
+import { isOwnerOrManager } from '../businesses/membership.util';
 import { currentIsoWeekday } from '../common/time/weekday';
 import { CartService } from '../orders/cart/cart.service';
 import { BotStateService } from './bot-state.service';
 import { Lang, t, categoryName, pick, formatMoney, esc } from './i18n/bot-i18n';
-import { mainMenuKeyboard, stepperRow, detailButtonRow } from './telegram-keyboards';
+import { mainMenuKeyboard, stepperRow, detailButtonRow, comboButtonRow, profileButtonRow } from './telegram-keyboards';
 
 /**
  * Презентационный слой бота. Витрина — карточки блюд (фото + степпер); количество правится
@@ -20,8 +23,7 @@ import { mainMenuKeyboard, stepperRow, detailButtonRow } from './telegram-keyboa
 @Injectable()
 export class BotUiService {
   private readonly logger = new Logger(BotUiService.name);
-  private readonly adminIds: string[];
-  private readonly webAppUrl?: string;
+  private readonly webAppBase?: string;
   private readonly tzOffsetHours: number;
 
   constructor(
@@ -29,14 +31,31 @@ export class BotUiService {
     private readonly menu: MenuRepository,
     private readonly cart: CartService,
     private readonly state: BotStateService,
+    private readonly actorCtx: ActorContextService,
+    private readonly members: BusinessMembersRepository,
   ) {
-    this.adminIds = this.config.get<string[]>('telegram.adminIds') ?? [];
-    this.webAppUrl = this.config.get<string>('bot.webAppUrl');
+    this.webAppBase = this.config.get<string>('bot.webAppUrl');
     this.tzOffsetHours = this.config.get<number>('reports.tzOffsetHours') ?? 5;
   }
 
-  isAdmin(client: Client): boolean {
-    return this.adminIds.includes(String(client.telegramId)) || client.role === Role.Admin;
+  /** Mini App URL с ?biz=<slug> для текущего бота. */
+  private webAppUrl(): string | undefined {
+    const base = this.webAppBase;
+    if (!base?.startsWith('https://')) return undefined;
+    const slug =
+      this.actorCtx.getBotBusiness()?.slug ??
+      undefined;
+    if (!slug) return base;
+    const sep = base.includes('?') ? '&' : '?';
+    return `${base}${sep}biz=${encodeURIComponent(slug)}`;
+  }
+
+  /** owner/manager членство в текущем бизнесе ∪ платформенный админ. */
+  async isAdmin(client: Client): Promise<boolean> {
+    if (client.isPlatformAdmin) return true;
+    const bizId = this.actorCtx.getBusinessIdOrThrow();
+    const membership = await this.members.findActive(bizId, client.id);
+    return membership != null && isOwnerOrManager(membership.role);
   }
 
   langOf(client: Client): Lang {
@@ -45,9 +64,10 @@ export class BotUiService {
 
   async showMainMenu(ctx: Context, client: Client): Promise<void> {
     const lang = this.langOf(client);
+    const admin = await this.isAdmin(client);
     await ctx.reply(
       t(lang, 'main_menu'),
-      mainMenuKeyboard(lang, client.role, this.isAdmin(client), this.webAppUrl),
+      mainMenuKeyboard(lang, client.role, admin, this.webAppUrl()),
     );
   }
 
@@ -66,8 +86,9 @@ export class BotUiService {
   /** Витрина: карточки с фото и степпером + кнопка оформления. Запоминает id сообщений. */
   async renderMenu(ctx: Context, client: Client): Promise<void> {
     const lang = this.langOf(client);
+    const bizId = this.actorCtx.getBusinessIdOrThrow();
     // Витрина бота — только блюда на сегодняшний день недели (как и на сайте).
-    const items = await this.menu.findActive(undefined, currentIsoWeekday(this.tzOffsetHours));
+    const items = await this.menu.findActive(bizId, undefined, currentIsoWeekday(this.tzOffsetHours));
     if (!items.length) {
       await ctx.reply(t(lang, 'menu_empty'));
       return;
@@ -106,7 +127,8 @@ export class BotUiService {
     if (item.photoFileId) return item.photoFileId;
     if (item.photoUrl) return item.photoUrl;
     if (item.photoMime) {
-      const bytes = await this.menu.findPhotoBytes(item.id);
+      const bizId = this.actorCtx.getBusinessIdOrThrow();
+      const bytes = await this.menu.findPhotoBytes(bizId, item.id);
       if (bytes) return { source: bytes.data };
     }
     return null;
@@ -201,7 +223,7 @@ export class BotUiService {
       rows.push(this.portionSelectorRow(lang, item, activePortion));
     }
     rows.push(stepperRow(lang, item.id, qtyActive, activePortion));
-    const detailRow = detailButtonRow(lang, item.id, this.webAppUrl);
+    const detailRow = detailButtonRow(lang, item.id, this.webAppUrl());
     if (detailRow) rows.push(detailRow);
     return { inline_keyboard: rows };
   }
@@ -212,7 +234,7 @@ export class BotUiService {
    */
   async sendDetailLink(ctx: Context, client: Client, item: MenuItem): Promise<void> {
     const lang = this.langOf(client);
-    const row = detailButtonRow(lang, item.id, this.webAppUrl);
+    const row = detailButtonRow(lang, item.id, this.webAppUrl());
     if (!row) {
       await this.sendDishCard(ctx, lang, item, 0);
       return;
@@ -221,6 +243,30 @@ export class BotUiService {
     const price = `${formatMoney(item.price.toString())} ${t(lang, 'currency')}`;
     await ctx.reply(`🍽 <b>${esc(name)}</b>\n💵 ${esc(price)}`, {
       parse_mode: 'HTML',
+      reply_markup: { inline_keyboard: [row] },
+    });
+  }
+
+  async sendComboLink(ctx: Context, client: Client, comboId: string): Promise<void> {
+    const lang = this.langOf(client);
+    const row = comboButtonRow(lang, comboId, this.webAppUrl());
+    if (!row) {
+      await ctx.reply(t(lang, 'error_generic'));
+      return;
+    }
+    await ctx.reply(`🍱 ${t(lang, 'btn_webapp')}`, {
+      reply_markup: { inline_keyboard: [row] },
+    });
+  }
+
+  async sendProfileLink(ctx: Context, client: Client): Promise<void> {
+    const lang = this.langOf(client);
+    const row = profileButtonRow(lang, this.webAppUrl());
+    if (!row) {
+      await ctx.reply('Укажите адрес в профиле');
+      return;
+    }
+    await ctx.reply('Укажите адрес в профиле', {
       reply_markup: { inline_keyboard: [row] },
     });
   }

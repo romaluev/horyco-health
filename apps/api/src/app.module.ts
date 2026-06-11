@@ -8,6 +8,7 @@ import { validationSchema } from './config/env.validation';
 import { AppClsModule } from './common/cls/cls.module';
 import { CommonModule } from './common/common.module';
 import { DatabaseModule } from './database/database.module';
+import { BusinessesModule } from './businesses/businesses.module';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
 import { MenuModule } from './menu/menu.module';
@@ -18,6 +19,13 @@ import { SettingsModule } from './settings/settings.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { HealthModule } from './health/health.module';
 import { PublicConfigModule } from './public-config/public-config.module';
+import { PlatformModule } from './platform/platform.module';
+import { OffersModule } from './offers/offers.module';
+import { ModifiersModule } from './modifiers/modifiers.module';
+import { CombosModule } from './combos/combos.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -39,6 +47,7 @@ import { PublicConfigModule } from './public-config/public-config.module';
     AppClsModule,
     CommonModule,
     DatabaseModule,
+    BusinessesModule,
     ClientsModule,
     AuthModule,
     MenuModule,
@@ -49,6 +58,17 @@ import { PublicConfigModule } from './public-config/public-config.module';
     TelegramModule,
     HealthModule,
     PublicConfigModule,
+    PlatformModule,
+    OffersModule,
+    ModifiersModule,
+    CombosModule,
+    AnalyticsModule,
+    ThrottlerModule.forRoot([
+      { name: 'default', ttl: 60_000, limit: 120 },
+      { name: 'auth', ttl: 60_000, limit: 15 },
+      { name: 'webhook', ttl: 60_000, limit: 600 },
+    ]),
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

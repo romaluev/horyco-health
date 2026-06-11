@@ -1,47 +1,79 @@
 import { Injectable } from '@nestjs/common';
-import { SettingsRepository } from './settings.repository';
+import { Business } from '../businesses/entities/business.entity';
+import { BusinessesRepository } from '../businesses/businesses.repository';
+import { ActorContextService } from '../common/cls/actor-context.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { SettingsResponseDto } from './dto/settings-response.dto';
 
-/** Ключи настроек приложения (app_settings). */
+/** Ключи настроек (бывшие app_settings; теперь колонки businesses). */
 export enum SettingKey {
   TopupTelegram = 'topup_telegram',
   TopupPhone = 'topup_phone',
   SupportContact = 'support_contact',
 }
 
+const KEY_TO_FIELD: Record<SettingKey, 'topupTelegram' | 'topupPhone' | 'supportContact'> = {
+  [SettingKey.TopupTelegram]: 'topupTelegram',
+  [SettingKey.TopupPhone]: 'topupPhone',
+  [SettingKey.SupportContact]: 'supportContact',
+};
+
 /**
- * FR-S: настройки приложения (контакты пополнения, назначение «Поддержки»).
- * Единый источник для бота и Mini App-админки; чтение и изменение — только админ.
+ * FR-S: настройки бизнеса (контакты пополнения, «Поддержка»). Единый источник для бота
+ * и Mini App-админки; публичный контракт (get/set/view/update) сохранён при переезде
+ * app_settings → колонки businesses (тенантность).
  */
 @Injectable()
 export class SettingsService {
-  constructor(private readonly repo: SettingsRepository) {}
+  constructor(
+    private readonly businesses: BusinessesRepository,
+    private readonly actorCtx: ActorContextService,
+  ) {}
+
+  /**
+   * Настройки скоупятся бизнесом из контекста (CLS): admin B правит именно B, а не дефолтный.
+   * В API это actor.businessId (JWT biz); в боте — actor или бизнес бота (для незарегистрированных).
+   */
+  private async load(): Promise<Business> {
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const business = await this.businesses.findById(businessId);
+    if (!business) {
+      throw new Error('Бизнес не найден при чтении настроек');
+    }
+    return business;
+  }
 
   async get(key: SettingKey): Promise<string | null> {
-    const s = await this.repo.get(key);
-    return s?.value ?? null;
+    return (await this.load())[KEY_TO_FIELD[key]];
   }
 
   async set(key: SettingKey, value: string): Promise<void> {
-    await this.repo.set(key, value.trim());
+    const business = await this.load();
+    business[KEY_TO_FIELD[key]] = value.trim();
+    await this.businesses.save(business);
   }
 
   /** Текущие значения всех настроек (для админки/бота). */
   async view(): Promise<SettingsResponseDto> {
-    const map = new Map((await this.repo.findAll()).map((s) => [s.key, s.value]));
+    const business = await this.load();
     return {
-      topupTelegram: map.get(SettingKey.TopupTelegram) ?? null,
-      topupPhone: map.get(SettingKey.TopupPhone) ?? null,
-      supportContact: map.get(SettingKey.SupportContact) ?? null,
+      topupTelegram: business.topupTelegram,
+      topupPhone: business.topupPhone,
+      supportContact: business.supportContact,
     };
   }
 
   /** Частичное обновление (только переданные поля). */
   async update(dto: UpdateSettingsDto): Promise<SettingsResponseDto> {
-    if (dto.topupTelegram !== undefined) await this.set(SettingKey.TopupTelegram, dto.topupTelegram);
-    if (dto.topupPhone !== undefined) await this.set(SettingKey.TopupPhone, dto.topupPhone);
-    if (dto.supportContact !== undefined) await this.set(SettingKey.SupportContact, dto.supportContact);
-    return this.view();
+    const business = await this.load();
+    if (dto.topupTelegram !== undefined) business.topupTelegram = dto.topupTelegram.trim();
+    if (dto.topupPhone !== undefined) business.topupPhone = dto.topupPhone.trim();
+    if (dto.supportContact !== undefined) business.supportContact = dto.supportContact.trim();
+    await this.businesses.save(business);
+    return {
+      topupTelegram: business.topupTelegram,
+      topupPhone: business.topupPhone,
+      supportContact: business.supportContact,
+    };
   }
 }

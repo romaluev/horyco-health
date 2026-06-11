@@ -11,27 +11,35 @@ export default () => ({
   database: {
     url: process.env.DATABASE_URL,
     ssl: process.env.DATABASE_SSL, // 'true' | 'false' | undefined (авто)
-    synchronize: (process.env.TYPEORM_SYNC ?? 'true') === 'true',
+    // Схема ведётся миграциями (PRD AC-5); sync — только явный opt-in.
+    synchronize: (process.env.TYPEORM_SYNC ?? 'false') === 'true',
+    // Прогон миграций при старте (одна реплика — безопасно). На живых БД
+    // до baseline-fake выставить false — см. DEPLOYMENT.md.
+    migrationsRun: (process.env.TYPEORM_MIGRATIONS_RUN ?? 'true') === 'true',
   },
   jwt: {
     secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
   },
+  security: {
+    tokenEncKey: process.env.TOKEN_ENC_KEY,
+    cspReportOnly: (process.env.CSP_REPORT_ONLY ?? 'true') === 'true',
+  },
   bot: {
+    /** Переходный фолбэк для initData/HMAC, если у бизнеса ещё нет bot_token_enc. */
     token: process.env.BOT_TOKEN,
     username: process.env.BOT_USERNAME,
     webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET,
     // Один инстанс получает апдейты (AR-14): на остальных BOT_ENABLED=false.
     enabled: (process.env.BOT_ENABLED ?? 'true') === 'true',
+    publicUrl: process.env.PUBLIC_URL,
+    mode: (process.env.BOT_MODE ?? 'webhook') as 'webhook' | 'polling',
     // Публичный URL Mini App (кнопка открытия приложения в боте).
     webAppUrl: process.env.WEB_APP_URL,
   },
   telegram: {
+    /** Seed platform-admin флага is_platform_admin при первом /start. */
     adminIds: parseIds(process.env.ADMIN_TELEGRAM_IDS),
-    channelId: process.env.CHANNEL_ID,
-    cooksGroupId: process.env.COOK_GROUP_ID,
-    couriersGroupId: process.env.COURIER_GROUP_ID,
-    adminGroupId: process.env.ADMIN_GROUP_ID,
   },
   cors: {
     origins: parseIds(process.env.CORS_ORIGINS),

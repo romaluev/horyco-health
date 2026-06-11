@@ -32,25 +32,26 @@ export class OrderRepository extends TransactionalRepository<Order> {
       .find({ where: { orderId }, relations: { menuItem: true }, withDeleted: true });
   }
 
-  findById(id: string): Promise<Order | null> {
-    return this.repo.findOne({ where: { id } });
+  findById(businessId: string, id: string): Promise<Order | null> {
+    return this.repo.findOne({ where: { id, businessId } });
   }
 
-  findByIdForUpdate(id: string): Promise<Order | null> {
+  findByIdForUpdate(businessId: string, id: string): Promise<Order | null> {
     return this.repo
       .createQueryBuilder('order')
       .setLock('pessimistic_write')
       .where('order.id = :id', { id })
+      .andWhere('order.businessId = :businessId', { businessId })
       .getOne();
   }
 
-  findByClient(clientId: string): Promise<Order[]> {
-    return this.repo.find({ where: { clientId }, order: { createdAt: 'DESC' } });
+  findByClient(businessId: string, clientId: string): Promise<Order[]> {
+    return this.repo.find({ where: { clientId, businessId }, order: { createdAt: 'DESC' } });
   }
 
-  findAll(status?: OrderStatus): Promise<Order[]> {
+  findAll(businessId: string, status?: OrderStatus): Promise<Order[]> {
     return this.repo.find({
-      where: status ? { status } : {},
+      where: status ? { status, businessId } : { businessId },
       order: { createdAt: 'DESC' },
     });
   }

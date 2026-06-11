@@ -1,12 +1,15 @@
 'use client';
 
+import { Language } from '@eatfit/shared';
 import { useOrders } from '@/lib/queries';
+import { useAuthStore } from '@/store/auth.store';
 import { useT, useStatusText } from '@/lib/i18n';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, pick } from '@/lib/format';
 
 export function OrdersScreen() {
   const t = useT();
   const st = useStatusText();
+  const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
   const { data: orders, isLoading } = useOrders();
 
   if (isLoading) return <div className="center">{t('loading')}</div>;
@@ -24,7 +27,10 @@ export function OrdersScreen() {
             <span className="muted">{st(o.status)}</span>
           </div>
           <div className="dish-desc" style={{ marginTop: 6 }}>
-            {o.items.map((it) => `${it.nameRu} ×${it.quantity}`).join(', ')}
+            {o.items.map((it) => {
+              const mods = it.modifiers?.length ? ` (+${it.modifiers.length})` : '';
+              return `${pick(lang, it.nameRu, it.nameUz)}${mods} ×${it.quantity}`;
+            }).join(', ')}
           </div>
           <div className="row" style={{ marginTop: 6 }}>
             <span className="muted">{new Date(o.createdAt).toLocaleString()}</span>

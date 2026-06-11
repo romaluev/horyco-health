@@ -43,12 +43,16 @@ export interface MenuItemDto {
   allergens: Allergens | null;
   nutrition: Nutrition | null;
   nutrition2: Nutrition | null;
+  hasRequiredModifiers?: boolean;
   createdAt: string;
 }
 
 export interface CartItemDto {
-  menuItemId: string;
-  category: Category;
+  lineId: string;
+  kind: 'dish' | 'combo';
+  menuItemId: string | null;
+  comboId: string | null;
+  category: Category | null;
   nameRu: string;
   nameUz: string;
   price: string;
@@ -57,6 +61,16 @@ export interface CartItemDto {
   portion: number;
   weightGrams: number | null;
   calories: number | null;
+  modifiers: Array<{ id: string; nameRu: string; nameUz: string; priceDelta: string }>;
+  comboSlots: Array<{
+    slotId: string;
+    slotNameRu: string;
+    slotNameUz: string;
+    menuItemId: string;
+    itemNameRu: string;
+    itemNameUz: string;
+    surcharge: string;
+  }>;
 }
 
 export interface CartDto {
@@ -66,7 +80,9 @@ export interface CartDto {
 }
 
 export interface OrderItemDto {
-  menuItemId: string;
+  kind: 'dish' | 'combo';
+  menuItemId: string | null;
+  comboId: string | null;
   nameRu: string;
   nameUz: string;
   quantity: number;
@@ -75,6 +91,13 @@ export interface OrderItemDto {
   portion: number;
   weightGrams: number | null;
   calories: number | null;
+  modifiers: Array<{ id: string; nameRu: string; nameUz: string; priceDelta: string }>;
+  comboSlots: Array<{
+    slotId: string;
+    slotNameRu: string;
+    itemNameRu: string;
+    menuItemId: string;
+  }>;
 }
 
 export interface OrderDto {

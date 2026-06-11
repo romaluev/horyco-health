@@ -19,10 +19,11 @@ export class MenuRepository extends TransactionalRepository<MenuItem> {
    * Правило дня (если day задан): напитки и десерты показываются ВСЕГДА; основное блюдо —
    * только если сегодняшний день есть в его списке days (основное без дней НЕ показывается).
    */
-  findActive(category?: Category, day?: number): Promise<MenuItem[]> {
+  findActive(businessId: string, category?: Category, day?: number): Promise<MenuItem[]> {
     const qb = this.repo
       .createQueryBuilder('m')
-      .where('m.isActive = :active', { active: true });
+      .where('m.isActive = :active', { active: true })
+      .andWhere('m.businessId = :businessId', { businessId });
     if (category) qb.andWhere('m.category = :category', { category });
     if (day) {
       qb.andWhere('(m.category <> :mainCat OR :day = ANY(m.days))', {
@@ -34,20 +35,24 @@ export class MenuRepository extends TransactionalRepository<MenuItem> {
   }
 
   /** Полный список для админки. */
-  findAll(): Promise<MenuItem[]> {
-    return this.repo.find({ order: { category: 'ASC', createdAt: 'DESC' } });
+  findAll(businessId: string): Promise<MenuItem[]> {
+    return this.repo.find({
+      where: { businessId },
+      order: { category: 'ASC', createdAt: 'DESC' },
+    });
   }
 
-  findById(id: string): Promise<MenuItem | null> {
-    return this.repo.findOne({ where: { id } });
+  findById(businessId: string, id: string): Promise<MenuItem | null> {
+    return this.repo.findOne({ where: { id, businessId } });
   }
 
   /** Бинарь фото (колонка select:false) — грузим явно только при отдаче картинки. */
-  async findPhotoBytes(id: string): Promise<{ data: Buffer; mime: string } | null> {
+  async findPhotoBytes(businessId: string, id: string): Promise<{ data: Buffer; mime: string } | null> {
     const row = await this.repo
       .createQueryBuilder('m')
       .select(['m.photoData', 'm.photoMime'])
       .where('m.id = :id', { id })
+      .andWhere('m.businessId = :businessId', { businessId })
       .getRawOne<{ m_photo_data: Buffer | null; m_photo_mime: string | null }>();
     if (!row?.m_photo_data || !row.m_photo_mime) return null;
     return { data: row.m_photo_data, mime: row.m_photo_mime };
@@ -64,7 +69,15 @@ export class MenuRepository extends TransactionalRepository<MenuItem> {
   // Мягкое удаление: проставляет deleted_at вместо физического DELETE. Так блюдо, на которое
   // уже ссылаются заказы (FK order_items.menu_item_id без ON DELETE), удаляется без ошибки FK,
   // а история заказов остаётся целой. find/findOne/QueryBuilder ниже автоматически его прячут.
-  async delete(id: string): Promise<void> {
-    await this.repo.softDelete(id);
+  async delete(businessId: string, id: string): Promise<void> {
+    await this.repo.softDelete({ id, businessId });
+  }
+
+  countActive(businessId: string): Promise<number> {
+    return this.repo.count({ where: { businessId, isActive: true } });
+  }
+
+  async clearPhotoFileIds(businessId: string): Promise<void> {
+    await this.repo.update({ businessId }, { photoFileId: null });
   }
 }
