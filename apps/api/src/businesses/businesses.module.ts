@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Module, forwardRef } from '@nestjs/common';
 import { BusinessesRepository } from './businesses.repository';
 import { BusinessChatsRepository } from './business-chats.repository';
 import { BusinessCustomersRepository } from './business-customers.repository';
@@ -9,6 +9,7 @@ import { BusinessAdminService } from './business-admin.service';
 import { BusinessAdminController } from './business-admin.controller';
 import { BusinessAdminGuard } from '../auth/guards/business-admin.guard';
 import { MenuModule } from '../menu/menu.module';
+import { TelegramModule } from '../telegram/telegram.module';
 
 /**
  * Тенантное ядро. @Global: businessId нужен guard'ам, боту и почти каждому домену —
@@ -16,7 +17,7 @@ import { MenuModule } from '../menu/menu.module';
  */
 @Global()
 @Module({
-  imports: [MenuModule],
+  imports: [MenuModule, forwardRef(() => TelegramModule)],
   controllers: [BusinessAdminController],
   providers: [
     BusinessesRepository,

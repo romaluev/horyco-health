@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Transactional } from '@nestjs-cls/transactional';
 import { randomBytes } from 'crypto';
@@ -44,7 +44,9 @@ export class BusinessAdminService {
     private readonly clients: ClientRepository,
     private readonly menu: MenuRepository,
     private readonly botTokens: BotTokenService,
+    @Inject(forwardRef(() => BotRegistryService))
     private readonly registry: BotRegistryService,
+    @Inject(forwardRef(() => BotLifecycleService))
     private readonly lifecycle: BotLifecycleService,
     private readonly defaultBusiness: DefaultBusinessService,
   ) {
