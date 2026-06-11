@@ -37,9 +37,7 @@ export function languageKeyboard() {
 
 /** Reply-клавиатура «Отправить локацию». */
 export function shareLocationKeyboard(lang: Lang) {
-  return Markup.keyboard([[Markup.button.locationRequest(t(lang, 'share_location'))]])
-    .resize()
-    .oneTime();
+  return Markup.keyboard([[Markup.button.locationRequest(t(lang, 'share_location'))]]).resize();
 }
 
 /** Пропустить ввод ориентира после локации. */
