@@ -46,8 +46,8 @@ const dict = {
   profile_location_missing: { ru: 'Точка на карте не указана', uz: 'Xaritadagi nuqta ko‘rsatilmagan' },
 
   welcome_new: {
-    ru: 'Добро пожаловать в {businessName}! 🎉\n\nСейчас быстро настроим профиль — это займёт минуту.',
-    uz: '{businessName} ga xush kelibsiz! 🎉\n\nProfilni tez sozlaymiz — bir daqiqa vaqt oladi.',
+    ru: 'Добро пожаловать в {businessName}! 🎉\n\nБыстрая настройка — телефон и точка доставки.',
+    uz: '{businessName} ga xush kelibsiz! 🎉\n\nTez sozlash — telefon va yetkazib berish nuqtasi.',
   },
   welcome_back: {
     ru: 'С возвращением в {businessName}! 👋',

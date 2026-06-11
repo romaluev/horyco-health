@@ -105,7 +105,7 @@ cd apps/api && npm run e2e:smoke
 
 ### 3.1 Platform admin
 
-1. Send `/start` to your Eat&fit bot from the Telegram account in `ADMIN_TELEGRAM_IDS` — complete registration (language → name → phone → **share location pin** → optional landmark).
+1. Send `/start` to your Eat&fit bot from the Telegram account in `ADMIN_TELEGRAM_IDS` — complete registration (language → phone → **share location pin** → optional landmark).
 2. Set web password in **Mini App → Профиль → «Пароль для сайта»** (optional for ordering; required for `/platform` and `/b` login from browser).
 3. Log in at `https://health.horyco.com/platform` with **phone + password** from step 2.
 

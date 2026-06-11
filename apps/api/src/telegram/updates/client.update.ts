@@ -82,7 +82,7 @@ export class ClientUpdate {
     if (!client) {
       client = await this.clients.create({
         telegramId,
-        name: from.first_name ?? 'Гость',
+        name: this.telegramDisplayName(from) || 'Гость',
         username: from.username ?? null,
         language: from.language_code === 'uz' ? Language.Uz : Language.Ru,
       });
@@ -197,9 +197,12 @@ export class ClientUpdate {
 
     const session = this.state.getSession(telegramId);
     if (session?.flow === 'register' && session.step === 'language') {
-      this.state.updateSession(telegramId, { step: 'full_name' });
+      this.syncNameFromTelegram(client, from);
+      await this.clients.save(client);
+      invalidateActorCache(this.actorCtx.getBusinessIdOrThrow(), telegramId);
+      this.state.updateSession(telegramId, { step: 'phone' });
       await ctx.reply(t(lang, 'language_set'));
-      await ctx.reply(t(lang, 'ask_full_name'));
+      await ctx.reply(t(lang, 'ask_phone'), shareContactKeyboard(lang));
       return;
     }
     // Смена языка вне регистрации
@@ -523,7 +526,7 @@ export class ClientUpdate {
       const client = await this.clients.findByTelegramId(String(from.id));
       if (client && !this.isRegistered(client)) {
         if (!session || session.flow !== 'register') {
-          const step = this.inferRegistrationStep(client, from);
+          const step = this.inferRegistrationStep(client);
           this.state.setSession(from.id, 'register', step, session?.data ?? {});
         }
         return void (await this.registrationStep(ctx, text));
@@ -595,14 +598,14 @@ export class ClientUpdate {
       case 'language':
         await ctx.reply(t(lang, 'choose_language'), languageKeyboard());
         return;
-      case 'full_name': {
-        client.name = text.replace(/\s+/g, ' ');
+      case 'full_name':
+        // Legacy session from older bots — skip name, continue to phone.
+        this.syncNameFromTelegram(client, from);
         await this.clients.save(client);
         invalidateActorCache(this.actorCtx.getBusinessIdOrThrow(), from.id);
         this.state.updateSession(from.id, { step: 'phone' });
         await ctx.reply(t(lang, 'ask_phone'), shareContactKeyboard(lang));
         return;
-      }
       case 'phone': {
         const phone = this.parsePhone(text);
         if (!phone) {
@@ -1053,30 +1056,19 @@ export class ClientUpdate {
   /** После рестарта pod in-memory FSM пуст — восстанавливаем шаг по полям клиента. */
   private inferRegistrationStep(
     client: Client,
-    from: { first_name?: string },
-  ): 'language' | 'full_name' | 'phone' | 'location' | 'landmark' {
-    if (!client.phone) {
-      const guestDefault = from.first_name ?? 'Гость';
-      if (client.name && client.name !== 'Гость' && client.name !== guestDefault) {
-        return 'phone';
-      }
-      return 'full_name';
-    }
+  ): 'language' | 'phone' | 'location' | 'landmark' {
+    if (!client.phone) return 'phone';
     if (!this.hasDeliveryLocation(client)) return 'location';
     return 'landmark';
   }
 
   private async promptRegistrationStep(ctx: Context, client: Client, session: BotSession): Promise<void> {
     const lang = this.ui.langOf(client);
-    const step =
-      (session.step as 'language' | 'full_name' | 'phone' | 'location' | 'landmark' | undefined) ??
-      this.inferRegistrationStep(client, ctx.from!);
+    const rawStep = session.step as 'language' | 'full_name' | 'phone' | 'location' | 'landmark' | undefined;
+    const step = rawStep === 'full_name' ? 'phone' : (rawStep ?? this.inferRegistrationStep(client));
     switch (step) {
       case 'language':
         await ctx.reply(t(lang, 'choose_language'), languageKeyboard());
-        break;
-      case 'full_name':
-        await ctx.reply(t(lang, 'ask_full_name'));
         break;
       case 'phone':
         await ctx.reply(t(lang, 'ask_phone'), shareContactKeyboard(lang));
@@ -1122,6 +1114,15 @@ export class ClientUpdate {
       }
     }
     return null;
+  }
+
+  private telegramDisplayName(from: { first_name?: string; last_name?: string }): string {
+    return [from.first_name?.trim(), from.last_name?.trim()].filter(Boolean).join(' ');
+  }
+
+  private syncNameFromTelegram(client: Client, from: { first_name?: string; last_name?: string }): void {
+    const name = this.telegramDisplayName(from);
+    if (name) client.name = name;
   }
 
   private parsePhone(text: string): string | null {

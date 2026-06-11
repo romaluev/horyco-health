@@ -19,7 +19,7 @@
 - Автоматизацию кухни/курьера через группы Telegram
 - Кошелёк клиента и отчёты
 
-B2C-клиент: `/start` → регистрация (язык → имя → телефон → локация → ориентир) → меню; one-tap офферы после регистрации.
+B2C-клиент: `/start` → регистрация (язык → телефон → локация → опциональный ориентир; имя из профиля Telegram, правка в «Профиль») → меню; one-tap офферы после регистрации.
 
 ---
 
@@ -143,7 +143,7 @@ Businesses table with **botStatus badge**, create/suspend/activate, GMV per busi
 ## 6. Бот
 
 - Multi-bot engine: registry, composer, per-business webhook
-- `/start` → **регистрация** (язык → имя → телефон → **Telegram location pin** → опциональный ориентир) → главное меню; returning users — welcome back + меню
+- `/start` → **регистрация** (язык → телефон → **Telegram location pin** → опциональный ориентир; имя подставляется из Telegram) → главное меню; returning users — welcome back + меню
 - Deep links после регистрации: `item_`, `detail_`, `combo_`
 - Кастомное приветствие per-business в `/b` → Settings (`welcome_message_ru/uz`, placeholder `{businessName}`)
 - Push-уведомления клиенту по заказу (все статусы incl. `pending`) с inline «Мои заказы»
