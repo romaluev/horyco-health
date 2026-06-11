@@ -4,6 +4,7 @@ import { BaseEntity } from '../../../common/database/base.entity';
 import { Money } from '../../../common/money/money';
 import { moneyTransformer } from '../../../common/money/money.transformer';
 import { Client } from '../../entities/client.entity';
+import { Business } from '../../../businesses/entities/business.entity';
 
 /**
  * Append-only ledger движений по балансу. Баланс клиента — производная; инвариант
@@ -11,7 +12,15 @@ import { Client } from '../../entities/client.entity';
  */
 @Entity('balance_transactions')
 @Index(['orderId', 'type'], { unique: true, where: '"order_id" IS NOT NULL' })
+@Index(['businessId', 'createdAt'])
 export class BalanceTransaction extends BaseEntity {
+  @ManyToOne(() => Business, { nullable: false })
+  @JoinColumn({ name: 'business_id' })
+  business!: Business;
+
+  @Column({ type: 'uuid' })
+  businessId!: string;
+
   @ManyToOne(() => Client, { nullable: false })
   @JoinColumn({ name: 'client_id' })
   client!: Client;

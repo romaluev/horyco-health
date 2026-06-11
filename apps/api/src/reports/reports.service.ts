@@ -5,6 +5,7 @@ import { CronJob } from 'cron';
 import { OrderStatus, PaymentMethod } from '@eatfit/shared';
 import { Money } from '../common/money/money';
 import { INotifier, NOTIFIER, NotifyGroup } from '../common/notifications/notifier';
+import { DefaultBusinessService } from '../businesses/default-business.service';
 import { ReportsRepository } from './reports.repository';
 
 /** Границы «сегодня» в локальной TZ (UTC+offset), выраженные в UTC. */
@@ -19,6 +20,7 @@ interface DayRange {
  * Шлётся в админ-группу по расписанию (DAILY_REPORT_HOUR в TZ_OFFSET_HOURS) и по требованию
  * из бота. Планировщик — @nestjs/schedule (динамический CronJob, т.к. время из конфига).
  * Cron регистрируется на каждом инстансе API (не привязан к BOT_ENABLED).
+ * Пер-бизнесовый cron будет в Phase 4 — сейчас один бизнес.
  */
 @Injectable()
 export class ReportsService implements OnModuleInit {
@@ -28,6 +30,7 @@ export class ReportsService implements OnModuleInit {
     private readonly config: ConfigService,
     private readonly repo: ReportsRepository,
     private readonly scheduler: SchedulerRegistry,
+    private readonly defaultBusiness: DefaultBusinessService,
     @Inject(NOTIFIER) private readonly notifier: INotifier,
   ) {}
 
@@ -60,8 +63,9 @@ export class ReportsService implements OnModuleInit {
   async buildDailyReportText(): Promise<string> {
     const offset = this.config.get<number>('reports.tzOffsetHours') ?? 5;
     const { start, end, label } = this.dayRange(offset);
+    const businessId = await this.defaultBusiness.getId();
 
-    const orders = await this.repo.ordersInRange(start, end);
+    const orders = await this.repo.ordersInRange(businessId, start, end);
     const done = orders.filter((o) => o.status === OrderStatus.Done);
     const cancelled = orders.filter((o) => o.status === OrderStatus.Cancelled);
     const active = orders.filter(
@@ -76,7 +80,7 @@ export class ReportsService implements OnModuleInit {
     }
     const avg = done.length ? Number(revenue.toString()) / done.length : 0;
 
-    const items = await this.repo.doneItemsInRange(start, end);
+    const items = await this.repo.doneItemsInRange(businessId, start, end);
     const byDish = new Map<string, number>();
     for (const it of items) {
       const name = it.menuItem?.nameRu ?? '—';
@@ -84,10 +88,10 @@ export class ReportsService implements OnModuleInit {
     }
     const top = [...byDish.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-    const deposits = await this.repo.depositsInRange(start, end);
+    const deposits = await this.repo.depositsInRange(businessId, start, end);
     let depSum = Money.zero();
     for (const d of deposits) depSum = depSum.add(d.amount);
-    const newClients = await this.repo.clientsCountInRange(start, end);
+    const newClients = await this.repo.newCustomersCountInRange(businessId, start, end);
 
     const lines = [
       `📊 <b>Итоги дня — ${esc(label)}</b>`,

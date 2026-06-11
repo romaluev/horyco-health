@@ -1,17 +1,28 @@
-import { Entity, Column, ManyToOne, JoinColumn, Index, Generated } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { OrderStatus, PaymentMethod } from '@eatfit/shared';
 import { BaseEntity } from '../../common/database/base.entity';
 import { Money } from '../../common/money/money';
 import { moneyTransformer } from '../../common/money/money.transformer';
 import { Client } from '../../clients/entities/client.entity';
+import { Business } from '../../businesses/entities/business.entity';
 
 @Entity('orders')
 @Index(['clientId', 'status'])
+@Index(['businessId', 'status'])
+@Index(['businessId', 'createdAt'])
+// Номер уникален в пределах бизнеса (счётчик businesses.last_order_no, без sequence).
+@Index('uq_order_number_per_business', ['businessId', 'orderNumber'], { unique: true })
 export class Order extends BaseEntity {
+  @ManyToOne(() => Business, { nullable: false })
+  @JoinColumn({ name: 'business_id' })
+  business!: Business;
+
+  @Column({ type: 'uuid' })
+  businessId!: string;
+
   // Короткий последовательный номер заказа (для человека — удобно писать/диктовать).
   // id остаётся uuid (анти-IDOR), а в UI/уведомлениях показываем orderNumber.
-  @Index({ unique: true })
-  @Generated('increment')
+  // Выдаётся в транзакции через BusinessesRepository.allocateOrderNumber.
   @Column({ type: 'int' })
   orderNumber!: number;
 

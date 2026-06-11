@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 import { ActorContextService } from '../../common/cls/actor-context.service';
+import { DefaultBusinessService } from '../../businesses/default-business.service';
 import { JwtPayload } from '../jwt-payload';
 
 /**
@@ -18,6 +19,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly actorCtx: ActorContextService,
+    private readonly defaultBusiness: DefaultBusinessService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -51,6 +53,8 @@ export class JwtAuthGuard implements CanActivate {
       userId: payload.sub,
       telegramId: payload.telegramId,
       role: payload.role,
+      // Переходно (Phase 1–2): единственный бизнес; с Phase 2 tenant приедет в JWT.
+      businessId: await this.defaultBusiness.getId(),
       source: 'api',
     });
     return true;

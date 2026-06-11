@@ -54,6 +54,7 @@ export class DepositsService {
     dto: CreateDepositDto,
   ): Promise<{ result: AdminDepositResult; notify?: BalanceNotifyPayload }> {
     const admin = this.actorCtx.getOrThrow();
+    const businessId = admin.businessId;
     const target = await this.clients.findById(dto.clientId);
     if (!target) {
       throw new NotFoundError('Клиент не найден');
@@ -62,9 +63,9 @@ export class DepositsService {
     const amount = Money.fromMajor(dto.amount);
     const key = `deposit:${dto.idempotencyKey ?? randomUUID()}`;
 
-    const { client: updated, applied } = await this.balance.deposit(target.id, amount, key);
+    const { client: updated, applied } = await this.balance.deposit(target.id, businessId, amount, key);
     if (!applied) {
-      const [last] = await this.deposits.findByClient(target.id);
+      const [last] = await this.deposits.findByClient(businessId, target.id);
       return {
         result: {
           deposit: last ? new DepositResponseDto(last) : null,
@@ -74,6 +75,7 @@ export class DepositsService {
     }
 
     const deposit = await this.deposits.create({
+      businessId,
       clientId: target.id,
       amount,
       adminTelegramId: admin.telegramId,
@@ -97,6 +99,7 @@ export class DepositsService {
   private async adminWithdrawInTransaction(
     dto: CreateDepositDto,
   ): Promise<{ balance: string; notify?: BalanceNotifyPayload }> {
+    const businessId = this.actorCtx.getOrThrow().businessId;
     const target = await this.clients.findById(dto.clientId);
     if (!target) {
       throw new NotFoundError('Клиент не найден');
@@ -105,7 +108,7 @@ export class DepositsService {
     const amount = Money.fromMajor(dto.amount);
     const key = `debit:${dto.idempotencyKey ?? randomUUID()}`;
 
-    const { client: updated, applied } = await this.balance.adminDebit(target.id, amount, key);
+    const { client: updated, applied } = await this.balance.adminDebit(target.id, businessId, amount, key);
     if (!applied) {
       return { balance: updated.balance.toString() };
     }
@@ -139,11 +142,17 @@ export class DepositsService {
 
   async myHistory(): Promise<DepositResponseDto[]> {
     const actor = this.actorCtx.getOrThrow();
-    return this.historyFor(actor.userId);
+    return this.historyFor(actor.businessId, actor.userId);
   }
 
-  async historyFor(clientId: string): Promise<DepositResponseDto[]> {
-    const list = await this.deposits.findByClient(clientId);
+  /** История пополнений клиента (вызов от имени админа — businessId из актора). */
+  async historyForAdmin(clientId: string): Promise<DepositResponseDto[]> {
+    const businessId = this.actorCtx.getOrThrow().businessId;
+    return this.historyFor(businessId, clientId);
+  }
+
+  async historyFor(businessId: string, clientId: string): Promise<DepositResponseDto[]> {
+    const list = await this.deposits.findByClient(businessId, clientId);
     return list.map((d) => new DepositResponseDto(d));
   }
 }

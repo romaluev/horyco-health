@@ -35,9 +35,15 @@ export class Client extends BaseEntity {
   @Column({ type: 'enum', enum: Language, default: Language.Ru })
   language!: Language;
 
+  // LEGACY: права внутри бизнеса определяет членство (business_members);
+  // колонка остаётся для переходного периода и исторических данных.
   @Column({ type: 'enum', enum: Role, default: Role.Client })
   role!: Role;
 
   @Column({ type: 'numeric', precision: 12, scale: 2, default: 0, transformer: moneyTransformer })
   balance!: Money;
+
+  // Платформенный админ (основатель): доступ к /api/platform/*, сид через ADMIN_TELEGRAM_IDS.
+  @Column({ type: 'boolean', default: false })
+  isPlatformAdmin!: boolean;
 }

@@ -6,6 +6,7 @@ import type { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram'
 import { Client } from '../clients/entities/client.entity';
 import { MenuItem } from '../menu/entities/menu-item.entity';
 import { MenuRepository } from '../menu/menu.repository';
+import { DefaultBusinessService } from '../businesses/default-business.service';
 import { currentIsoWeekday } from '../common/time/weekday';
 import { CartService } from '../orders/cart/cart.service';
 import { BotStateService } from './bot-state.service';
@@ -29,6 +30,7 @@ export class BotUiService {
     private readonly menu: MenuRepository,
     private readonly cart: CartService,
     private readonly state: BotStateService,
+    private readonly defaultBusiness: DefaultBusinessService,
   ) {
     this.adminIds = this.config.get<string[]>('telegram.adminIds') ?? [];
     this.webAppUrl = this.config.get<string>('bot.webAppUrl');
@@ -66,8 +68,9 @@ export class BotUiService {
   /** Витрина: карточки с фото и степпером + кнопка оформления. Запоминает id сообщений. */
   async renderMenu(ctx: Context, client: Client): Promise<void> {
     const lang = this.langOf(client);
+    const bizId = await this.defaultBusiness.getId();
     // Витрина бота — только блюда на сегодняшний день недели (как и на сайте).
-    const items = await this.menu.findActive(undefined, currentIsoWeekday(this.tzOffsetHours));
+    const items = await this.menu.findActive(bizId, undefined, currentIsoWeekday(this.tzOffsetHours));
     if (!items.length) {
       await ctx.reply(t(lang, 'menu_empty'));
       return;
@@ -106,7 +109,8 @@ export class BotUiService {
     if (item.photoFileId) return item.photoFileId;
     if (item.photoUrl) return item.photoUrl;
     if (item.photoMime) {
-      const bytes = await this.menu.findPhotoBytes(item.id);
+      const bizId = await this.defaultBusiness.getId();
+      const bytes = await this.menu.findPhotoBytes(bizId, item.id);
       if (bytes) return { source: bytes.data };
     }
     return null;

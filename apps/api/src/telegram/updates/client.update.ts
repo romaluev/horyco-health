@@ -7,6 +7,7 @@ import { Language, OrderStatus, PaymentMethod, Role } from '@eatfit/shared';
 import { Client } from '../../clients/entities/client.entity';
 import { ClientRepository } from '../../clients/clients.repository';
 import { MenuRepository } from '../../menu/menu.repository';
+import { DefaultBusinessService } from '../../businesses/default-business.service';
 import { CartService } from '../../orders/cart/cart.service';
 import { OrdersService } from '../../orders/orders.service';
 import { CartResponseDto } from '../../orders/cart/dto/cart-response.dto';
@@ -44,6 +45,7 @@ export class ClientUpdate {
   constructor(
     private readonly clients: ClientRepository,
     private readonly menu: MenuRepository,
+    private readonly defaultBusiness: DefaultBusinessService,
     private readonly cart: CartService,
     private readonly orders: OrdersService,
     private readonly state: BotStateService,
@@ -154,7 +156,8 @@ export class ClientUpdate {
     if (!client) return void (await ctx.answerCbQuery());
     const lang = this.ui.langOf(client);
     try {
-      const item = await this.menu.findById(itemId);
+      // Актор может отсутствовать до регистрации — используем дефолтный бизнес.
+      const item = await this.menu.findById(await this.defaultBusiness.getId(), itemId);
       if (!item) return void (await ctx.answerCbQuery());
       const qty = this.qtyInCart(await this.cart.getCart(), itemId, portion);
       const next = dir === 'inc' ? qty + 1 : Math.max(0, qty - 1);
@@ -178,7 +181,8 @@ export class ClientUpdate {
     if (!client) return void (await ctx.answerCbQuery());
     const lang = this.ui.langOf(client);
     await ctx.answerCbQuery();
-    const item = await this.menu.findById(itemId);
+    // Актор может отсутствовать до регистрации — используем дефолтный бизнес.
+    const item = await this.menu.findById(await this.defaultBusiness.getId(), itemId);
     if (!item) return;
     const qty = this.qtyInCart(await this.cart.getCart(), itemId, portion);
     await this.ui.editDishCard(ctx, lang, item, portion, qty);
@@ -734,7 +738,8 @@ export class ClientUpdate {
   /** Открыть блюдо из deep link: добавить 1 шт и показать витрину. */
   private async openDish(ctx: Context, client: Client, itemId: string): Promise<void> {
     const lang = this.ui.langOf(client);
-    const item = await this.menu.findById(itemId);
+    // Актор может отсутствовать до регистрации — используем дефолтный бизнес.
+    const item = await this.menu.findById(await this.defaultBusiness.getId(), itemId);
     if (!item || !item.isActive) {
       await ctx.reply(t(lang, 'dish_not_found'));
       return;
@@ -751,7 +756,8 @@ export class ClientUpdate {
   /** «Подробнее» из поста в канал (/start detail_<id>): открыть деталь блюда в Mini App. */
   private async openDishDetail(ctx: Context, client: Client, itemId: string): Promise<void> {
     const lang = this.ui.langOf(client);
-    const item = await this.menu.findById(itemId);
+    // Актор может отсутствовать до регистрации — используем дефолтный бизнес.
+    const item = await this.menu.findById(await this.defaultBusiness.getId(), itemId);
     if (!item || !item.isActive) {
       await ctx.reply(t(lang, 'dish_not_found'));
       return;

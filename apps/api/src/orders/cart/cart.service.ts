@@ -19,6 +19,10 @@ export class CartService {
     return this.actorCtx.getOrThrow().userId;
   }
 
+  private get businessId(): string {
+    return this.actorCtx.getOrThrow().businessId;
+  }
+
   /** Цена выбранной порции (2 — вторая порция); null, если такой порции у блюда нет. */
   private priceForPortion(item: MenuItem, portion: number): Money | null {
     return portion === 2 ? item.price2 : item.price;
@@ -36,7 +40,7 @@ export class CartService {
   }
 
   async addItem(menuItemId: string, quantity: number, portion = 1): Promise<CartResponseDto> {
-    const item = await this.menu.findById(menuItemId);
+    const item = await this.menu.findById(this.businessId, menuItemId);
     if (!item || !item.isActive) {
       throw new ConflictError('Блюдо недоступно');
     }
@@ -63,7 +67,7 @@ export class CartService {
       if (existing) {
         existing.quantity = quantity;
       } else {
-        const item = await this.menu.findById(menuItemId);
+        const item = await this.menu.findById(this.businessId, menuItemId);
         if (!item || !item.isActive) {
           throw new ConflictError('Блюдо недоступно');
         }
@@ -90,7 +94,7 @@ export class CartService {
     let total = Money.zero();
 
     for (const line of lines) {
-      const item = await this.menu.findById(line.menuItemId);
+      const item = await this.menu.findById(this.businessId, line.menuItemId);
       if (!item || !item.isActive) continue;
       const price = this.priceForPortion(item, line.portion);
       if (price === null) continue; // порция пропала (напр. убрали price2) — самоочистка

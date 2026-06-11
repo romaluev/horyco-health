@@ -22,15 +22,16 @@ export class BalanceService {
 
   /** Пополнение (только админом — вызывается из DepositsService). */
   @Transactional()
-  deposit(clientId: string, amount: Money, idempotencyKey: string | null = null): Promise<ApplyResult> {
-    return this.apply(clientId, amount, BalanceTransactionType.Deposit, null, idempotencyKey);
+  deposit(clientId: string, businessId: string, amount: Money, idempotencyKey: string | null = null): Promise<ApplyResult> {
+    return this.apply(clientId, businessId, amount, BalanceTransactionType.Deposit, null, idempotencyKey);
   }
 
   /** Ручное списание админом (коррекция баланса). Не уводит баланс в минус. */
   @Transactional()
-  adminDebit(clientId: string, amount: Money, idempotencyKey: string | null = null): Promise<ApplyResult> {
+  adminDebit(clientId: string, businessId: string, amount: Money, idempotencyKey: string | null = null): Promise<ApplyResult> {
     return this.apply(
       clientId,
+      businessId,
       Money.zero().subtract(amount),
       BalanceTransactionType.AdminDebit,
       null,
@@ -40,9 +41,10 @@ export class BalanceService {
 
   /** Списание за заказ. */
   @Transactional()
-  async charge(clientId: string, amount: Money, orderId: string): Promise<Client> {
+  async charge(clientId: string, businessId: string, amount: Money, orderId: string): Promise<Client> {
     const { client } = await this.apply(
       clientId,
+      businessId,
       Money.zero().subtract(amount),
       BalanceTransactionType.OrderCharge,
       orderId,
@@ -53,9 +55,10 @@ export class BalanceService {
 
   /** Возврат при отмене заказа. */
   @Transactional()
-  async refund(clientId: string, amount: Money, orderId: string): Promise<Client> {
+  async refund(clientId: string, businessId: string, amount: Money, orderId: string): Promise<Client> {
     const { client } = await this.apply(
       clientId,
+      businessId,
       amount,
       BalanceTransactionType.OrderRefund,
       orderId,
@@ -66,6 +69,7 @@ export class BalanceService {
 
   private async apply(
     clientId: string,
+    businessId: string,
     delta: Money,
     type: BalanceTransactionType,
     orderId: string | null,
@@ -93,6 +97,7 @@ export class BalanceService {
     client.balance = newBalance;
     await this.clients.save(client);
     await this.ledger.create({
+      businessId,
       clientId,
       type,
       amount: delta,

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import type { Context } from 'telegraf';
 import { ClientRepository } from '../clients/clients.repository';
+import { DefaultBusinessService } from '../businesses/default-business.service';
 import { AppClsStore } from '../common/cls/actor-context';
 
 /**
@@ -18,6 +19,7 @@ export function createBotContextMiddleware(
   cls: ClsService<AppClsStore>,
   clients: ClientRepository,
   _config: ConfigService,
+  defaultBusiness: DefaultBusinessService,
 ) {
   return (ctx: Context, next: () => Promise<void>): Promise<unknown> =>
     cls.run(async () => {
@@ -32,6 +34,8 @@ export function createBotContextMiddleware(
             userId: client.id,
             telegramId,
             role: client.role,
+            // Переходно (Phase 1–2): единственный бизнес; с Phase 3 — бизнес бота.
+            businessId: await defaultBusiness.getId(),
             source: 'bot',
           });
         }

@@ -12,6 +12,10 @@ export const validationSchema = Joi.object({
   JWT_SECRET: Joi.string().min(32).required(),
   JWT_EXPIRES_IN: Joi.string().default('7d'),
 
+  // Ключ шифрования токенов ботов (AES-256-GCM): ровно 64 hex-символа.
+  // Сгенерировать: openssl rand -hex 32. Потеря ключа = повторный ввод всех токенов.
+  TOKEN_ENC_KEY: Joi.string().hex().length(64).required(),
+
   BOT_TOKEN: Joi.string().required(),
   BOT_USERNAME: Joi.string().optional(),
   BOT_ENABLED: Joi.string().valid('true', 'false').default('true'),

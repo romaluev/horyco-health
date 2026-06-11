@@ -8,6 +8,7 @@ import { validationSchema } from './config/env.validation';
 import { AppClsModule } from './common/cls/cls.module';
 import { CommonModule } from './common/common.module';
 import { DatabaseModule } from './database/database.module';
+import { BusinessesModule } from './businesses/businesses.module';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
 import { MenuModule } from './menu/menu.module';
@@ -39,6 +40,7 @@ import { PublicConfigModule } from './public-config/public-config.module';
     AppClsModule,
     CommonModule,
     DatabaseModule,
+    BusinessesModule,
     ClientsModule,
     AuthModule,
     MenuModule,

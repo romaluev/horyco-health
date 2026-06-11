@@ -17,7 +17,7 @@ export class DepositRepository extends TransactionalRepository<Deposit> {
     return this.repo.save(this.repo.create(data));
   }
 
-  findByClient(clientId: string): Promise<Deposit[]> {
-    return this.repo.find({ where: { clientId }, order: { createdAt: 'DESC' } });
+  findByClient(businessId: string, clientId: string): Promise<Deposit[]> {
+    return this.repo.find({ where: { clientId, businessId }, order: { createdAt: 'DESC' } });
   }
 }

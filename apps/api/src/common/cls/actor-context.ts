@@ -11,6 +11,8 @@ export interface ActorContext {
   /** Telegram id (для внутренних вызовов/нотификаций). */
   telegramId: string;
   role: Role;
+  /** Бизнес (тенант), в контексте которого действует актор. */
+  businessId: string;
   source: 'bot' | 'api';
 }
 

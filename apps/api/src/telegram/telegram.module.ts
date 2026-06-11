@@ -5,6 +5,7 @@ import { TelegrafModule } from 'nestjs-telegraf';
 import { NOTIFIER } from '../common/notifications/notifier';
 import { ClientsModule } from '../clients/clients.module';
 import { ClientRepository } from '../clients/clients.repository';
+import { DefaultBusinessService } from '../businesses/default-business.service';
 import { MenuModule } from '../menu/menu.module';
 import { OrdersModule } from '../orders/orders.module';
 import { DepositsModule } from '../deposits/deposits.module';
@@ -44,11 +45,12 @@ import { createBotContextMiddleware } from './bot-context.middleware';
     SettingsModule,
     TelegrafModule.forRootAsync({
       imports: [ClientsModule],
-      inject: [ConfigService, ClsService, ClientRepository],
+      inject: [ConfigService, ClsService, ClientRepository, DefaultBusinessService],
       useFactory: (
         config: ConfigService,
         cls: ClsService<AppClsStore>,
         clients: ClientRepository,
+        defaultBusiness: DefaultBusinessService,
       ) => ({
         token: config.get<string>('bot.token') as string,
         // Авто-запуск выключаем ВСЕГДА: nestjs-telegraf зовёт bot.launch() без catch, и его
@@ -56,7 +58,7 @@ import { createBotContextMiddleware } from './bot-context.middleware';
         // процесс (Node ≥15). Бота запускаем сами в BotCommandsService с обработкой ошибки.
         launchOptions: false,
         // CLS+actor контекст для каждого апдейта — до выполнения хендлеров.
-        middlewares: [createBotContextMiddleware(cls, clients, config)],
+        middlewares: [createBotContextMiddleware(cls, clients, config, defaultBusiness)],
       }),
     }),
   ],

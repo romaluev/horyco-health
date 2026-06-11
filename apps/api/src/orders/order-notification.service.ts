@@ -21,10 +21,10 @@ export class OrderNotificationService {
   ) {}
 
   /** После успешного commit create/transition. */
-  async dispatch(orderId: string, response: OrderResponseDto, newStatus: OrderStatus): Promise<void> {
+  async dispatch(businessId: string, orderId: string, response: OrderResponseDto, newStatus: OrderStatus): Promise<void> {
     if (!this.notifier) return;
 
-    const order = await this.orders.findById(orderId);
+    const order = await this.orders.findById(businessId, orderId);
     if (!order) return;
 
     await this.notifyClient(order, response, newStatus);

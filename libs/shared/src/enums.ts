@@ -41,3 +41,55 @@ export enum BalanceTransactionType {
   OrderRefund = 'order_refund', // возврат при отмене (+)
   AdminDebit = 'admin_debit', // ручное списание админом (−)
 }
+
+// ── Мультитенантность (B2B2C платформа) ──
+
+// Статус бизнеса (тенанта): онбординг → активен ↔ приостановлен.
+export enum BusinessStatus {
+  Onboarding = 'onboarding',
+  Active = 'active',
+  Suspended = 'suspended',
+}
+
+// Состояние подключения бота бизнеса.
+export enum BotStatus {
+  Off = 'off',
+  Webhook = 'webhook',
+  Polling = 'polling',
+  Error = 'error',
+  Revoked = 'revoked',
+}
+
+// Роль участника бизнеса (staff). Маппинг на легаси Role:
+// owner/manager → Admin, cook → Cook, courier → Courier.
+export enum MemberRole {
+  Owner = 'owner',
+  Manager = 'manager',
+  Cook = 'cook',
+  Courier = 'courier',
+}
+
+export enum MemberStatus {
+  Invited = 'invited',
+  Active = 'active',
+  Removed = 'removed',
+}
+
+// Статус клиента в CRM конкретного бизнеса.
+export enum BusinessCustomerStatus {
+  Active = 'active',
+  Blocked = 'blocked',
+}
+
+// Назначение привязанного чата бизнеса.
+export enum ChatKind {
+  Cook = 'cook',
+  Courier = 'courier',
+  Admin = 'admin',
+  Channel = 'channel',
+}
+
+export enum ChatStatus {
+  Active = 'active',
+  Broken = 'broken',
+}

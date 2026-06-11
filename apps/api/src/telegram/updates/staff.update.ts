@@ -8,6 +8,7 @@ import { ClientRepository } from '../../clients/clients.repository';
 import { Client } from '../../clients/entities/client.entity';
 import { MenuRepository } from '../../menu/menu.repository';
 import { MenuItem } from '../../menu/entities/menu-item.entity';
+import { DefaultBusinessService } from '../../businesses/default-business.service';
 import { OrdersService } from '../../orders/orders.service';
 import { ReportsService } from '../../reports/reports.service';
 import { SettingsService } from '../../settings/settings.service';
@@ -40,6 +41,7 @@ export class StaffUpdate {
     private readonly menu: MenuRepository,
     private readonly config: ConfigService,
     private readonly menuAdmin: BotMenuAdminService,
+    private readonly defaultBusiness: DefaultBusinessService,
   ) {}
 
   /** Резолв админа из апдейта; иначе гасит callback и возвращает null. */
@@ -247,7 +249,8 @@ export class StaffUpdate {
     if (!client) return;
     await ctx.answerCbQuery();
     const lang = client.language;
-    const items = await this.menu.findActive();
+    // Актор может отсутствовать в некоторых путях — используем дефолтный бизнес.
+    const items = await this.menu.findActive(await this.defaultBusiness.getId());
     if (!items.length) {
       await ctx.reply(t(lang, 'menu_empty'));
       return;
@@ -265,7 +268,7 @@ export class StaffUpdate {
     await ctx.answerCbQuery();
     const lang = client.language;
     const id = (ctx as Context & { match?: RegExpExecArray }).match?.[1] ?? '';
-    const item = await this.menu.findById(id);
+    const item = await this.menu.findById(await this.defaultBusiness.getId(), id);
     if (!item) {
       await ctx.reply(t(lang, 'dish_not_found'));
       return;
@@ -294,7 +297,7 @@ export class StaffUpdate {
       return;
     }
     const id = (ctx as Context & { match?: RegExpExecArray }).match?.[1] ?? '';
-    const item = await this.menu.findById(id);
+    const item = await this.menu.findById(await this.defaultBusiness.getId(), id);
     if (!item) {
       await ctx.answerCbQuery(t(lang, 'dish_not_found'));
       return;

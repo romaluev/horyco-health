@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Allergens, Category, Ingredient, Nutrition } from '@eatfit/shared';
+import { ActorContextService } from '../common/cls/actor-context.service';
+import { DefaultBusinessService } from '../businesses/default-business.service';
 import { NotFoundError } from '../common/errors/domain-error';
 import { Money } from '../common/money/money';
 import { currentIsoWeekday } from '../common/time/weekday';
@@ -16,11 +18,19 @@ export class MenuService {
   constructor(
     private readonly repo: MenuRepository,
     private readonly config: ConfigService,
+    private readonly actorCtx: ActorContextService,
+    private readonly defaultBusiness: DefaultBusinessService,
   ) {}
+
+  /** Резолв businessId: из актора (API) или дефолтный (публичная витрина — актора нет). */
+  private async bizId(): Promise<string> {
+    return this.actorCtx.get()?.businessId ?? this.defaultBusiness.getId();
+  }
 
   async showcase(category?: Category): Promise<MenuItemResponseDto[]> {
     // Витрина — только блюда на сегодняшний день недели (по локальному TZ).
-    const items = await this.repo.findActive(category, this.currentIsoWeekday());
+    const bizId = await this.bizId();
+    const items = await this.repo.findActive(bizId, category, this.currentIsoWeekday());
     return items.map((i) => new MenuItemResponseDto(i));
   }
 
@@ -30,12 +40,14 @@ export class MenuService {
   }
 
   async listAll(): Promise<MenuItemResponseDto[]> {
-    const items = await this.repo.findAll();
+    const bizId = await this.bizId();
+    const items = await this.repo.findAll(bizId);
     return items.map((i) => new MenuItemResponseDto(i));
   }
 
   async getEntityOrThrow(id: string): Promise<MenuItem> {
-    const item = await this.repo.findById(id);
+    const bizId = await this.bizId();
+    const item = await this.repo.findById(bizId, id);
     if (!item) throw new NotFoundError('Блюдо не найдено');
     return item;
   }
@@ -45,7 +57,9 @@ export class MenuService {
   }
 
   async create(dto: CreateMenuItemDto): Promise<MenuItemResponseDto> {
+    const bizId = await this.bizId();
     const item = await this.repo.create({
+      businessId: bizId,
       category: dto.category,
       nameRu: dto.nameRu,
       nameUz: dto.nameUz,
@@ -98,13 +112,15 @@ export class MenuService {
   }
 
   async remove(id: string): Promise<void> {
+    const bizId = await this.bizId();
     await this.getEntityOrThrow(id);
-    await this.repo.delete(id);
+    await this.repo.delete(bizId, id);
   }
 
   /** Бинарь загруженного фото (для прокси-эндпоинта). */
-  loadPhotoBytes(id: string): Promise<{ data: Buffer; mime: string } | null> {
-    return this.repo.findPhotoBytes(id);
+  async loadPhotoBytes(id: string): Promise<{ data: Buffer; mime: string } | null> {
+    const bizId = await this.bizId();
+    return this.repo.findPhotoBytes(bizId, id);
   }
 
   /** Сохранить загруженное фото (Mini App/сайт). Сбрасывает file_id/URL — источник один. */
