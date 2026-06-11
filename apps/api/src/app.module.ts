@@ -11,18 +11,11 @@ import { DatabaseModule } from './database/database.module';
 import { BusinessesModule } from './businesses/businesses.module';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
-import { MenuModule } from './menu/menu.module';
-import { DepositsModule } from './deposits/deposits.module';
-import { OrdersModule } from './orders/orders.module';
 import { ReportsModule } from './reports/reports.module';
-import { SettingsModule } from './settings/settings.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { HealthModule } from './health/health.module';
 import { PublicConfigModule } from './public-config/public-config.module';
 import { PlatformModule } from './platform/platform.module';
-import { OffersModule } from './offers/offers.module';
-import { ModifiersModule } from './modifiers/modifiers.module';
-import { CombosModule } from './combos/combos.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
@@ -50,18 +43,14 @@ import { APP_GUARD } from '@nestjs/core';
     BusinessesModule,
     ClientsModule,
     AuthModule,
-    MenuModule,
-    DepositsModule,
-    OrdersModule,
+    // MenuModule — via BusinessesModule + TelegramModule (duplicate deadlocks Nest).
     ReportsModule,
-    SettingsModule,
+    // SettingsModule — via TelegramModule (duplicate deadlocks Nest).
     TelegramModule,
     HealthModule,
     PublicConfigModule,
     PlatformModule,
-    OffersModule,
-    ModifiersModule,
-    CombosModule,
+    // ModifiersModule, CombosModule — via MenuModule / TelegramModule (duplicate deadlocks Nest).
     AnalyticsModule,
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60_000, limit: 120 },

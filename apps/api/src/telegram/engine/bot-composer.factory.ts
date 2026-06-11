@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { Composer, type Context } from 'telegraf';
 import { ClientUpdate } from '../updates/client.update';
 import { StaffUpdate } from '../updates/staff.update';
@@ -6,18 +7,18 @@ import { StaffUpdate } from '../updates/staff.update';
 /**
  * Единый Composer для всех бизнес-ботов. Порядок регистрации зеркалит nestjs-telegraf:
  * клиентские хендлеры → text-router с next() для /команд → staff commands/actions.
+ *
+ * ClientUpdate/StaffUpdate резолвятся через ModuleRef в create(), а не в конструкторе —
+ * иначе цикл ClientUpdate → OffersService → BroadcastService → BotRegistryService → … deadlock.
  */
 @Injectable()
 export class BotComposerFactory {
-  constructor(
-    private readonly client: ClientUpdate,
-    private readonly staff: StaffUpdate,
-  ) {}
+  constructor(private readonly moduleRef: ModuleRef) {}
 
   create(): Composer<Context> {
+    const c = this.moduleRef.get(ClientUpdate, { strict: false });
+    const s = this.moduleRef.get(StaffUpdate, { strict: false });
     const composer = new Composer();
-    const c = this.client;
-    const s = this.staff;
 
     composer.on('my_chat_member', (ctx) => s.onMyChatMember(ctx));
 

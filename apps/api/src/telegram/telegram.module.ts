@@ -9,7 +9,6 @@ import { ModifiersModule } from '../modifiers/modifiers.module';
 import { CombosModule } from '../combos/combos.module';
 import { OffersModule } from '../offers/offers.module';
 import { DepositsModule } from '../deposits/deposits.module';
-import { ReportsModule } from '../reports/reports.module';
 import { SettingsModule } from '../settings/settings.module';
 import { TelegramNotifier } from './telegram-notifier';
 import { MenuPublishService } from './menu-publish.service';
@@ -39,7 +38,6 @@ import { BotConnectorService } from './bot-connector.service';
     CombosModule,
     forwardRef(() => OffersModule),
     DepositsModule,
-    ReportsModule,
     SettingsModule,
   ],
   controllers: [MenuPublishController, TelegramWebhookController],

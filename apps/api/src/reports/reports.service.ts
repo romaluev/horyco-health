@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { OrderStatus, PaymentMethod } from '@eatfit/shared';
@@ -28,7 +28,7 @@ export class ReportsService implements OnModuleInit {
     private readonly analyticsRepo: AnalyticsRepository,
     private readonly businesses: BusinessesRepository,
     private readonly scheduler: SchedulerRegistry,
-    @Inject(NOTIFIER) private readonly notifier: INotifier,
+    @Optional() @Inject(NOTIFIER) private readonly notifier?: INotifier,
   ) {}
 
   onModuleInit(): void {
@@ -51,6 +51,7 @@ export class ReportsService implements OnModuleInit {
 
   /** Отправить отчёт за сегодня в админ-группу бизнеса. */
   async sendDailyReportToAdmins(businessId?: string): Promise<void> {
+    if (!this.notifier) return;
     const id = businessId ?? (await this.resolveSingleBusinessId());
     const text = await this.buildDailyReportText(id);
     await this.notifier.notifyGroup(id, NotifyGroup.Admins, text);
