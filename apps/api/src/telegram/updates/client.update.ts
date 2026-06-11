@@ -36,6 +36,8 @@ import {
 } from '../i18n/bot-i18n';
 import { languageKeyboard, shareContactKeyboard, shareLocationKeyboard, skipLandmarkKeyboard } from '../telegram-keyboards';
 import { extractActorFromClient } from '../bot-actor.util';
+import { invalidateActorCache } from '../bot-context.middleware';
+import type { BotSession } from '../bot-state.service';
 import { MEMBER_TO_ROLE } from '../../businesses/membership.util';
 
 /**
@@ -121,6 +123,11 @@ export class ClientUpdate {
     };
 
     if (!this.isRegistered(client)) {
+      const existing = this.state.getSession(from.id);
+      if (existing?.flow === 'register') {
+        await this.promptRegistrationStep(ctx, client, existing);
+        return;
+      }
       await ctx.reply(this.welcome.welcomeNew(lang, welcomeBiz));
       await ctx.reply(t(lang, 'registration_intro'));
       this.state.setSession(from.id, 'register', 'language', {
@@ -186,6 +193,7 @@ export class ClientUpdate {
     if (!client) return;
     client.language = lang;
     await this.clients.save(client);
+    invalidateActorCache(this.actorCtx.getBusinessIdOrThrow(), telegramId);
 
     const session = this.state.getSession(telegramId);
     if (session?.flow === 'register' && session.step === 'language') {
@@ -510,8 +518,18 @@ export class ClientUpdate {
       return void (await this.menuFlowText(ctx, session.flow, session.step, session.data.dishId as string | undefined, text));
     }
 
-    // 2) Кнопки главного меню (учёт обоих языков) — отменяют незавершённый диалог.
-    if (!action) return;
+    // 2) Незарегистрированный клиент без in-memory сессии (рестарт pod) — восстанавливаем шаг из БД.
+    if (!action) {
+      const client = await this.clients.findByTelegramId(String(from.id));
+      if (client && !this.isRegistered(client)) {
+        if (!session || session.flow !== 'register') {
+          const step = this.inferRegistrationStep(client, from);
+          this.state.setSession(from.id, 'register', step, session?.data ?? {});
+        }
+        return void (await this.registrationStep(ctx, text));
+      }
+      return;
+    }
     if (session) this.state.clearSession(from.id);
 
     let client = await this.clients.findByTelegramId(String(from.id));
@@ -580,6 +598,7 @@ export class ClientUpdate {
       case 'full_name': {
         client.name = text.replace(/\s+/g, ' ');
         await this.clients.save(client);
+        invalidateActorCache(this.actorCtx.getBusinessIdOrThrow(), from.id);
         this.state.updateSession(from.id, { step: 'phone' });
         await ctx.reply(t(lang, 'ask_phone'), shareContactKeyboard(lang));
         return;
@@ -1029,6 +1048,50 @@ export class ClientUpdate {
 
   private isRegistered(client: { phone: string | null; deliveryLat: string | null; deliveryLng: string | null }): boolean {
     return Boolean(client.phone && this.hasDeliveryLocation(client));
+  }
+
+  /** После рестарта pod in-memory FSM пуст — восстанавливаем шаг по полям клиента. */
+  private inferRegistrationStep(
+    client: Client,
+    from: { first_name?: string },
+  ): 'language' | 'full_name' | 'phone' | 'location' | 'landmark' {
+    if (!client.phone) {
+      const guestDefault = from.first_name ?? 'Гость';
+      if (client.name && client.name !== 'Гость' && client.name !== guestDefault) {
+        return 'phone';
+      }
+      return 'full_name';
+    }
+    if (!this.hasDeliveryLocation(client)) return 'location';
+    return 'landmark';
+  }
+
+  private async promptRegistrationStep(ctx: Context, client: Client, session: BotSession): Promise<void> {
+    const lang = this.ui.langOf(client);
+    const step =
+      (session.step as 'language' | 'full_name' | 'phone' | 'location' | 'landmark' | undefined) ??
+      this.inferRegistrationStep(client, ctx.from!);
+    switch (step) {
+      case 'language':
+        await ctx.reply(t(lang, 'choose_language'), languageKeyboard());
+        break;
+      case 'full_name':
+        await ctx.reply(t(lang, 'ask_full_name'));
+        break;
+      case 'phone':
+        await ctx.reply(t(lang, 'ask_phone'), shareContactKeyboard(lang));
+        break;
+      case 'location':
+        await ctx.reply(t(lang, 'ask_location'), shareLocationKeyboard(lang));
+        break;
+      case 'landmark':
+        await ctx.reply(t(lang, 'ask_landmark'), skipLandmarkKeyboard(lang));
+        break;
+      default: {
+        const _exhaustive: never = step;
+        return _exhaustive;
+      }
+    }
   }
 
   /** Возвращает клиента, если зарегистрирован; иначе подсказывает /start и возвращает null. */

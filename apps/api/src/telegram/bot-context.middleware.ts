@@ -36,6 +36,11 @@ function setCachedActor(businessId: string, telegramId: string, actor: ActorCont
   }
 }
 
+/** После save клиента — сброс кэша, иначе middleware отдаёт устаревший actor. */
+export function invalidateActorCache(businessId: string, telegramId: string | number): void {
+  actorCache.delete(actorCacheKey(businessId, String(telegramId)));
+}
+
 /**
  * Per-bot Telegraf middleware: CLS + actor из membership бизнеса бота (не DefaultBusinessService).
  */
