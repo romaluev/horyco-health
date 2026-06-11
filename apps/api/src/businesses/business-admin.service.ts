@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Transactional } from '@nestjs-cls/transactional';
 import { randomBytes } from 'crypto';
@@ -14,6 +14,7 @@ import {
 } from '@eatfit/shared';
 import { ActorContextService } from '../common/cls/actor-context.service';
 import { ConflictError, ForbiddenError, NotFoundError } from '../common/errors/domain-error';
+import { BOT_CONNECTOR, type IBotConnector } from '../common/bot/bot-connector';
 import { ClientRepository } from '../clients/clients.repository';
 import { MenuRepository } from '../menu/menu.repository';
 import { BusinessesRepository } from './businesses.repository';
@@ -21,8 +22,6 @@ import { BusinessMembersRepository } from './business-members.repository';
 import { BusinessChatsRepository } from './business-chats.repository';
 import { BotTokenService } from './bot-token.service';
 import { encryptToken, parseEncKey } from './token-crypto';
-import { BotRegistryService } from '../telegram/engine/bot-registry.service';
-import { BotLifecycleService } from '../telegram/engine/bot-lifecycle.service';
 import { DefaultBusinessService } from './default-business.service';
 import { UpdateBusinessSettingsDto } from './dto/update-business-settings.dto';
 import { BusinessSettingsResponseDto } from './dto/business-settings-response.dto';
@@ -44,10 +43,7 @@ export class BusinessAdminService {
     private readonly clients: ClientRepository,
     private readonly menu: MenuRepository,
     private readonly botTokens: BotTokenService,
-    @Inject(forwardRef(() => BotRegistryService))
-    private readonly registry: BotRegistryService,
-    @Inject(forwardRef(() => BotLifecycleService))
-    private readonly lifecycle: BotLifecycleService,
+    @Inject(BOT_CONNECTOR) private readonly botConnector: IBotConnector,
     private readonly defaultBusiness: DefaultBusinessService,
   ) {
     this.encKey = parseEncKey(this.config.get<string>('security.tokenEncKey'));
@@ -111,13 +107,7 @@ export class BusinessAdminService {
     }
 
     this.botTokens.invalidate(businessId);
-    const withToken = await this.businesses.findByIdWithToken(businessId);
-    if (withToken) {
-      const handle = await this.registry.connectBusiness(withToken);
-      if (handle) {
-        await this.lifecycle.bootstrapBot(handle);
-      }
-    }
+    await this.botConnector.connectAndBootstrap(businessId);
 
     const fresh = await this.businesses.findById(businessId);
     return this.toSettingsDto(fresh!);
@@ -128,7 +118,7 @@ export class BusinessAdminService {
     const businessId = this.businessId();
     const business = await this.requireBusiness();
 
-    await this.registry.disconnect(businessId);
+    await this.botConnector.disconnect(businessId);
     business.botTokenEnc = null;
     business.botId = null;
     business.botUsername = null;

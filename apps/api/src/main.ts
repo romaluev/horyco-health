@@ -61,4 +61,7 @@ async function bootstrap() {
   Logger.log(`Eat&fit API запущен на порту ${port}`, 'Bootstrap');
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  Logger.error('Bootstrap failed', err instanceof Error ? err.stack : String(err), 'Bootstrap');
+  process.exit(1);
+});

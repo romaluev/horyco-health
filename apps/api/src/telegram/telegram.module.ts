@@ -1,5 +1,6 @@
 import { Global, Module, forwardRef } from '@nestjs/common';
 import { NOTIFIER } from '../common/notifications/notifier';
+import { BOT_CONNECTOR } from '../common/bot/bot-connector';
 import { OFFER_BROADCASTER } from '../common/offers/offer-broadcaster';
 import { ClientsModule } from '../clients/clients.module';
 import { MenuModule } from '../menu/menu.module';
@@ -26,6 +27,7 @@ import { BotHealthService } from './engine/bot-health.service';
 import { TelegramWebhookController } from './engine/telegram-webhook.controller';
 import { UpdateDedupeService } from './engine/update-dedupe.service';
 import { BroadcastService } from './broadcast.service';
+import { BotConnectorService } from './bot-connector.service';
 
 @Global()
 @Module({
@@ -45,6 +47,7 @@ import { BroadcastService } from './broadcast.service';
     TelegramNotifier,
     { provide: NOTIFIER, useExisting: TelegramNotifier },
     { provide: OFFER_BROADCASTER, useExisting: BroadcastService },
+    { provide: BOT_CONNECTOR, useExisting: BotConnectorService },
     MenuPublishService,
     BotStateService,
     BotUiService,
@@ -53,12 +56,13 @@ import { BroadcastService } from './broadcast.service';
     ClientUpdate,
     StaffUpdate,
     BotComposerFactory,
+    BotConnectorService,
     BotRegistryService,
     BotLifecycleService,
     BotHealthService,
     UpdateDedupeService,
     BroadcastService,
   ],
-  exports: [NOTIFIER, OFFER_BROADCASTER, BotRegistryService, BotHealthService, BotLifecycleService, BroadcastService],
+  exports: [NOTIFIER, OFFER_BROADCASTER, BOT_CONNECTOR, BotRegistryService, BotHealthService, BotLifecycleService, BroadcastService],
 })
 export class TelegramModule {}
