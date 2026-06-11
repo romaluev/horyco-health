@@ -25,6 +25,7 @@ import { BotComposerFactory } from './engine/bot-composer.factory';
 import { BotLifecycleService } from './engine/bot-lifecycle.service';
 import { BotHealthService } from './engine/bot-health.service';
 import { TelegramWebhookController } from './engine/telegram-webhook.controller';
+import { WebhookDispatchService } from './engine/webhook-dispatch.service';
 import { UpdateDedupeService } from './engine/update-dedupe.service';
 import { BroadcastService } from './broadcast.service';
 import { BotConnectorService } from './bot-connector.service';
@@ -61,8 +62,9 @@ import { BotConnectorService } from './bot-connector.service';
     BotLifecycleService,
     BotHealthService,
     UpdateDedupeService,
+    WebhookDispatchService,
     BroadcastService,
   ],
-  exports: [NOTIFIER, OFFER_BROADCASTER, BOT_CONNECTOR, BotRegistryService, BotHealthService, BotLifecycleService, BroadcastService],
+  exports: [NOTIFIER, OFFER_BROADCASTER, BOT_CONNECTOR, BotRegistryService, BotHealthService, BotLifecycleService, BroadcastService, WebhookDispatchService],
 })
 export class TelegramModule {}

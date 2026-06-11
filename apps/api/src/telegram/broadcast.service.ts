@@ -34,7 +34,8 @@ export class BroadcastService implements OnModuleInit {
     void this.recoverSendingOffers();
   }
 
-  @Cron('*/30 * * * * *')
+  /** Crash recovery only — not every 30s (that duplicated pending IDs and starved the DB pool). */
+  @Cron('0 */5 * * * *')
   async recoverSendingOffers(): Promise<void> {
     const sending = await this.offers.findSendingOffers();
     for (const offer of sending) {
@@ -46,10 +47,15 @@ export class BroadcastService implements OnModuleInit {
     const key = `${businessId}:${offerId}`;
     void this.loadQueue(businessId, offerId, onlyRecipientIds).then((ids) => {
       if (ids.length === 0) return;
-      const existing = this.queues.get(key) ?? [];
-      this.queues.set(key, [...existing, ...ids]);
+      this.mergeQueue(key, ids);
       void this.pump(key, businessId, offerId);
     });
+  }
+
+  private mergeQueue(key: string, ids: string[]): void {
+    const merged = new Set(this.queues.get(key) ?? []);
+    for (const id of ids) merged.add(id);
+    this.queues.set(key, [...merged]);
   }
 
   private async loadQueue(
@@ -86,6 +92,8 @@ export class BroadcastService implements OnModuleInit {
       const offer = await this.offers.findById(businessId, offerId);
       if (!offer) return;
 
+      const textCache = new Map<Lang, string>();
+
       while (true) {
         const queue = this.queues.get(key) ?? [];
         const recipientId = queue.shift();
@@ -106,8 +114,18 @@ export class BroadcastService implements OnModuleInit {
           continue;
         }
 
-        const lang = (recipient.client?.language ?? Language.Ru) as import('./i18n/bot-i18n').Lang;
-        const text = await this.buildOfferText(businessId, offer.composition, offer.descriptionRu, offer.descriptionUz, lang);
+        const lang = (recipient.client?.language ?? Language.Ru) as Lang;
+        let text = textCache.get(lang);
+        if (!text) {
+          text = await this.buildOfferText(
+            businessId,
+            offer.composition,
+            offer.descriptionRu,
+            offer.descriptionUz,
+            lang,
+          );
+          textCache.set(lang, text);
+        }
         const editUrl = this.offerWebAppUrl(slug, recipient.id);
         const keyboard = Markup.inlineKeyboard([
           [
@@ -148,7 +166,14 @@ export class BroadcastService implements OnModuleInit {
         await sleep(this.MS_PER_MSG);
       }
 
-      await this.offers.save({ id: offerId, businessId, status: OfferStatus.Sent });
+      const stillPending = await this.loadQueue(businessId, offerId);
+      if (stillPending.length === 0) {
+        await this.offers.save({ id: offerId, businessId, status: OfferStatus.Sent });
+      } else {
+        this.log.warn(
+          `Offer ${offerId} still has ${stillPending.length} pending recipients — keeping status=sending`,
+        );
+      }
     } finally {
       this.running.delete(key);
       const remaining = this.queues.get(key)?.length ?? 0;

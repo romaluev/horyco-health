@@ -23,6 +23,12 @@ import { resolveSsl } from './ssl';
         migrationsRun: config.get<boolean>('database.migrationsRun') ?? true,
         retryAttempts: 2,
         retryDelay: 1500,
+        // Webhook fan-out + broadcast can exceed TypeORM default pool (10).
+        extra: {
+          max: 25,
+          idleTimeoutMillis: 30_000,
+          connectionTimeoutMillis: 10_000,
+        },
       }),
     }),
     TypeOrmModule.forFeature(ENTITIES),

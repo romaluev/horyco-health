@@ -1,10 +1,21 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
-import { BusinessesRepository } from '../../businesses/businesses.repository';
 import { BotRegistryService } from './bot-registry.service';
 import { UpdateDedupeService } from './update-dedupe.service';
-import { webhookSecretsMatch } from './telegram-webhook.controller';
+import { assertWebhookAuth, webhookSecretsMatch } from './telegram-webhook.controller';
+import type { RegisteredBot } from './bot-context.types';
+
+function botStub(webhookSecret: string | null): RegisteredBot {
+  return {
+    businessId: 'biz-1',
+    slug: 'biz-1',
+    botUsername: null,
+    webhookSecret,
+    token: 'token',
+    telegraf: {} as RegisteredBot['telegraf'],
+  };
+}
 
 describe('webhook secret guard', () => {
   it('rejects when business webhookSecret does not match header', () => {
@@ -12,42 +23,24 @@ describe('webhook secret guard', () => {
     assert.equal(webhookSecretsMatch('expected-secret', 'expected-secret'), true);
   });
 
-  it('rejects missing webhookSecret on business', async () => {
-    const businesses = {
-      findById: async () => ({ id: 'biz-1', webhookSecret: null }),
-    } as unknown as BusinessesRepository;
-
-    const business = await businesses.findById('biz-1');
-    assert.equal(business?.webhookSecret, null);
+  it('rejects missing webhookSecret on business', () => {
     assert.throws(
-      () => {
-        if (!business?.webhookSecret) throw new ForbiddenException('Webhook secret not configured');
-      },
+      () => assertWebhookAuth(botStub(null), 'expected-secret'),
       ForbiddenException,
     );
   });
 
-  it('rejects missing secret header', async () => {
-    const businesses = {
-      findById: async () => ({ id: 'biz-1', webhookSecret: 'expected-secret' }),
-    } as unknown as BusinessesRepository;
+  it('rejects missing secret header', () => {
+    assert.throws(() => assertWebhookAuth(botStub('expected-secret'), undefined), UnauthorizedException);
+  });
 
-    const business = await businesses.findById('biz-1');
-    const secretHeader: string | undefined = undefined;
-    assert.throws(
-      () => {
-        if (!secretHeader) throw new UnauthorizedException('Missing webhook secret header');
-        if (!webhookSecretsMatch(business!.webhookSecret!, secretHeader)) {
-          throw new UnauthorizedException('Invalid webhook secret');
-        }
-      },
-      UnauthorizedException,
-    );
+  it('rejects unknown business (bot not in registry)', () => {
+    assert.throws(() => assertWebhookAuth(undefined, 'expected-secret'), UnauthorizedException);
   });
 
   it('accepts matching secret and dedupes update_id per tenant', () => {
+    assert.doesNotThrow(() => assertWebhookAuth(botStub('my-webhook-secret'), 'my-webhook-secret'));
     const dedupe = new UpdateDedupeService();
-    assert.equal(webhookSecretsMatch('my-webhook-secret', 'my-webhook-secret'), true);
     assert.equal(dedupe.isSeen('biz-a', 42), false);
     dedupe.markSeen('biz-a', 42);
     assert.equal(dedupe.isSeen('biz-a', 42), true);

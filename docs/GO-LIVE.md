@@ -187,6 +187,8 @@ If needed manually in BotFather: set Mini App URL to `https://health.horyco.com/
 
 **Fix (after deploy with self-heal code):** Restart app — startup generates `webhook_secret` automatically. Or in `/b` → Settings → **Переподключить бота**.
 
+**Also check:** stuck webhook handlers exhausting the Postgres pool (symptoms: bot works ~1 min, then all commands freeze; redeploy delivers queued replies like «Профиль обновлён»). Fixed in webhook controller: in-memory auth, no throttling on `/api/tg/wh`, concurrency cap + timeout. Watch logs for `Webhook slow` / `Webhook handle timeout`.
+
 **Manual SQL (before code deploy):**
 
 ```sql

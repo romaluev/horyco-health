@@ -2,35 +2,32 @@ import {
   Controller,
   Headers,
   HttpCode,
-  Logger,
   Param,
   ParseUUIDPipe,
   Post,
+  ServiceUnavailableException,
   UnauthorizedException,
   ForbiddenException,
   Body,
 } from '@nestjs/common';
 import { timingSafeEqual } from 'crypto';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator';
-import { BusinessesRepository } from '../../businesses/businesses.repository';
 import { BotRegistryService } from './bot-registry.service';
-import { UpdateDedupeService } from './update-dedupe.service';
+import { WebhookDispatchService } from './webhook-dispatch.service';
+import type { RegisteredBot } from './bot-context.types';
 import type { Update } from 'telegraf/types';
 
 /**
  * POST /api/tg/wh/:businessId — вход вебхуков Telegram.
- * Секрет проверяется синхронно (401/403) → 200 → async handleUpdate + dedupe update_id.
+ * Секрет проверяется синхронно → слот обработчика → 200 или 503 (Telegram retry).
  */
 @Controller('tg/wh')
-@Throttle({ webhook: { limit: 600, ttl: 60_000 } })
+@SkipThrottle()
 export class TelegramWebhookController {
-  private readonly logger = new Logger(TelegramWebhookController.name);
-
   constructor(
-    private readonly businesses: BusinessesRepository,
     private readonly registry: BotRegistryService,
-    private readonly dedupe: UpdateDedupeService,
+    private readonly dispatch: WebhookDispatchService,
   ) {}
 
   @Public()
@@ -41,38 +38,32 @@ export class TelegramWebhookController {
     @Headers('x-telegram-bot-api-secret-token') secretHeader: string | undefined,
     @Body() update: Update,
   ): Promise<{ ok: true }> {
-    await this.assertWebhookAuth(businessId, secretHeader);
-    void this.processWebhook(businessId, update);
+    assertWebhookAuth(this.registry.get(businessId), secretHeader);
+    const acquired = await this.dispatch.acquireSlot();
+    if (!acquired) {
+      throw new ServiceUnavailableException('Webhook handlers busy');
+    }
+    this.dispatch.dispatch(businessId, update);
     return { ok: true };
   }
+}
 
-  /** Синхронная проверка секрета до ответа 200. */
-  async assertWebhookAuth(businessId: string, secretHeader: string | undefined): Promise<void> {
-    const business = await this.businesses.findById(businessId);
-    if (!business) {
-      throw new UnauthorizedException('Unknown business');
-    }
-    if (!business.webhookSecret) {
-      throw new ForbiddenException('Webhook secret not configured');
-    }
-    if (!secretHeader) {
-      throw new UnauthorizedException('Missing webhook secret header');
-    }
-    if (!webhookSecretsMatch(business.webhookSecret, secretHeader)) {
-      throw new UnauthorizedException('Invalid webhook secret');
-    }
+/** Синхронная проверка секрета (in-memory registry, без DB на каждый апдейт). */
+export function assertWebhookAuth(
+  handle: RegisteredBot | undefined,
+  secretHeader: string | undefined,
+): void {
+  if (!handle) {
+    throw new UnauthorizedException('Unknown business');
   }
-
-  private async processWebhook(businessId: string, update: Update): Promise<void> {
-    try {
-      if (this.dedupe.isSeen(businessId, update.update_id)) {
-        return;
-      }
-      await this.registry.handleUpdate(businessId, update);
-      this.dedupe.markSeen(businessId, update.update_id);
-    } catch (err) {
-      this.logger.error(`Webhook handle ${businessId}: ${(err as Error).message}`);
-    }
+  if (!handle.webhookSecret) {
+    throw new ForbiddenException('Webhook secret not configured');
+  }
+  if (!secretHeader) {
+    throw new UnauthorizedException('Missing webhook secret header');
+  }
+  if (!webhookSecretsMatch(handle.webhookSecret, secretHeader)) {
+    throw new UnauthorizedException('Invalid webhook secret');
   }
 }
 

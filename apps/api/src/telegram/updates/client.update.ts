@@ -629,7 +629,8 @@ export class ClientUpdate {
     const client = await this.clients.findByTelegramId(String(from.id));
     if (!client) return;
     const lang = this.ui.langOf(client);
-    client.phone = phone;
+    const normalized = this.parsePhone(phone) ?? phone.trim();
+    client.phone = normalized;
     await this.clients.save(client);
 
     if (flow === 'register') {

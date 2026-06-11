@@ -5,6 +5,19 @@ import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
+const bootstrapLog = new Logger('Bootstrap');
+
+process.on('uncaughtException', (err) => {
+  bootstrapLog.error('uncaughtException', err instanceof Error ? err.stack : String(err));
+});
+
+process.on('unhandledRejection', (reason) => {
+  bootstrapLog.error(
+    'unhandledRejection',
+    reason instanceof Error ? reason.stack : String(reason),
+  );
+});
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
   const config = app.get(ConfigService);

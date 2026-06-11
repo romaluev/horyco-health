@@ -247,6 +247,20 @@ cd apps/api && npm test
 - Check business bot token in back office settings
 - Inspect logs for `Webhook rejected` (secret mismatch)
 
+### Bot freezes after ~1 minute (no errors in logs)
+
+Typical pattern: bot works briefly, then **all users** stop getting replies; redeploy clears the backlog.
+
+**Root causes (fixed in code):**
+
+1. **CRM broadcast recovery cron** ran every **30 seconds** and re-appended the same pending recipient IDs to the send queue. That hammers Postgres + Telegram API in the background even when nobody is using settings — until the DB pool (10 connections) is exhausted and every webhook handler blocks silently.
+
+2. **Each webhook** used to run 3+ DB queries (auth + middleware) with no concurrency limit.
+
+**Fix:** deduplicated broadcast queue, recovery cron every 5 minutes only, webhook slot limit (15) with 503 when busy, in-memory auth, actor cache, pool max 25. After deploy check `GET /api/health` → `webhook.inFlight`, watch logs for `Webhook acquire timeout` / `Webhook pressure`.
+
+**Ops:** replicas = 1; `SELECT id FROM offers WHERE status = 'sending'` — finish or mark sent if stuck.
+
 ### Telegram 409 Conflict (polling mode only)
 
 - Multiple containers polling the same `BOT_TOKEN`
