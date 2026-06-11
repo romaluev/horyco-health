@@ -34,6 +34,8 @@ import {
   statusText,
 } from '../i18n/bot-i18n';
 import { languageKeyboard, shareContactKeyboard } from '../telegram-keyboards';
+import { extractActorFromClient } from '../bot-actor.util';
+import { MEMBER_TO_ROLE } from '../../businesses/membership.util';
 
 /**
  * Клиентские флоу бота (FR-B1/B2, FR-C, FR-M2, FR-O1/O8): /start + deep link, регистрация,
@@ -70,6 +72,8 @@ export class ClientUpdate {
     if (!from) return;
     const telegramId = String(from.id);
 
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+
     let client = await this.clients.findByTelegramId(telegramId);
     if (!client) {
       client = await this.clients.create({
@@ -78,6 +82,9 @@ export class ClientUpdate {
         username: from.username ?? null,
         language: from.language_code === 'uz' ? Language.Uz : Language.Ru,
       });
+      await this.customers.ensureExists(businessId, client.id);
+      const membership = await this.members.findActive(businessId, client.id);
+      this.actorCtx.set(extractActorFromClient(client, businessId, telegramId, membership));
     } else if (client.username !== (from.username ?? null)) {
       client.username = from.username ?? null;
       client = await this.clients.save(client);
@@ -100,7 +107,6 @@ export class ClientUpdate {
     const mc = payload.match(/^combo_(.+)$/);
     const deepComboId = mc ? mc[1] : null;
 
-    const businessId = this.actorCtx.getBusinessIdOrThrow();
     await this.customers.ensureExists(businessId, client.id);
 
     // B2C: меню сразу, регистрация только при checkout в Mini App.
@@ -139,6 +145,7 @@ export class ClientUpdate {
     member.status = MemberStatus.Active;
     member.inviteToken = null;
     await this.members.save(member);
+    this.actorCtx.set(extractActorFromClient(client, businessId, telegramId, member));
     await ctx.reply('✅ Вы приняли приглашение в команду!');
     await this.ui.showMainMenu(ctx, client);
   }
@@ -444,9 +451,13 @@ export class ClientUpdate {
     }
   }
 
-  /** Роль персонала: своя роль или админ (админ видит все панели). */
+  /** Роль персонала в текущем бизнесе (membership), не legacy clients.role. */
   private async hasRole(client: Client, role: Role): Promise<boolean> {
-    return client.role === role || (await this.ui.isAdmin(client));
+    if (await this.ui.isAdmin(client)) return true;
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const membership = await this.members.findActive(businessId, client.id);
+    if (!membership) return false;
+    return MEMBER_TO_ROLE[membership.role] === role;
   }
 
   // ───────────────────────────── FSM шаги ─────────────────────────────

@@ -7,6 +7,7 @@ import { BusinessesRepository } from '../../businesses/businesses.repository';
 import { Business } from '../../businesses/entities/business.entity';
 import { ClientRepository } from '../../clients/clients.repository';
 import { BusinessMembersRepository } from '../../businesses/business-members.repository';
+import { BusinessCustomersRepository } from '../../businesses/business-customers.repository';
 import { decryptToken, parseEncKey } from '../../businesses/token-crypto';
 import { AppClsStore } from '../../common/cls/actor-context';
 import { createBotContextMiddleware } from '../bot-context.middleware';
@@ -29,6 +30,7 @@ export class BotRegistryService implements OnModuleDestroy {
     private readonly cls: ClsService<AppClsStore>,
     private readonly clients: ClientRepository,
     private readonly members: BusinessMembersRepository,
+    private readonly customers: BusinessCustomersRepository,
     private readonly composerFactory: BotComposerFactory,
   ) {
     this.encKey = parseEncKey(this.config.get<string>('security.tokenEncKey'));
@@ -85,7 +87,7 @@ export class BotRegistryService implements OnModuleDestroy {
       void ctx.answerCbQuery().catch(() => undefined);
     });
 
-    const middleware = createBotContextMiddleware(this.cls, this.clients, this.members, {
+    const middleware = createBotContextMiddleware(this.cls, this.clients, this.members, this.customers, {
       id: business.id,
       slug: business.slug,
       botUsername: business.botUsername,
@@ -109,6 +111,11 @@ export class BotRegistryService implements OnModuleDestroy {
   async disconnect(businessId: string): Promise<void> {
     const handle = this.bots.get(businessId);
     if (!handle) return;
+    try {
+      await handle.telegraf.telegram.deleteWebhook({ drop_pending_updates: false });
+    } catch (err) {
+      this.logger.warn(`deleteWebhook ${businessId}: ${(err as Error).message}`);
+    }
     try {
       handle.telegraf.stop('SIGTERM');
     } catch {

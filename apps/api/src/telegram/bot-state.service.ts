@@ -62,13 +62,15 @@ export class BotStateService {
    * Время передаётся снаружи (в скриптах/тестах Date.now недоступен) — здесь это рантайм-бот.
    */
   isDuplicateCallback(callbackId: string, now: number): boolean {
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const key = `${businessId}:${callbackId}`;
     for (const [id, ts] of this.processedCallbacks) {
       if (now - ts > BotStateService.CALLBACK_DEDUP_TTL_MS) {
         this.processedCallbacks.delete(id);
       }
     }
-    if (this.processedCallbacks.has(callbackId)) return true;
-    this.processedCallbacks.set(callbackId, now);
+    if (this.processedCallbacks.has(key)) return true;
+    this.processedCallbacks.set(key, now);
     return false;
   }
 }

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ChatKind, Role } from '@eatfit/shared';
+import type { Telegraf } from 'telegraf';
 import { BusinessChatsRepository } from '../businesses/business-chats.repository';
 import { INotifier, NotifyGroup } from '../common/notifications/notifier';
 import { OrderResponseDto } from '../orders/dto/order-response.dto';
@@ -46,15 +47,13 @@ export class TelegramNotifier implements INotifier {
       this.logger.debug(`Группа ${group} бизнеса ${businessId} не настроена — пропуск`);
       return null;
     }
+    const tg = this.telegramApi(businessId);
+    if (!tg) return null;
     try {
-      const sent = await this.registry.telegram(businessId).sendMessage(
-        chatId,
-        this.cardText(order, header),
-        {
-          parse_mode: 'HTML',
-          ...orderActionKeyboard(this.groupLang, order, role),
-        },
-      );
+      const sent = await tg.sendMessage(chatId, this.cardText(order, header), {
+        parse_mode: 'HTML',
+        ...orderActionKeyboard(this.groupLang, order, role),
+      });
       return String(sent.message_id);
     } catch (err) {
       this.logger.warn(`Не удалось отправить заказ в ${chatId}: ${(err as Error).message}`);
@@ -72,17 +71,13 @@ export class TelegramNotifier implements INotifier {
   ): Promise<boolean> {
     const chatId = await this.resolveGroup(businessId, group);
     if (!chatId) return false;
+    const tg = this.telegramApi(businessId);
+    if (!tg) return false;
     try {
-      await this.registry.telegram(businessId).editMessageText(
-        chatId,
-        Number(messageId),
-        undefined,
-        this.cardText(order, header),
-        {
-          parse_mode: 'HTML',
-          ...orderActionKeyboard(this.groupLang, order, role),
-        },
-      );
+      await tg.editMessageText(chatId, Number(messageId), undefined, this.cardText(order, header), {
+        parse_mode: 'HTML',
+        ...orderActionKeyboard(this.groupLang, order, role),
+      });
       return true;
     } catch (err) {
       this.logger.warn(
@@ -101,14 +96,12 @@ export class TelegramNotifier implements INotifier {
   ): Promise<boolean> {
     const chatId = await this.resolveGroup(businessId, group);
     if (!chatId) return false;
+    const tg = this.telegramApi(businessId);
+    if (!tg) return false;
     try {
-      await this.registry.telegram(businessId).editMessageText(
-        chatId,
-        Number(messageId),
-        undefined,
-        this.cardText(order, header),
-        { parse_mode: 'HTML' },
-      );
+      await tg.editMessageText(chatId, Number(messageId), undefined, this.cardText(order, header), {
+        parse_mode: 'HTML',
+      });
       return true;
     } catch (err) {
       this.logger.warn(
@@ -143,9 +136,23 @@ export class TelegramNotifier implements INotifier {
     }
   }
 
+  /** null если бот не в реестре (BOT_ENABLED=false, suspend, disconnect). */
+  private telegramApi(businessId: string): Telegraf['telegram'] | null {
+    const bot = this.registry.get(businessId);
+    if (!bot) {
+      this.logger.warn(
+        `telegram.send.skipped bot_not_connected businessId=${businessId}`,
+      );
+      return null;
+    }
+    return bot.telegraf.telegram;
+  }
+
   private async send(businessId: string, chatId: string, message: string): Promise<void> {
+    const tg = this.telegramApi(businessId);
+    if (!tg) return;
     try {
-      await this.registry.telegram(businessId).sendMessage(chatId, message, { parse_mode: 'HTML' });
+      await tg.sendMessage(chatId, message, { parse_mode: 'HTML' });
     } catch (err) {
       this.logger.warn(`Не удалось отправить сообщение в ${chatId}: ${(err as Error).message}`);
     }

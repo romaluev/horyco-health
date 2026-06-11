@@ -46,11 +46,16 @@ export class BotLifecycleService implements OnApplicationBootstrap {
     } catch (err) {
       this.logger.error(`getMe failed ${slug}: ${(err as Error).message}`);
       await this.businesses.updateBotStatus(businessId, BotStatus.Error);
+      await this.registry.disconnect(businessId);
       return;
     }
 
     if (botMode === 'webhook') {
-      await this.setupWebhook(handle);
+      const ok = await this.setupWebhook(handle);
+      if (!ok) {
+        await this.businesses.updateBotStatus(businessId, BotStatus.Error);
+        return;
+      }
     } else {
       await this.setupPolling(handle);
     }
@@ -62,11 +67,11 @@ export class BotLifecycleService implements OnApplicationBootstrap {
     await this.businesses.updateBotStatus(businessId, status);
   }
 
-  private async setupWebhook(handle: RegisteredBot): Promise<void> {
+  private async setupWebhook(handle: RegisteredBot): Promise<boolean> {
     const publicUrl = this.config.get<string>('bot.publicUrl');
     if (!publicUrl) {
       this.logger.warn(`PUBLIC_URL не задан — webhook для ${handle.slug} пропущен`);
-      return;
+      return false;
     }
     const url = `${publicUrl.replace(/\/$/, '')}/api/tg/wh/${handle.businessId}`;
     try {
@@ -75,9 +80,11 @@ export class BotLifecycleService implements OnApplicationBootstrap {
         drop_pending_updates: false,
       });
       this.logger.log(`Webhook ${handle.slug}: ${url}`);
+      return true;
     } catch (err) {
       this.logger.error(`setWebhook ${handle.slug}: ${(err as Error).message}`);
       await this.businesses.updateBotStatus(handle.businessId, BotStatus.Error);
+      return false;
     }
   }
 

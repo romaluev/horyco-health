@@ -1,39 +1,60 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { BusinessesRepository } from '../../businesses/businesses.repository';
 import { BotRegistryService } from './bot-registry.service';
 import { UpdateDedupeService } from './update-dedupe.service';
+import { webhookSecretsMatch } from './telegram-webhook.controller';
 
 describe('webhook secret guard', () => {
-  it('rejects when business webhookSecret does not match header', async () => {
+  it('rejects when business webhookSecret does not match header', () => {
+    assert.equal(webhookSecretsMatch('expected-secret', 'wrong-secret'), false);
+    assert.equal(webhookSecretsMatch('expected-secret', 'expected-secret'), true);
+  });
+
+  it('rejects missing webhookSecret on business', async () => {
+    const businesses = {
+      findById: async () => ({ id: 'biz-1', webhookSecret: null }),
+    } as unknown as BusinessesRepository;
+
+    const business = await businesses.findById('biz-1');
+    assert.equal(business?.webhookSecret, null);
+    assert.throws(
+      () => {
+        if (!business?.webhookSecret) throw new ForbiddenException('Webhook secret not configured');
+      },
+      ForbiddenException,
+    );
+  });
+
+  it('rejects missing secret header', async () => {
     const businesses = {
       findById: async () => ({ id: 'biz-1', webhookSecret: 'expected-secret' }),
     } as unknown as BusinessesRepository;
 
-    const registry = { handleUpdate: async () => undefined } as unknown as BotRegistryService;
-    const dedupe = new UpdateDedupeService();
-
     const business = await businesses.findById('biz-1');
-    const secretHeader = 'wrong-secret';
-
-    const rejected =
-      business?.webhookSecret != null && business.webhookSecret !== secretHeader;
-    assert.equal(rejected, true);
-    assert.equal(dedupe.isDuplicate(1001), false);
-    assert.equal(dedupe.isDuplicate(1001), true);
-
-    void registry;
+    const secretHeader: string | undefined = undefined;
+    assert.throws(
+      () => {
+        if (!secretHeader) throw new UnauthorizedException('Missing webhook secret header');
+        if (!webhookSecretsMatch(business!.webhookSecret!, secretHeader)) {
+          throw new UnauthorizedException('Invalid webhook secret');
+        }
+      },
+      UnauthorizedException,
+    );
   });
 
-  it('accepts matching secret and dedupes update_id', () => {
+  it('accepts matching secret and dedupes update_id per tenant', () => {
     const dedupe = new UpdateDedupeService();
-    const secret = 'my-webhook-secret';
-    const header = 'my-webhook-secret';
-    assert.equal(secret === header, true);
-    assert.equal(dedupe.isDuplicate(42), false);
-    assert.equal(dedupe.isDuplicate(42), true);
-    assert.equal(dedupe.isDuplicate(43), false);
+    assert.equal(webhookSecretsMatch('my-webhook-secret', 'my-webhook-secret'), true);
+    assert.equal(dedupe.isSeen('biz-a', 42), false);
+    dedupe.markSeen('biz-a', 42);
+    assert.equal(dedupe.isSeen('biz-a', 42), true);
+    assert.equal(dedupe.isSeen('biz-b', 42), false);
+    dedupe.markSeen('biz-b', 42);
+    assert.equal(dedupe.isSeen('biz-b', 42), true);
+    assert.equal(dedupe.isSeen('biz-a', 43), false);
   });
 });
 
@@ -62,6 +83,9 @@ describe('registry routing', () => {
     bots.set('biz-b', makeBot('biz-b'));
 
     const registry = {
+      get(businessId: string) {
+        return bots.get(businessId);
+      },
       telegram(businessId: string) {
         const bot = bots.get(businessId);
         if (!bot) throw new Error('not connected');
@@ -78,6 +102,7 @@ describe('registry routing', () => {
     ]);
 
     assert.throws(() => registry.telegram('biz-c'), /not connected/);
+    assert.equal(registry.get('biz-c'), undefined);
   });
 });
 

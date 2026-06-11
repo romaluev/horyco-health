@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { Markup } from 'telegraf';
 import { OffersRepository } from '../offers/offers.repository';
@@ -7,8 +8,7 @@ import { BotRegistryService } from './engine/bot-registry.service';
 import { BusinessesRepository } from '../businesses/businesses.repository';
 import { LinePricingService } from '../orders/pricing/build-order-items';
 import { newLineId, normalizeCartLine } from '../orders/cart/cart-line.types';
-import { pick, esc, formatMoney } from './i18n/bot-i18n';
-import { Language } from '@eatfit/shared';
+import { esc, formatMoney } from './i18n/bot-i18n';
 
 /** FIFO broadcast ~28 msg/s per bot with 429 retry. */
 @Injectable()
@@ -17,13 +17,17 @@ export class BroadcastService implements OnModuleInit {
   private readonly queues = new Map<string, string[]>();
   private readonly running = new Set<string>();
   private readonly MS_PER_MSG = 36; // ~28/s
+  private readonly webAppBase?: string;
 
   constructor(
     private readonly offers: OffersRepository,
     private readonly bots: BotRegistryService,
     private readonly businesses: BusinessesRepository,
     private readonly linePricing: LinePricingService,
-  ) {}
+    private readonly config: ConfigService,
+  ) {
+    this.webAppBase = this.config.get<string>('bot.webAppUrl');
+  }
 
   onModuleInit(): void {
     void this.recoverSendingOffers();
@@ -67,12 +71,15 @@ export class BroadcastService implements OnModuleInit {
   private async pump(key: string, businessId: string, offerId: string): Promise<void> {
     if (this.running.has(key)) return;
     this.running.add(key);
+    let rePump = false;
     try {
-      const tg = this.bots.telegram(businessId);
-      if (!tg) {
-        this.log.warn(`No bot for business ${businessId}`);
+      const handle = this.bots.get(businessId);
+      if (!handle) {
+        this.log.warn(`No bot for business ${businessId} — aborting broadcast`);
+        await this.abortBroadcastNoBot(businessId, offerId, key);
         return;
       }
+      const tg = handle.telegraf.telegram;
       const business = await this.businesses.findById(businessId);
       const slug = business?.slug ?? '';
       const offer = await this.offers.findById(businessId, offerId);
@@ -99,13 +106,11 @@ export class BroadcastService implements OnModuleInit {
         }
 
         const text = await this.buildOfferText(businessId, offer.composition, offer.descriptionRu, offer.descriptionUz);
+        const editUrl = this.offerWebAppUrl(slug, recipient.id);
         const keyboard = Markup.inlineKeyboard([
           [
             Markup.button.callback('✅ Оформить', `offer:accept:${recipient.id}`),
-            Markup.button.webApp(
-              '✏️ Изменить',
-              `${process.env.PUBLIC_URL ?? ''}/?biz=${slug}&offer=${recipient.id}`,
-            ),
+            Markup.button.webApp('✏️ Изменить', editUrl),
           ],
         ]);
 
@@ -144,7 +149,36 @@ export class BroadcastService implements OnModuleInit {
       await this.offers.save({ id: offerId, businessId, status: OfferStatus.Sent });
     } finally {
       this.running.delete(key);
+      const remaining = this.queues.get(key)?.length ?? 0;
+      if (remaining > 0) rePump = true;
     }
+    if (rePump) {
+      void this.pump(key, businessId, offerId);
+    }
+  }
+
+  private offerWebAppUrl(slug: string, offerRecipientId: string): string {
+    const base = this.webAppBase ?? '';
+    if (!base) return `/?biz=${slug}&offer=${offerRecipientId}`;
+    const sep = base.includes('?') ? '&' : '?';
+    const params = `biz=${encodeURIComponent(slug)}${offerRecipientId ? `&offer=${encodeURIComponent(offerRecipientId)}` : ''}`;
+    return `${base}${sep}${params}`;
+  }
+
+  private async abortBroadcastNoBot(businessId: string, offerId: string, key: string): Promise<void> {
+    this.queues.delete(key);
+    const recipients = await this.offers.findRecipients(businessId, offerId);
+    for (const r of recipients) {
+      if (
+        r.status === OfferRecipientStatus.Pending ||
+        r.status === OfferRecipientStatus.Failed
+      ) {
+        await this.offers.setRecipientStatus(businessId, r.id, OfferRecipientStatus.Failed, {
+          errorMessage: 'bot not connected',
+        });
+      }
+    }
+    await this.offers.save({ id: offerId, businessId, status: OfferStatus.Sent });
   }
 
   private async buildOfferText(
@@ -167,7 +201,13 @@ export class BroadcastService implements OnModuleInit {
     );
     const { total } = await this.linePricing.buildOrderItems(businessId, lines);
     const parts: string[] = ['<b>Специальное предложение</b>'];
-    if (descRu) parts.push(esc(descRu));
+    const ru = descRu?.trim();
+    const uz = descUz?.trim();
+    if (ru && uz && ru !== uz) {
+      parts.push(esc(`${uz} / ${ru}`));
+    } else if (uz || ru) {
+      parts.push(esc(uz || ru!));
+    }
     for (const l of lines) {
       const built = await this.linePricing.buildOrderItems(businessId, [l]);
       const item = built.items[0];
