@@ -11,7 +11,11 @@ export default () => ({
   database: {
     url: process.env.DATABASE_URL,
     ssl: process.env.DATABASE_SSL, // 'true' | 'false' | undefined (авто)
-    synchronize: (process.env.TYPEORM_SYNC ?? 'true') === 'true',
+    // Схема ведётся миграциями (PRD AC-5); sync — только явный opt-in.
+    synchronize: (process.env.TYPEORM_SYNC ?? 'false') === 'true',
+    // Прогон миграций при старте (одна реплика — безопасно). На живых БД
+    // до baseline-fake выставить false — см. DEPLOYMENT.md.
+    migrationsRun: (process.env.TYPEORM_MIGRATIONS_RUN ?? 'true') === 'true',
   },
   jwt: {
     secret: process.env.JWT_SECRET,

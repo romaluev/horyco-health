@@ -5,7 +5,8 @@ export const validationSchema = Joi.object({
   PORT: Joi.number().default(3000),
   DATABASE_URL: Joi.string().required(),
   DATABASE_SSL: Joi.string().valid('true', 'false').optional(),
-  TYPEORM_SYNC: Joi.string().valid('true', 'false').default('true'),
+  TYPEORM_SYNC: Joi.string().valid('true', 'false').default('false'),
+  TYPEORM_MIGRATIONS_RUN: Joi.string().valid('true', 'false').default('true'),
 
   // Безопасность: секрет JWT не короче 32 символов (архитектура §Token policy).
   JWT_SECRET: Joi.string().min(32).required(),

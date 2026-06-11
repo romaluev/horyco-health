@@ -70,7 +70,8 @@ Set in Coolify → Application → **Environment Variables**.
 | `DATABASE_SSL` | `false` | `false` |
 | `WEB_APP_URL` | `https://dev-health.horyco.com` | `https://health.horyco.com` |
 | `CORS_ORIGINS` | `https://dev-health.horyco.com` | `https://health.horyco.com` |
-| `TYPEORM_SYNC` | `true` | `true` (until migrations exist) |
+| `TYPEORM_SYNC` | `false` | `false` (schema is migration-managed) |
+| `TYPEORM_MIGRATIONS_RUN` | `true` | `true` (after one-time baseline registration, see Migrations) |
 | `BOT_ENABLED` | `true` | `true` |
 
 ### Optional
@@ -88,6 +89,38 @@ Set in Coolify → Application → **Environment Variables**.
 | `JWT_EXPIRES_IN` | JWT lifetime (default `7d`) |
 | `TELEGRAM_WEBHOOK_SECRET` | Webhook secret (optional; required if using webhooks in prod) |
 | `PORT` | Container port (Coolify sets this; default `3000`) |
+
+## Migrations
+
+The schema is managed by TypeORM migrations (`apps/api/src/database/migrations/`).
+`TYPEORM_SYNC` must be `false` everywhere; pending migrations run automatically on
+boot when `TYPEORM_MIGRATIONS_RUN=true` (safe with a single replica).
+
+CLI (always from `apps/api`, runs against compiled `dist`):
+
+```bash
+npm run migration:generate -- src/database/migrations/<Name>   # diff entities vs DB
+npm run migration:run                                          # apply pending
+npm run migration:revert                                       # revert last
+npm run migration:show                                         # list status
+```
+
+### One-time cutover for a LIVE database built by the old synchronize mode
+
+The first migration (`Baseline`) recreates the full schema — running it on a DB that
+already has the tables would fail. Register it as already-applied instead:
+
+1. Backup: `pg_dump` the database.
+2. Deploy with `TYPEORM_SYNC=false` and `TYPEORM_MIGRATIONS_RUN=false`.
+3. One-time, from a shell with `DATABASE_URL` pointing at that database:
+   ```bash
+   cd apps/api && npx typeorm -d dist/database/data-source.js migration:run --fake
+   ```
+   This records `Baseline` in the `migrations` table without executing DDL.
+   Verify: `npx typeorm -d dist/database/data-source.js migration:show` → `[X] Baseline…`
+4. Set `TYPEORM_MIGRATIONS_RUN=true`. Subsequent deploys apply new migrations on boot.
+
+Fresh databases need none of this — migrations run normally from the start.
 
 ## Domain and SSL
 
