@@ -49,6 +49,8 @@ COPY apps/web/package.json apps/web/
 COPY libs/shared/package.json libs/shared/
 
 COPY --from=dependencies /app/node_modules ./node_modules
+# Workspace packages not hoisted to root (e.g. @nestjs/serve-static) live under apps/api/node_modules.
+COPY --from=dependencies /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/web/out ./apps/web/out
 COPY --from=build /app/libs/shared/dist ./libs/shared/dist
