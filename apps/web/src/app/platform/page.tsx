@@ -140,9 +140,17 @@ export default function PlatformPage() {
 
         <div className="card" style={{ marginBottom: 16 }}>
           <h3>{t('platform_create')}</h3>
-          {(['name', 'slug', 'ownerName', 'ownerPhone', 'ownerPassword'] as const).map((key) => (
+          {(
+            [
+              ['name', 'platform_field_name'],
+              ['slug', 'platform_field_slug'],
+              ['ownerName', 'platform_field_owner_name'],
+              ['ownerPhone', 'platform_field_owner_phone'],
+              ['ownerPassword', 'platform_field_owner_password'],
+            ] as const
+          ).map(([key, labelKey]) => (
             <div className="field" key={key}>
-              <label>{key}</label>
+              <label>{t(labelKey)}</label>
               <input
                 className="input"
                 type={key === 'ownerPassword' ? 'password' : 'text'}

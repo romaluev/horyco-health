@@ -141,7 +141,15 @@ export function OffersTab() {
 
   /** Строки для отправки в API — без UI-поля unitExtra. */
   const toApiComposition = (lines: ComposeLine[]): OfferCompositionLine[] =>
-    lines.map(({ unitExtra: _unitExtra, ...line }) => line);
+    lines.map((l) => ({
+      kind: l.kind,
+      menuItemId: l.menuItemId,
+      portion: l.portion,
+      comboId: l.comboId,
+      slotSelections: l.slotSelections,
+      modifierIds: l.modifierIds,
+      quantity: l.quantity,
+    }));
 
   const addDishLine = () => {
     if (!pickDishId) return;

@@ -1,6 +1,7 @@
 import { Language } from '@eatfit/shared';
 import { api } from './api';
 import { getBizSlug } from './biz';
+import { decodeJwt } from './jwt';
 import { waitForInitData, isLikelyTelegram } from './telegram';
 import { useAuthStore, getSavedToken } from '@/store/auth.store';
 import { AuthResponse, ClientDto } from './types';
@@ -42,6 +43,18 @@ export async function bootstrapAuth(): Promise<void> {
   if (saved) {
     store.setStatus('loading');
     try {
+      // Сохранённый токен должен принадлежать текущему ?biz=, иначе — переавторизация.
+      if (biz) {
+        const cfg = await api<{ businessId?: string }>(
+          `/config?biz=${encodeURIComponent(biz)}`,
+          { token: '' },
+        );
+        const tokenBiz = decodeJwt(saved)?.biz;
+        if (cfg.businessId && tokenBiz && cfg.businessId !== tokenBiz) {
+          store.logout(); // токен от другого бизнеса — статус web-anon
+          return;
+        }
+      }
       const client = await api<ClientDto>('/me', { token: saved });
       store.setAuth(saved, client);
       return;

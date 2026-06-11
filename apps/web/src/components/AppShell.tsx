@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { getStartParam } from '@/lib/telegram';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
+import { useT } from '@/lib/i18n';
 import { BottomNav } from './BottomNav';
 import { MenuScreen } from './screens/MenuScreen';
 import { DishDetail } from './screens/DishDetail';
@@ -15,12 +16,14 @@ import { ProfileScreen } from './screens/ProfileScreen';
 
 /** Каркас Mini App: вкладки + нижняя навигация (регистрация — при checkout в CartScreen). */
 export function AppShell() {
+  const t = useT();
   const client = useAuthStore((s) => s.client);
   const tab = useUiStore((s) => s.tab);
   const detailId = useUiStore((s) => s.detailId);
   const openDetail = useUiStore((s) => s.openDetail);
 
   const openCombo = useUiStore((s) => s.openCombo);
+  const [offerError, setOfferError] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -35,9 +38,14 @@ export function AppShell() {
     if (id) openDetail(id);
     else if (comboQuery || comboStart) openCombo(comboQuery ?? comboStart!);
     if (offerQuery) {
-      void api(`/cart/from-offer/${offerQuery}`, { method: 'POST' }).then(() => {
-        useUiStore.getState().setTab('cart');
-      });
+      void api(`/cart/from-offer/${offerQuery}`, { method: 'POST' })
+        .then(() => {
+          useUiStore.getState().setTab('cart');
+        })
+        .catch(() => {
+          // Не переключаемся на корзину при ошибке — показываем уведомление.
+          setOfferError(true);
+        });
     }
   }, [openDetail, openCombo]);
 
@@ -46,6 +54,11 @@ export function AppShell() {
   return (
     <div className="app">
       <div className="screen">
+        {offerError && (
+          <div className="err" role="alert" style={{ marginBottom: 12 }}>
+            {t('error_generic')}
+          </div>
+        )}
         {tab === 'menu' && <MenuScreen />}
         {tab === 'cart' && <CartScreen />}
         {tab === 'orders' && <OrdersScreen />}

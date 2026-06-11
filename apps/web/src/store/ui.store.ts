@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type Tab = 'menu' | 'cart' | 'orders' | 'profile' | 'admin';
+export type Tab = 'menu' | 'cart' | 'orders' | 'profile';
 
 interface UiState {
   tab: Tab;

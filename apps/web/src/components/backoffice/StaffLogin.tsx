@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { staffLogin, switchBusiness } from '@/lib/staff-auth';
+import { staffLogin } from '@/lib/staff-auth';
 import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/lib/i18n';
 import { ApiError } from '@/lib/api';
@@ -53,7 +53,7 @@ export function StaffLogin() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        {error && <div className="err" style={{ marginBottom: 12 }}>{error}</div>}
+        {error && <div className="err" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
         <button className="btn btn-primary btn-block" disabled={busy}>
           {t('web_login')}
         </button>

@@ -436,7 +436,7 @@ function ComboEditor({
       )}
 
       <button className="btn btn-primary" disabled={busy} onClick={onSave}>
-        {t('bo_save_draft')}
+        {t('save')}
       </button>
     </div>
   );

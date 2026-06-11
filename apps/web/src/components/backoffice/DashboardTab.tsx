@@ -2,8 +2,20 @@
 
 import { useState } from 'react';
 import { useAnalytics, type AnalyticsDto } from '@/lib/backoffice-queries';
-import { useT } from '@/lib/i18n';
+import { useT, type I18nKey } from '@/lib/i18n';
 import { formatMoney } from '@/lib/format';
+
+/** Локализованная подпись способа оплаты (значения из PaymentMethod). */
+function paymentMethodKey(method: string): I18nKey | null {
+  switch (method) {
+    case 'balance':
+      return 'pay_method_balance';
+    case 'on_delivery':
+      return 'pay_method_on_delivery';
+    default:
+      return null;
+  }
+}
 
 type Range = 'today' | '7d' | '30d';
 
@@ -57,14 +69,17 @@ function DashboardBody({ data }: { data: AnalyticsDto }) {
       <div className="card" style={{ marginBottom: 12 }}>
         <h4>{t('dash_by_payment')}</h4>
         {data.revenueByPayment.length === 0 && <div className="muted">{t('dash_no_data')}</div>}
-        {data.revenueByPayment.map((r) => (
-          <div className="row" key={r.method}>
-            <span>{r.method}</span>
-            <span>
-              {formatMoney(r.amount)} · {r.orders}
-            </span>
-          </div>
-        ))}
+        {data.revenueByPayment.map((r) => {
+          const key = paymentMethodKey(r.method);
+          return (
+            <div className="row" key={r.method}>
+              <span>{key ? t(key) : r.method}</span>
+              <span>
+                {formatMoney(r.amount)} · {r.orders}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       <div className="card" style={{ marginBottom: 12 }}>
