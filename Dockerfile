@@ -17,6 +17,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 FROM node:20-alpine AS build
 WORKDIR /app
 
+# Keep devDependencies for tsc/next build; Next.js requires production during `next build`.
 ENV NODE_ENV=development
 
 COPY package.json package-lock.json ./
@@ -28,7 +29,7 @@ RUN npm ci
 
 COPY . .
 
-RUN npm run build
+RUN NODE_ENV=production npm run build
 
 # ========================================
 # Stage 3: Production
