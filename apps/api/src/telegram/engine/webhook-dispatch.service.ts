@@ -36,7 +36,6 @@ export class WebhookDispatchService {
   private processed = 0;
   private timeouts = 0;
   private dropped = 0;
-  private draining = false;
   private lastReceivedAt: Date | null = null;
   private lastProcessedAt: Date | null = null;
 
@@ -71,7 +70,16 @@ export class WebhookDispatchService {
     this.logger.log(
       `Webhook queued ${businessId} update=${update.update_id ?? 'n/a'} type=${describeUpdate(update)} q=${this.queue.length}`,
     );
-    void this.drain();
+    this.pump();
+  }
+
+  /** Unstick queue if a race left items after all workers finished. */
+  @Cron('*/15 * * * * *')
+  rescueStuckQueue(): void {
+    if (this.queue.length > 0 && this.inFlight < WEBHOOK_MAX_CONCURRENT) {
+      this.logger.warn(`Webhook queue rescue: q=${this.queue.length} inFlight=${this.inFlight}`);
+      this.pump();
+    }
   }
 
   @Cron('0 * * * * *')
@@ -83,21 +91,16 @@ export class WebhookDispatchService {
     );
   }
 
-  private async drain(): Promise<void> {
-    if (this.draining) return;
-    this.draining = true;
-    try {
-      while (this.inFlight < WEBHOOK_MAX_CONCURRENT && this.queue.length > 0) {
-        const item = this.queue.shift();
-        if (!item) break;
-        this.inFlight++;
-        void this.run(item.businessId, item.update).finally(() => {
-          this.inFlight--;
-          void this.drain();
-        });
-      }
-    } finally {
-      this.draining = false;
+  /** Start workers until concurrency cap or queue empty (sync loop — no drain flag race). */
+  private pump(): void {
+    while (this.inFlight < WEBHOOK_MAX_CONCURRENT && this.queue.length > 0) {
+      const item = this.queue.shift();
+      if (!item) break;
+      this.inFlight++;
+      void this.run(item.businessId, item.update).finally(() => {
+        this.inFlight--;
+        this.pump();
+      });
     }
   }
 
@@ -134,10 +137,19 @@ export class WebhookDispatchService {
 }
 
 function describeUpdate(update: Update): string {
-  if ('message' in update && update.message) return 'message';
   if ('callback_query' in update && update.callback_query) return 'callback_query';
-  if ('edited_message' in update && update.edited_message) return 'edited_message';
-  return 'other';
+  const msg =
+    'message' in update && update.message
+      ? update.message
+      : 'edited_message' in update
+        ? update.edited_message
+        : undefined;
+  if (!msg) return 'other';
+  if ('location' in msg && msg.location) return 'location';
+  if ('venue' in msg && msg.venue) return 'venue';
+  if ('contact' in msg && msg.contact) return 'contact';
+  if ('text' in msg && msg.text) return 'text';
+  return 'message';
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {

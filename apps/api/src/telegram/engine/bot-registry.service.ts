@@ -85,6 +85,10 @@ export class BotRegistryService implements OnModuleDestroy {
     telegraf.catch((err, ctx) => {
       this.logger.error(`Ошибка хендлера бота ${business.slug}: ${(err as Error).message}`);
       void ctx.answerCbQuery().catch(() => undefined);
+      if (ctx.callbackQuery) return;
+      void ctx
+        .reply('Произошла ошибка. Отправьте /start или попробуйте ещё раз.')
+        .catch(() => undefined);
     });
 
     const middleware = createBotContextMiddleware(this.cls, this.clients, this.members, this.customers, {
@@ -111,21 +115,26 @@ export class BotRegistryService implements OnModuleDestroy {
     return handle;
   }
 
-  async disconnect(businessId: string): Promise<void> {
+  async disconnect(businessId: string, opts: { dropWebhook?: boolean } = {}): Promise<void> {
+    const { dropWebhook = false } = opts;
     const handle = this.bots.get(businessId);
     if (!handle) return;
-    try {
-      await handle.telegraf.telegram.deleteWebhook({ drop_pending_updates: false });
-    } catch (err) {
-      this.logger.warn(`deleteWebhook ${businessId}: ${(err as Error).message}`);
+    if (dropWebhook) {
+      try {
+        await handle.telegraf.telegram.deleteWebhook({ drop_pending_updates: false });
+      } catch (err) {
+        this.logger.warn(`deleteWebhook ${businessId}: ${(err as Error).message}`);
+      }
     }
     try {
       handle.telegraf.stop('SIGTERM');
     } catch {
-      /* polling мог не быть запущен */
+      /* polling may not be running */
     }
     this.bots.delete(businessId);
-    this.logger.log(`Бот отключён: ${businessId}`);
+    this.logger.log(
+      `Bot disconnected: ${businessId}${dropWebhook ? ' (webhook dropped)' : ''}`,
+    );
   }
 
   async handleUpdate(businessId: string, update: Update): Promise<void> {

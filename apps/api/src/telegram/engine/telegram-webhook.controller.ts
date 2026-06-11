@@ -2,6 +2,7 @@ import {
   Controller,
   Headers,
   HttpCode,
+  Logger,
   Param,
   ParseUUIDPipe,
   Post,
@@ -13,6 +14,7 @@ import { timingSafeEqual } from 'crypto';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator';
 import { BotRegistryService } from './bot-registry.service';
+import { BotHealthService } from './bot-health.service';
 import { WebhookDispatchService } from './webhook-dispatch.service';
 import type { RegisteredBot } from './bot-context.types';
 import type { Update } from 'telegraf/types';
@@ -24,9 +26,12 @@ import type { Update } from 'telegraf/types';
 @Controller('tg/wh')
 @SkipThrottle()
 export class TelegramWebhookController {
+  private readonly logger = new Logger(TelegramWebhookController.name);
+
   constructor(
     private readonly registry: BotRegistryService,
     private readonly dispatch: WebhookDispatchService,
+    private readonly health: BotHealthService,
   ) {}
 
   @Public()
@@ -37,7 +42,15 @@ export class TelegramWebhookController {
     @Headers('x-telegram-bot-api-secret-token') secretHeader: string | undefined,
     @Body() update: Update,
   ): { ok: true } {
-    assertWebhookAuth(this.registry.get(businessId), secretHeader);
+    try {
+      assertWebhookAuth(this.registry.get(businessId), secretHeader);
+    } catch (err) {
+      this.logger.warn(
+        `Webhook auth failed business=${businessId} update=${update.update_id ?? 'n/a'}: ${(err as Error).message}`,
+      );
+      this.health.onWebhookAuthFailure(businessId);
+      throw err;
+    }
     this.dispatch.enqueue(businessId, update);
     return { ok: true };
   }

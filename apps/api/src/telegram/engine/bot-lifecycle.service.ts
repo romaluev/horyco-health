@@ -59,7 +59,7 @@ export class BotLifecycleService implements OnApplicationBootstrap {
     }
 
     if (botMode === 'webhook') {
-      const ok = await this.setupWebhook(handle);
+      const ok = await this.ensureWebhook(handle);
       if (!ok) {
         await this.businesses.updateBotStatus(businessId, BotStatus.Error);
         return;
@@ -75,25 +75,49 @@ export class BotLifecycleService implements OnApplicationBootstrap {
     await this.businesses.updateBotStatus(businessId, status);
   }
 
-  private async setupWebhook(handle: RegisteredBot): Promise<boolean> {
+  /** Expected Telegram webhook URL for a business (null when PUBLIC_URL unset). */
+  expectedWebhookUrl(businessId: string): string | null {
     const publicUrl = this.config.get<string>('bot.publicUrl');
-    if (!publicUrl) {
-      this.logger.warn(`PUBLIC_URL не задан — webhook для ${handle.slug} пропущен`);
+    if (!publicUrl) return null;
+    return `${publicUrl.replace(/\/$/, '')}/api/tg/wh/${businessId}`;
+  }
+
+  /** Register or refresh webhook; safe to call from bootstrap and watchdog. */
+  async ensureWebhook(handle: RegisteredBot): Promise<boolean> {
+    const url = this.expectedWebhookUrl(handle.businessId);
+    if (!url) {
+      this.logger.warn(`PUBLIC_URL not set — skipping webhook for ${handle.slug}`);
       return false;
     }
-    const url = `${publicUrl.replace(/\/$/, '')}/api/tg/wh/${handle.businessId}`;
     try {
       await handle.telegraf.telegram.setWebhook(url, {
         secret_token: handle.webhookSecret ?? undefined,
         drop_pending_updates: false,
       });
-      this.logger.log(`Webhook ${handle.slug}: ${url}`);
+      const info = await handle.telegraf.telegram.getWebhookInfo();
+      this.logger.log(
+        `Webhook ${handle.slug}: ${url} pending=${info.pending_update_count ?? 0} last_error="${info.last_error_message ?? ''}"`,
+      );
+      if (info.url && info.url !== url) {
+        this.logger.error(
+          `Webhook URL mismatch for ${handle.slug}: telegram=${info.url} expected=${url}`,
+        );
+      }
+      await this.businesses.updateBotStatus(handle.businessId, BotStatus.Webhook);
       return true;
     } catch (err) {
       this.logger.error(`setWebhook ${handle.slug}: ${(err as Error).message}`);
       await this.businesses.updateBotStatus(handle.businessId, BotStatus.Error);
       return false;
     }
+  }
+
+  isWebhookMode(): boolean {
+    return (this.config.get<'webhook' | 'polling'>('bot.mode') ?? 'webhook') === 'webhook';
+  }
+
+  isBotEnabled(): boolean {
+    return this.config.get<boolean>('bot.enabled') !== false;
   }
 
   private async setupPolling(handle: RegisteredBot): Promise<void> {

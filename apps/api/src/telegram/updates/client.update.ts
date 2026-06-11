@@ -237,7 +237,7 @@ export class ClientUpdate {
   async onLocation(ctx: Context): Promise<void> {
     const from = ctx.from;
     if (!from) return;
-    const loc = (ctx.message as Message.LocationMessage | undefined)?.location;
+    const loc = this.messageLocation(ctx);
     if (!loc) return;
 
     const client = await this.clients.findByTelegramId(String(from.id));
@@ -246,9 +246,7 @@ export class ClientUpdate {
     const session = this.state.getSession(from.id);
 
     if (session?.flow === 'profile_edit' && session.step === 'location') {
-      client.deliveryLat = String(loc.latitude);
-      client.deliveryLng = String(loc.longitude);
-      await this.clients.save(client);
+      await this.saveDeliveryCoords(client, loc);
       this.state.clearSession(from.id);
       await ctx.reply(t(lang, 'location_saved'), { reply_markup: { remove_keyboard: true } });
       await ctx.reply(t(lang, 'profile_saved'));
@@ -256,18 +254,22 @@ export class ClientUpdate {
       return;
     }
 
-    const registrationLocation =
-      (session?.flow === 'register' && session.step === 'location') ||
-      (!this.isRegistered(client) && Boolean(client.phone) && !this.hasDeliveryLocation(client));
-    if (!registrationLocation) return;
+    if (this.isRegistered(client)) return;
 
+    const regData = session?.flow === 'register' ? session.data : {};
     if (!session || session.flow !== 'register') {
-      this.state.setSession(from.id, 'register', 'location', session?.data ?? {});
+      this.state.setSession(from.id, 'register', 'location', regData);
     }
 
-    client.deliveryLat = String(loc.latitude);
-    client.deliveryLng = String(loc.longitude);
-    await this.clients.save(client);
+    await this.saveDeliveryCoords(client, loc);
+
+    if (!client.phone) {
+      this.state.updateSession(from.id, { step: 'phone' });
+      await ctx.reply(t(lang, 'location_saved'), { reply_markup: { remove_keyboard: true } });
+      await ctx.reply(t(lang, 'ask_phone'), shareContactKeyboard(lang));
+      return;
+    }
+
     this.state.updateSession(from.id, { step: 'landmark' });
     await ctx.reply(t(lang, 'location_saved'), { reply_markup: { remove_keyboard: true } });
     await ctx.reply(t(lang, 'ask_landmark'), skipLandmarkKeyboard(lang));
@@ -1144,6 +1146,23 @@ export class ClientUpdate {
       }
     }
     return null;
+  }
+
+  private messageLocation(ctx: Context): { latitude: number; longitude: number } | null {
+    const msg = ctx.message as Message | undefined;
+    if (!msg) return null;
+    if ('location' in msg && msg.location) return msg.location;
+    if ('venue' in msg && msg.venue?.location) return msg.venue.location;
+    return null;
+  }
+
+  private async saveDeliveryCoords(
+    client: Client,
+    loc: { latitude: number; longitude: number },
+  ): Promise<void> {
+    client.deliveryLat = String(loc.latitude);
+    client.deliveryLng = String(loc.longitude);
+    await this.clients.save(client);
   }
 
   private telegramDisplayName(from: { first_name?: string; last_name?: string }): string {

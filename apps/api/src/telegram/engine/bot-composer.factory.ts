@@ -40,7 +40,7 @@ export class BotComposerFactory {
     composer.action('reg:skip_landmark', (ctx) => c.onSkipLandmark(ctx));
 
     composer.on('contact', (ctx) => c.onContact(ctx));
-    composer.on('location', (ctx) => c.onLocation(ctx));
+    composer.on(['location', 'venue'], (ctx) => c.onLocation(ctx));
     composer.on('photo', (ctx) => c.onPhoto(ctx));
     composer.on('text', (ctx, next) => c.onText(ctx, next));
 

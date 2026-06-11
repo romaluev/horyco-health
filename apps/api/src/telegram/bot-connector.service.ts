@@ -21,7 +21,7 @@ export class BotConnectorService implements IBotConnector {
     }
   }
 
-  async disconnect(businessId: string): Promise<void> {
-    await this.registry.disconnect(businessId);
+  async disconnect(businessId: string, opts?: { dropWebhook?: boolean }): Promise<void> {
+    await this.registry.disconnect(businessId, { dropWebhook: opts?.dropWebhook ?? true });
   }
 }
