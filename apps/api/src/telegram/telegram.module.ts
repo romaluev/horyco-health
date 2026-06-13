@@ -33,13 +33,13 @@ import { BotConnectorService } from './bot-connector.service';
 @Global()
 @Module({
   imports: [
-    ClientsModule,
+    forwardRef(() => ClientsModule),
     MenuModule,
     forwardRef(() => OrdersModule),
     ModifiersModule,
     CombosModule,
     forwardRef(() => OffersModule),
-    DepositsModule,
+    forwardRef(() => DepositsModule),
     SettingsModule,
   ],
   controllers: [MenuPublishController, TelegramWebhookController],
