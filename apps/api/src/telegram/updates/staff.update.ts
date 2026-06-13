@@ -21,7 +21,7 @@ import { BotUiService } from '../bot-ui.service';
 import { BotMenuAdminService } from '../bot-menu-admin.service';
 import { t, esc, pick, statusText, Lang } from '../i18n/bot-i18n';
 import { channelPostText, orderDeepLinkButton } from '../channel-post';
-import { transitionToast } from '../message-formatters';
+import { transitionToast, formatCustomerPhone } from '../message-formatters';
 
 /**
  * Действия персонала (повар/курьер/админ): смена статуса заказа из inline-кнопок панели.
@@ -464,6 +464,29 @@ export class StaffUpdate {
     const title = 'title' in chat ? chat.title : null;
     await this.chats.bind(businessId, kind, String(chat.id), title);
     await ctx.reply(t(lang, 'bind_success'));
+  }
+
+  async onCallCustomer(ctx: Context): Promise<void> {
+    const cbId = (ctx.callbackQuery as { id?: string } | undefined)?.id;
+    if (!cbId) return;
+    if (this.state.isDuplicateCallback(cbId, Date.now())) {
+      await ctx.answerCbQuery();
+      return;
+    }
+
+    const match = (ctx as Context & { match?: RegExpExecArray }).match;
+    const digits = match?.[1] ?? '';
+
+    const client = await this.clients.findByTelegramId(String(ctx.from?.id));
+    const lang: Lang = client?.language ?? ('ru' as Lang);
+
+    const phone = formatCustomerPhone(`+${digits}`);
+    if (!phone) {
+      await ctx.answerCbQuery(t(lang, 'error_generic'));
+      return;
+    }
+
+    await ctx.telegram.answerCbQuery(cbId, phone, { show_alert: true });
   }
 
   async onTransition(ctx: Context): Promise<void> {

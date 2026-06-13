@@ -74,6 +74,7 @@ export class BotComposerFactory {
     composer.action(/^admin:set:(topup_tg|topup_phone|support)$/, (ctx) => s.onSettingEdit(ctx));
     composer.action('admin:report', (ctx) => s.onReportAction(ctx));
 
+    composer.action(/^ord:ph:(\d+)$/, (ctx) => s.onCallCustomer(ctx));
     composer.action(/^ord:set:(.+?):([a-z]+)(?::([a-z]+))?$/, (ctx) => s.onTransition(ctx));
 
     composer.action(/^offer:accept:(.+)$/, (ctx) => c.onOfferAccept(ctx));

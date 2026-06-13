@@ -7,7 +7,7 @@ import { BusinessesRepository } from '../businesses/businesses.repository';
 import { INotifier, NotifyGroup } from '../common/notifications/notifier';
 import { OrderResponseDto } from '../orders/dto/order-response.dto';
 import { Lang, t } from './i18n/bot-i18n';
-import { orderActionKeyboard, orderCardText } from './order-card';
+import { orderActionKeyboard, orderActionKeyboardActionsOnly, orderCardText } from './order-card';
 import { BotRegistryService } from './engine/bot-registry.service';
 import { orderNotifyKeyboard } from './telegram-keyboards';
 
@@ -98,14 +98,35 @@ export class TelegramNotifier implements INotifier {
     const tg = this.telegramApi(businessId);
     if (!tg) return null;
     const lang = await this.groupLang(businessId);
+    const text = this.cardText(lang, order, header);
+    const fullKeyboard = orderActionKeyboard(lang, order, role);
     try {
-      const sent = await tg.sendMessage(chatId, this.cardText(lang, order, header), {
+      const sent = await tg.sendMessage(chatId, text, {
         parse_mode: 'HTML',
-        ...orderActionKeyboard(lang, order, role),
+        ...fullKeyboard,
       });
       return String(sent.message_id);
     } catch (err) {
-      this.logger.warn(`Не удалось отправить заказ в ${chatId}: ${(err as Error).message}`);
+      if (this.isKeyboardError(err)) {
+        try {
+          const sent = await tg.sendMessage(chatId, text, {
+            parse_mode: 'HTML',
+            ...orderActionKeyboardActionsOnly(lang, order, role),
+          });
+          this.logger.warn(
+            `Карточка заказа #${order.number} в ${chatId} отправлена без contact-row (fallback)`,
+          );
+          return String(sent.message_id);
+        } catch (retryErr) {
+          this.logger.error(
+            `Не удалось отправить заказ #${order.number} в ${chatId}: ${(retryErr as Error).message}`,
+          );
+          return null;
+        }
+      }
+      this.logger.error(
+        `Не удалось отправить заказ #${order.number} в ${chatId}: ${(err as Error).message}`,
+      );
       return null;
     }
   }
@@ -123,15 +144,34 @@ export class TelegramNotifier implements INotifier {
     const tg = this.telegramApi(businessId);
     if (!tg) return false;
     const lang = await this.groupLang(businessId);
+    const text = this.cardText(lang, order, header);
+    const fullKeyboard = orderActionKeyboard(lang, order, role);
     try {
-      await tg.editMessageText(chatId, Number(messageId), undefined, this.cardText(lang, order, header), {
+      await tg.editMessageText(chatId, Number(messageId), undefined, text, {
         parse_mode: 'HTML',
-        ...orderActionKeyboard(lang, order, role),
+        ...fullKeyboard,
       });
       return true;
     } catch (err) {
-      this.logger.warn(
-        `Не удалось обновить карточку ${messageId} в ${chatId}: ${(err as Error).message}`,
+      if (this.isKeyboardError(err)) {
+        try {
+          await tg.editMessageText(chatId, Number(messageId), undefined, text, {
+            parse_mode: 'HTML',
+            ...orderActionKeyboardActionsOnly(lang, order, role),
+          });
+          this.logger.warn(
+            `Карточка заказа #${order.number} ${messageId} в ${chatId} обновлена без contact-row (fallback)`,
+          );
+          return true;
+        } catch (retryErr) {
+          this.logger.error(
+            `Не удалось обновить карточку #${order.number} ${messageId} в ${chatId}: ${(retryErr as Error).message}`,
+          );
+          return false;
+        }
+      }
+      this.logger.error(
+        `Не удалось обновить карточку #${order.number} ${messageId} в ${chatId}: ${(err as Error).message}`,
       );
       return false;
     }
@@ -164,6 +204,11 @@ export class TelegramNotifier implements INotifier {
 
   private cardText(lang: Lang, order: OrderResponseDto, header?: string): string {
     return orderCardText(lang, order, header);
+  }
+
+  private isKeyboardError(err: unknown): boolean {
+    const msg = (err as Error).message ?? '';
+    return msg.includes('inline keyboard') || msg.includes('Bad Request');
   }
 
   private async groupLang(businessId: string): Promise<Lang> {

@@ -2,6 +2,7 @@ import { Markup } from 'telegraf';
 import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
 import { Role } from '@eatfit/shared';
 import { Lang, t } from './i18n/bot-i18n';
+import { formatCustomerPhone } from './message-formatters';
 
 /**
  * Сборка reply- и inline-клавиатур через telegraf Markup (типобезопасно) с учётом языка
@@ -61,11 +62,12 @@ export function mapsLinkButton(lang: Lang, lat: number, lng: number): InlineKeyb
   return Markup.button.url(t(lang, 'btn_open_maps'), `https://maps.google.com/?q=${lat},${lng}`);
 }
 
-/** URL-кнопка «Позвонить клиенту». */
-export function callCustomerButton(lang: Lang, phone: string): InlineKeyboardButton {
-  const digits = phone.replace(/[^\d+]/g, '');
-  const tel = digits.startsWith('+') ? digits : `+${digits.replace(/^\+/, '')}`;
-  return Markup.button.url(t(lang, 'btn_call_customer'), `tel:${tel}`);
+/** Callback-кнопка «Позвонить клиенту» (tel: недоступен в inline URL). */
+export function callCustomerButton(lang: Lang, phone: string): InlineKeyboardButton | null {
+  const normalized = formatCustomerPhone(phone);
+  if (!normalized) return null;
+  const digits = normalized.replace(/\D/g, '');
+  return Markup.button.callback(t(lang, 'btn_call_customer'), `ord:ph:${digits}`);
 }
 
 /** Reply-клавиатура «Поделиться контактом». */

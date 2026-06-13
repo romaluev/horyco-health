@@ -7,6 +7,13 @@ import { Lang, t, esc, pick, formatMoney, statusText } from './i18n/bot-i18n';
 
 const TEASER_DESC_MAX = 120;
 
+/** E.164-style phone for cards, callbacks, and alerts. */
+export function formatCustomerPhone(phone: string): string | null {
+  const digits = phone.replace(/[^\d+]/g, '');
+  if (!digits) return null;
+  return digits.startsWith('+') ? digits : `+${digits.replace(/^\+/, '')}`;
+}
+
 export function truncateDescription(text: string | null | undefined, max = TEASER_DESC_MAX): string | null {
   if (!text?.trim()) return null;
   const s = text.trim();

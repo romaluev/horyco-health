@@ -3,9 +3,9 @@ import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
 import { Language, OrderStatus, Role } from '@eatfit/shared';
 import { OrderResponseDto, formatOrderItemLines } from '../orders/dto/order-response.dto';
 import { allowedTargets } from '../orders/order-status.machine';
-import { Lang, t, esc, pick, formatMoney, statusText } from './i18n/bot-i18n';
+import { Lang, t, esc, formatMoney, statusText } from './i18n/bot-i18n';
 import { callCustomerButton, mapsLinkButton } from './telegram-keyboards';
-import { orderAgeLine, paymentLabel } from './message-formatters';
+import { formatCustomerPhone, orderAgeLine, paymentLabel } from './message-formatters';
 
 /** Карточка заказа для персонала: позиции (+ модификаторы/слоты), адрес, сумма. */
 export function orderCardText(lang: Lang, order: OrderResponseDto, header?: string): string {
@@ -18,11 +18,16 @@ export function orderCardText(lang: Lang, order: OrderResponseDto, header?: stri
   );
   lines.push(`<i>${esc(orderAgeLine(lang, order.createdAt))}</i>`);
 
-  const customerParts: string[] = [];
-  if (order.customerName) customerParts.push(esc(order.customerName));
-  if (order.customerPhone) customerParts.push(esc(order.customerPhone));
-  if (customerParts.length) {
-    lines.push(`👤 ${customerParts.join(' · ')}`);
+  if (order.customerName) {
+    lines.push(`👤 ${esc(order.customerName)}`);
+  }
+  if (order.customerPhone) {
+    const phone = formatCustomerPhone(order.customerPhone);
+    if (phone) {
+      lines.push(`${esc(t(lang, 'group_phone'))}: <code>${esc(phone)}</code>`);
+    } else {
+      lines.push(`${esc(t(lang, 'group_phone'))}: ${esc(order.customerPhone)}`);
+    }
   }
 
   const itemLang = lang === Language.Uz ? 'uz' : 'ru';
@@ -80,11 +85,16 @@ export function orderActionKeyboard(lang: Lang, order: OrderResponseDto, role: R
   if (order.deliveryLat != null && order.deliveryLng != null) {
     contactRow.push(mapsLinkButton(lang, order.deliveryLat, order.deliveryLng));
   }
-  if (order.customerPhone) {
-    contactRow.push(callCustomerButton(lang, order.customerPhone));
-  }
+  const callBtn = order.customerPhone ? callCustomerButton(lang, order.customerPhone) : null;
+  if (callBtn) contactRow.push(callBtn);
   if (contactRow.length) rows.push(contactRow);
   const actions = orderActionButtons(lang, order, role);
   if (actions.length) rows.push(actions);
   return Markup.inlineKeyboard(rows);
+}
+
+/** Только кнопки смены статуса — fallback при ошибке contact-row клавиатуры. */
+export function orderActionKeyboardActionsOnly(lang: Lang, order: OrderResponseDto, role: Role) {
+  const actions = orderActionButtons(lang, order, role);
+  return Markup.inlineKeyboard(actions.length ? [actions] : []);
 }
