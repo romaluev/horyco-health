@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { CartDto, ClientDto, OrderDto } from '@/lib/types';
 
 export interface OfferCompositionLine {
@@ -42,10 +42,15 @@ export function useOfferDetail(id: string | null, options?: { pollWhileSending?:
     queryKey: ['b', 'offers', id],
     queryFn: () => api<OfferDetailDto>(`/b/offers/${id}`),
     enabled: Boolean(id),
+    retry: (failureCount, error) => {
+      if (error instanceof ApiError && error.status === 429) return false;
+      return failureCount < 1;
+    },
     refetchInterval: (query) => {
       if (!options?.pollWhileSending) return false;
       const status = query.state.data?.offer.status;
-      return status === 'sending' ? 2000 : false;
+      if (query.state.error instanceof ApiError && query.state.error.status === 429) return false;
+      return status === 'sending' ? 5000 : false;
     },
   });
 }
@@ -65,6 +70,10 @@ export function useUpdateOffer() {
   return useMutation({
     mutationFn: (v: { id: string; composition: OfferCompositionLine[] }) =>
       api<OfferDto>(`/b/offers/${v.id}`, { method: 'PATCH', body: { composition: v.composition } }),
+    retry: (failureCount, error) => {
+      if (error instanceof ApiError && error.status === 429) return false;
+      return failureCount < 1;
+    },
     onSuccess: (_, v) => {
       qc.invalidateQueries({ queryKey: ['b', 'offers'] });
       qc.invalidateQueries({ queryKey: ['b', 'offers', v.id] });

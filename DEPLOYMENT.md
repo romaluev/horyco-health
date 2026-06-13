@@ -222,7 +222,7 @@ In **polling mode** (local dev), Telegram allows **one long-polling connection**
 | Control          | Config                                                        |
 | ---------------- | ------------------------------------------------------------- |
 | CSP              | Helmet; `CSP_REPORT_ONLY=true` (default) → `false` to enforce |
-| Rate limit       | `@nestjs/throttler`: auth 15/min, webhooks 600/min            |
+| Rate limit       | `@nestjs/throttler`: auth 15/min, webhooks 600/min, default 120/min, `/b/offers` 300/min |
 | Tenant isolation | Business-scoped JWT; run `cd apps/api && npm test`            |
 
 
@@ -312,6 +312,11 @@ Typical pattern: bot works briefly, then **all users** stop getting replies; red
 - Use **Переподключить** when token is saved but status is `error`/`off`.
 - Prefer **Заменить бота** over **Отключить** when switching bots — disconnect drops webhook and clears the token.
 - After replacing a bot, use **Сбросить привязки групп** in `/b` → Settings if onboarding still shows groups as done, then `/bind` in each Telegram group with the new bot added as member.
+
+### CRM offer broadcast — Too Many Requests (429)
+
+- Caused by the offers wizard auto-saving draft via `PATCH /b/offers/:id` in a loop (fixed in web). **Hard-refresh** `/b/offers` after deploy — old cached JS keeps looping until reload.
+- Progress polling while `sending` is every 5s; stop refreshing if you see repeated 429s.
 
 ### Schema / migration issues
 

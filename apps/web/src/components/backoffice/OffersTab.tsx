@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { Language, OrderStatus } from '@eatfit/shared';
 import { ChevronLeft, ChevronRight, Minus, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -126,6 +126,8 @@ export function OffersTab() {
   const [composition, setComposition] = useState<ComposeLine[]>([]);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
+  const lastSavedCompositionRef = useRef<string>('');
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pickOpen, setPickOpen] = useState(false);
@@ -189,14 +191,55 @@ export function OffersTab() {
     return created.id;
   }, [composition, create, draftId, update]);
 
+  const ensureDraftRef = useRef(ensureDraft);
+  ensureDraftRef.current = ensureDraft;
+  const saveInFlightRef = useRef(false);
+
   useEffect(() => {
-    if (composition.length === 0 || savingDraft) return;
-    const timer = setTimeout(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    if (step !== 'build' || composition.length === 0) {
+      if (composition.length === 0) lastSavedCompositionRef.current = '';
+      return;
+    }
+
+    const serialized = JSON.stringify(toApiComposition(composition));
+    if (serialized === lastSavedCompositionRef.current) return;
+
+    saveTimerRef.current = setTimeout(() => {
+      if (saveInFlightRef.current) return;
+      saveInFlightRef.current = true;
       setSavingDraft(true);
-      void ensureDraft().finally(() => setSavingDraft(false));
-    }, 600);
+      void ensureDraftRef
+        .current()
+        .then((id) => {
+          if (id) lastSavedCompositionRef.current = serialized;
+        })
+        .catch(() => {
+          /* 429 etc. — wait for next explicit composition edit */
+        })
+        .finally(() => {
+          saveInFlightRef.current = false;
+          setSavingDraft(false);
+        });
+    }, 800);
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+    };
+  }, [composition, step]);
+
+  useEffect(() => {
+    if (!sendingId || !sendDetail) return;
+    if (sendDetail.offer.status === 'sending') return;
+    const timer = setTimeout(() => setSendingId(null), 15_000);
     return () => clearTimeout(timer);
-  }, [composition, ensureDraft, savingDraft]);
+  }, [sendingId, sendDetail]);
 
   const modifierLabel = (groups: ModifierGroupDto[] | undefined, ids: string[]) => {
     if (!groups?.length || !ids.length) return '';
@@ -280,11 +323,11 @@ export function OffersTab() {
       onSuccess: () => {
         toast.success(t('bo_send_offer'));
         setDraftId(null);
+        lastSavedCompositionRef.current = '';
         setComposition([]);
         setSelected(new Set());
         setStep('build');
       },
-      onSettled: () => setSendingId(null),
     });
   };
 
