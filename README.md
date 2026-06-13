@@ -12,8 +12,13 @@ PostgreSQL via TypeORM migrations. Each business has its own Telegram bot (per-t
 | `/platform/businesses/` | Platform admin | List / suspend / activate tenants |
 | `/platform/businesses/new/` | Platform admin | Create business + owner credentials |
 | `/b/` | Owner / manager / staff | Back office (redirects to `/b/dashboard/`) |
+| `/b/dashboard/` | Owner / manager / staff | Mobile-first dashboard: KPI deltas, revenue trend, charts |
+| `/b/orders/` | All staff | Filterable order board + detail sheet |
+| `/b/offers/` | Owner / manager | 3-step offer wizard (build → recipients → send) |
+| `/b/customers/` | Owner / manager | CRM: lifetime value, order history, balance |
+| `/b/staff/` | Owner / manager | Staff invites, roles, invite links |
 | `/b/onboarding/` | Owner | Bot token, groups, menu, staff checklist |
-| `/b/settings/` | Owner / manager | Bot, chats, staff invites, contacts |
+| `/b/settings/` | Owner / manager | Bot, chats, TZ, contacts (staff → `/b/staff/`) |
 
 **Cold start:** set optional `PLATFORM_ADMIN_PHONE` + `PLATFORM_ADMIN_PASSWORD` in env, **or** open `/platform/setup/` after migrate. Then log in at `/platform/`.
 

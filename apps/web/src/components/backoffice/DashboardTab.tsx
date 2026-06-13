@@ -1,11 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  CartesianGrid,
+} from 'recharts';
 import { useAnalytics, type AnalyticsDto } from '@/lib/backoffice-queries';
-import { useT, type I18nKey } from '@/lib/i18n';
+import { useT, useStatusText, type I18nKey } from '@/lib/i18n';
 import { formatMoney } from '@/lib/format';
+import { OrderStatus } from '@eatfit/shared';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
-/** Локализованная подпись способа оплаты (значения из PaymentMethod). */
+type Range = 'today' | '7d' | '30d';
+
 function paymentMethodKey(method: string): I18nKey | null {
   switch (method) {
     case 'balance':
@@ -17,99 +35,206 @@ function paymentMethodKey(method: string): I18nKey | null {
   }
 }
 
-type Range = 'today' | '7d' | '30d';
-
-function Bar({ label, value, max }: { label: string; value: number; max: number }) {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <div className="row">
-        <span className="muted">{label}</span>
-        <strong>{value}</strong>
-      </div>
-      <div style={{ background: 'var(--border)', borderRadius: 4, height: 8 }}>
-        <div
-          style={{
-            width: `${pct}%`,
-            background: 'var(--accent)',
-            height: 8,
-            borderRadius: 4,
-            minWidth: value > 0 ? 4 : 0,
-          }}
-        />
-      </div>
-    </div>
-  );
+function deltaPct(current: number, prior: number): string | null {
+  if (prior <= 0) return null;
+  const pct = Math.round(((current - prior) / prior) * 100);
+  if (pct === 0) return '0%';
+  return `${pct > 0 ? '+' : ''}${pct}%`;
 }
 
-function MetricCard({ title, value, sub }: { title: string; value: string; sub?: string }) {
+function KpiCard({
+  title,
+  value,
+  sub,
+  delta,
+}: {
+  title: string;
+  value: string;
+  sub?: string;
+  delta?: string | null;
+}) {
   return (
-    <div className="card" style={{ flex: '1 1 140px' }}>
-      <div className="muted">{title}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>{value}</div>
-      {sub && <div className="dish-desc">{sub}</div>}
-    </div>
+    <Card>
+      <CardContent className="pt-4">
+        <p className="text-xs text-muted-foreground">{title}</p>
+        <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
+        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+        {delta && (
+          <p className={cn('text-xs mt-1 font-medium', delta.startsWith('+') ? 'text-emerald-600' : delta.startsWith('-') ? 'text-red-600' : 'text-muted-foreground')}>
+            {delta} {title.includes('%') ? '' : ''}
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 function DashboardBody({ data }: { data: AnalyticsDto }) {
   const t = useT();
-  const maxStatus = Math.max(...data.ordersByStatus.map((s) => s.count), 1);
-  const maxTop = Math.max(...data.topItems.map((i) => i.quantity), 1);
-  const funnelMax = Math.max(data.offerFunnel.sent, 1);
+  const st = useStatusText();
+  const prior = data.priorPeriod;
+
+  const revDelta = prior
+    ? deltaPct(Number(data.totalRevenue), Number(prior.totalRevenue))
+    : null;
+  const ordersDelta = prior ? deltaPct(data.orderCount, prior.orderCount) : null;
+
+  const trendData = data.revenueByDay.map((d) => ({
+    date: d.date.slice(5),
+    revenue: Number(d.amount),
+    orders: d.orders,
+  }));
+
+  const statusData = data.ordersByStatus.map((s) => ({
+    name: st(s.status as OrderStatus),
+    count: s.count,
+  }));
+
+  const topData = data.topItems.slice(0, 5).map((i) => ({
+    name: i.name.length > 16 ? `${i.name.slice(0, 16)}…` : i.name,
+    revenue: Number(i.revenue),
+    qty: i.quantity,
+  }));
 
   return (
-    <>
-      <div className="row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-        <MetricCard title={t('dash_revenue')} value={`${formatMoney(data.totalRevenue)} ${t('currency')}`} />
-        <MetricCard title={t('dash_aov')} value={`${formatMoney(data.averageOrderValue)} ${t('currency')}`} />
-        <MetricCard title={t('dash_orders')} value={String(data.orderCount)} sub={`${data.deliveredCount} ${t('dash_delivered')}`} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiCard
+          title={t('dash_revenue')}
+          value={`${formatMoney(data.totalRevenue)} ${t('currency')}`}
+          delta={revDelta ? `${revDelta} ${t('dash_vs_prior')}` : undefined}
+        />
+        <KpiCard
+          title={t('dash_aov')}
+          value={`${formatMoney(data.averageOrderValue)} ${t('currency')}`}
+        />
+        <KpiCard
+          title={t('dash_orders')}
+          value={String(data.orderCount)}
+          sub={`${data.deliveredCount} ${t('dash_delivered')}`}
+          delta={ordersDelta ? `${ordersDelta} ${t('dash_vs_prior')}` : undefined}
+        />
+        <KpiCard
+          title={t('dash_new')}
+          value={String(data.customers.newCustomers)}
+          sub={`${data.customers.repeatCustomers} ${t('dash_repeat')}`}
+        />
       </div>
 
-      <div className="card" style={{ marginBottom: 12 }}>
-        <h4>{t('dash_by_payment')}</h4>
-        {data.revenueByPayment.length === 0 && <div className="muted">{t('dash_no_data')}</div>}
-        {data.revenueByPayment.map((r) => {
-          const key = paymentMethodKey(r.method);
-          return (
-            <div className="row" key={r.method}>
-              <span>{key ? t(key) : r.method}</span>
-              <span>
-                {formatMoney(r.amount)} · {r.orders}
-              </span>
-            </div>
-          );
-        })}
+      {trendData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{t('dash_revenue_trend')}</CardTitle>
+          </CardHeader>
+          <CardContent className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} width={48} />
+                <Tooltip formatter={(v) => [`${formatMoney(String(Number(v ?? 0)))} ${t('currency')}`, t('dash_revenue')]} />
+                <Line type="monotone" dataKey="revenue" stroke="var(--adm-primary)" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{t('dash_by_status')}</CardTitle>
+          </CardHeader>
+          <CardContent className="h-48">
+            {statusData.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('dash_no_data')}</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={statusData} layout="vertical">
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="name" width={88} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="var(--adm-primary)" radius={4} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{t('dash_top_items')}</CardTitle>
+          </CardHeader>
+          <CardContent className="h-48">
+            {topData.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('dash_no_data')}</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
+                  <YAxis tick={{ fontSize: 11 }} width={40} />
+                  <Tooltip formatter={(v) => [`${formatMoney(String(Number(v ?? 0)))} ${t('currency')}`, t('dash_revenue')]} />
+                  <Bar dataKey="revenue" fill="var(--adm-primary)" radius={4} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="card" style={{ marginBottom: 12 }}>
-        <h4>{t('dash_by_status')}</h4>
-        {data.ordersByStatus.map((s) => (
-          <Bar key={s.status} label={s.status} value={s.count} max={maxStatus} />
-        ))}
-      </div>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t('dash_by_payment')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {data.revenueByPayment.length === 0 && <p className="text-muted-foreground">{t('dash_no_data')}</p>}
+          {data.revenueByPayment.map((r) => {
+            const key = paymentMethodKey(r.method);
+            return (
+              <div key={r.method} className="flex justify-between">
+                <span>{key ? t(key) : r.method}</span>
+                <span>
+                  {formatMoney(r.amount)} · {r.orders}
+                </span>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
 
-      <div className="card" style={{ marginBottom: 12 }}>
-        <h4>{t('dash_top_items')}</h4>
-        {data.topItems.length === 0 && <div className="muted">{t('dash_no_data')}</div>}
-        {data.topItems.map((item) => (
-          <Bar key={item.name} label={item.name} value={item.quantity} max={maxTop} />
-        ))}
-      </div>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t('dash_offer_funnel')}</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-3 gap-2 text-center text-sm">
+          <div>
+            <p className="text-2xl font-bold tabular-nums">{data.offerFunnel.sent}</p>
+            <p className="text-muted-foreground">{t('dash_funnel_sent')}</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold tabular-nums">{data.offerFunnel.opened}</p>
+            <p className="text-muted-foreground">{t('dash_funnel_opened')}</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold tabular-nums">{data.offerFunnel.ordered}</p>
+            <p className="text-muted-foreground">{t('dash_funnel_ordered')}</p>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="card" style={{ marginBottom: 12 }}>
-        <h4>{t('dash_customers')}</h4>
-        <Bar label={t('dash_new')} value={data.customers.newCustomers} max={data.customers.newCustomers + data.customers.repeatCustomers || 1} />
-        <Bar label={t('dash_repeat')} value={data.customers.repeatCustomers} max={data.customers.newCustomers + data.customers.repeatCustomers || 1} />
+      <div className="flex flex-wrap gap-2">
+        <Link href="/b/orders/" className="text-sm text-primary underline-offset-4 hover:underline">
+          {t('adm_orders')} →
+        </Link>
+        <Link href="/b/customers/" className="text-sm text-primary underline-offset-4 hover:underline">
+          {t('adm_users')} →
+        </Link>
+        <Link href="/b/offers/" className="text-sm text-primary underline-offset-4 hover:underline">
+          {t('bo_offers')} →
+        </Link>
       </div>
-
-      <div className="card">
-        <h4>{t('dash_offer_funnel')}</h4>
-        <Bar label={t('dash_funnel_sent')} value={data.offerFunnel.sent} max={funnelMax} />
-        <Bar label={t('dash_funnel_opened')} value={data.offerFunnel.opened} max={funnelMax} />
-        <Bar label={t('dash_funnel_ordered')} value={data.offerFunnel.ordered} max={funnelMax} />
-      </div>
-    </>
+    </div>
   );
 }
 
@@ -119,19 +244,30 @@ export function DashboardTab() {
   const { data, isLoading } = useAnalytics(range);
 
   return (
-    <div>
-      <div className="row" style={{ marginBottom: 12 }}>
-        <h3>{t('dash_title')}</h3>
-        <div className="seg">
-          {(['today', '7d', '30d'] as const).map((r) => (
-            <button key={r} className={range === r ? 'active' : ''} onClick={() => setRange(r)}>
-              {t(r === 'today' ? 'dash_range_today' : r === '7d' ? 'dash_range_7d' : 'dash_range_30d')}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold">{t('dash_title')}</h2>
+        <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
+          <TabsList>
+            {(['today', '7d', '30d'] as const).map((r) => (
+              <TabsTrigger key={r} value={r}>
+                {t(r === 'today' ? 'dash_range_today' : r === '7d' ? 'dash_range_7d' : 'dash_range_30d')}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
-      {data && <div className="muted" style={{ marginBottom: 12 }}>{data.label}</div>}
-      {isLoading && <div className="center">{t('loading')}</div>}
+
+      {data && <p className="text-sm text-muted-foreground">{data.label}</p>}
+
+      {isLoading && (
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-56 col-span-2" />
+        </div>
+      )}
+
       {data && <DashboardBody data={data} />}
     </div>
   );

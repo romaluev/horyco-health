@@ -61,11 +61,94 @@ export class ClientRepository extends TransactionalRepository<Client> {
       .orderBy('client.createdAt', 'DESC');
     if (term && term.trim()) {
       qb.andWhere(
-        '(client.phone ILIKE :t OR client.username ILIKE :t OR CAST(client.telegramId AS TEXT) ILIKE :t)',
+        '(client.name ILIKE :t OR client.phone ILIKE :t OR client.username ILIKE :t OR CAST(client.telegramId AS TEXT) ILIKE :t)',
         { t: `%${term.trim()}%` },
       );
     }
     return qb.getMany();
+  }
+
+  /** Поиск клиентов с CRM-статистикой business_customers. */
+  async searchWithCrm(
+    businessId: string,
+    term?: string,
+  ): Promise<
+    Array<{
+      client: Client;
+      ordersCount: number;
+      lastOrderAt: Date | null;
+      balance: string;
+    }>
+  > {
+    const params: unknown[] = [businessId];
+    let filter = '';
+    if (term?.trim()) {
+      params.push(`%${term.trim()}%`);
+      filter = `AND (c.name ILIKE $2 OR c.phone ILIKE $2 OR c.username ILIKE $2 OR CAST(c.telegram_id AS TEXT) ILIKE $2)`;
+    }
+    const rows: Array<{
+      id: string;
+      orders_count: string;
+      last_order_at: string | null;
+      balance: string;
+    }> = await this.txHost.tx.query(
+      `SELECT c.id,
+              bc.orders_count,
+              bc.last_order_at,
+              bc.balance::text AS balance
+       FROM clients c
+       INNER JOIN business_customers bc ON bc.client_id = c.id AND bc.business_id = $1
+       WHERE 1=1 ${filter}
+       ORDER BY bc.last_order_at DESC NULLS LAST, c.created_at DESC`,
+      params,
+    );
+    if (!rows.length) return [];
+    const ids = rows.map((r) => r.id);
+    const clients = await this.repo.find({ where: { id: In(ids) } });
+    const byId = new Map(clients.map((c) => [c.id, c]));
+    return rows
+      .map((row) => {
+        const client = byId.get(row.id);
+        if (!client) return null;
+        return {
+          client,
+          ordersCount: Number(row.orders_count ?? 0),
+          lastOrderAt: row.last_order_at ? new Date(row.last_order_at) : null,
+          balance: row.balance ?? '0',
+        };
+      })
+      .filter((v): v is NonNullable<typeof v> => v != null);
+  }
+
+  /** Клиенты сегмента для CRM-рассылок (только с Telegram). */
+  findIdsBySegment(businessId: string, segment: string): Promise<string[]> {
+    let extra = '';
+    switch (segment) {
+      case 'has_balance':
+        extra = 'AND bc.balance > 0';
+        break;
+      case 'ordered_30d':
+        extra = 'AND bc.last_order_at >= now() - interval \'30 days\'';
+        break;
+      case 'never_ordered':
+        extra = 'AND bc.orders_count = 0';
+        break;
+      case 'all':
+      default:
+        extra = '';
+        break;
+    }
+    return this.txHost.tx
+      .query(
+        `SELECT bc.client_id AS id
+         FROM business_customers bc
+         INNER JOIN clients c ON c.id = bc.client_id
+         WHERE bc.business_id = $1
+           AND c.telegram_id IS NOT NULL
+           ${extra}`,
+        [businessId],
+      )
+      .then((rows: Array<{ id: string }>) => rows.map((r) => r.id));
   }
 
   create(data: Partial<Client>): Promise<Client> {

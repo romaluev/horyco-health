@@ -16,7 +16,7 @@ import { CART_STORE, InMemoryCartStore } from './cart/cart-store';
 import { LinePricingService } from './pricing/build-order-items';
 
 @Module({
-  imports: [MenuModule, ModifiersModule, CombosModule, ClientsModule, BusinessesModule, forwardRef(() => OffersModule)],
+  imports: [MenuModule, ModifiersModule, CombosModule, forwardRef(() => ClientsModule), BusinessesModule, forwardRef(() => OffersModule)],
   controllers: [CartController, OrdersController, OrdersAdminController],
   providers: [
     OrderRepository,
@@ -26,6 +26,6 @@ import { LinePricingService } from './pricing/build-order-items';
     LinePricingService,
     { provide: CART_STORE, useClass: InMemoryCartStore },
   ],
-  exports: [OrdersService, CartService, LinePricingService, CART_STORE],
+  exports: [OrdersService, CartService, LinePricingService, CART_STORE, OrderRepository],
 })
 export class OrdersModule {}

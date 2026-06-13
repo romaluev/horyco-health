@@ -123,25 +123,30 @@ Platform-admin seed: `ADMIN_TELEGRAM_IDS` (env). Остальные роли —
 - **ProfileScreen** — имя, телефон, **точка на карте** (browser geolocation), ориентир; опциональный **пароль для сайта**
 - **AppGate** — friendly screen без `?biz=`
 
-### 5.2 Back office `/b`
-
 ### 5.2 Back office `/b/*`
 
-Sidebar routes (static export):
+Mobile-first shell: **bottom tab bar** on phone (Dashboard, Orders, Offers, Customers, More) + sidebar on desktop. UI: Tailwind v4 + shadcn/ui components scoped under `.adm-root`.
 
 | Route | Tab |
 |-------|-----|
-| `/b/dashboard/` | Dashboard — revenue, AOV, top items, offer funnel |
-| `/b/orders/` | Orders FSM, cancel+refund |
+| `/b/dashboard/` | KPI cards with prior-period deltas, revenue trend chart (recharts), status/top-items charts, drill-down links |
+| `/b/orders/` | Filterable board (active/status), live refetch, order detail bottom sheet, confirm-on-cancel |
+| `/b/offers/` | **3-step wizard**: build bundle (searchable picker, qty) → recipients (segments + search) → review & send; auto-save draft |
+| `/b/customers/` | CRM list + detail sheet: lifetime spend, top items, order history, preset deposits |
+| `/b/staff/` | Staff invites, role change, invite links |
 | `/b/menu/` | Menu CRUD + channel publish |
 | `/b/combos/` | Combos + channel publish |
-| `/b/offers/` | Cart composer + CRM send |
 | `/b/modifiers/` | Modifier groups CRUD |
-| `/b/customers/` | CRM, balance (staff roles → Settings → Staff) |
 | `/b/onboarding/` | Stepper: bot token → `/bind` groups → menu → staff → go-live |
-| `/b/settings/` | Bot reconnect, TZ, report hour, staff invites, groups |
+| `/b/settings/` | Bot reconnect, TZ, report hour, groups (staff management → `/b/staff/`) |
 
 Role-aware nav: cook/courier → Orders only; owner/manager → full admin tabs; platform admin → all tabs + link to `/platform`.
+
+**Offers API:** `POST /b/offers/:id/recipients/segment` with `all | has_balance | ordered_30d | never_ordered`.
+
+**CRM API:** `GET /admin/clients/:id/crm`, `GET /admin/clients/:id/orders`.
+
+**Analytics API:** `GET /b/analytics?range=today|7d|30d` returns `revenueByDay[]` and `priorPeriod` for KPI comparison.
 
 Onboarding banner on dashboard while `business.status === onboarding`.
 
@@ -168,6 +173,8 @@ Login: phone + password → JWT `kind=platform`. Env `PLATFORM_ADMIN_*` or setup
 - Push-уведомления клиенту по заказу (все статусы incl. `pending`) с inline «Мои заказы»
 - Required modifiers → web_app «Выбрать →»
 - `/bind cook|courier|admin` in group
+- Admin panel shortcuts: **📊 Сегодня** (daily report), **📦 Активные** (active orders), **📢 Рассылка** (Web App → `/b/offers/`)
+- Main menu uses **membership role** (not legacy `clients.role`) for cook/courier/admin buttons
 - Daily report: orders + revenue + top + **offer funnel line**
 
 ---

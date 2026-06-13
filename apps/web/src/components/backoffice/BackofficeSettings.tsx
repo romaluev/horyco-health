@@ -1,16 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MemberRole } from '@eatfit/shared';
 import {
   useBusinessSettings,
   useSaveBusinessSettings,
   useSetBotToken,
   useRemoveBotToken,
   useReconnectBot,
-  useStaffList,
-  useInviteStaff,
-  useRemoveStaff,
   useBusinessChats,
 } from '@/lib/backoffice-queries';
 import { useT } from '@/lib/i18n';
@@ -23,9 +19,6 @@ export function BackofficeSettings() {
   const setBot = useSetBotToken();
   const removeBot = useRemoveBotToken();
   const reconnectBot = useReconnectBot();
-  const { data: staff } = useStaffList();
-  const invite = useInviteStaff();
-  const remove = useRemoveStaff();
   const { data: chats } = useBusinessChats();
 
   const [form, setForm] = useState({
@@ -38,7 +31,6 @@ export function BackofficeSettings() {
     welcomeMessageUz: '',
   });
   const [token, setToken] = useState('');
-  const [inviteForm, setInviteForm] = useState({ name: '', phone: '', role: MemberRole.Cook });
 
   useEffect(() => {
     if (settings) {
@@ -215,65 +207,14 @@ export function BackofficeSettings() {
         {t('save')}
       </button>
 
-      <h3 style={{ marginTop: 24 }}>{t('bo_staff')}</h3>
-      {staff?.map((m) => (
-        <div className="card" key={m.id} style={{ marginBottom: 8 }}>
-          <div className="row">
-            <div>
-              <strong>{m.name}</strong>
-              <div className="muted">
-                {m.role} · {m.status}
-              </div>
-              {m.inviteLink && (
-                <a href={m.inviteLink} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>
-                  {t('bo_invite_link')}
-                </a>
-              )}
-            </div>
-            {m.role !== 'owner' && (
-              <button className="btn" onClick={() => remove.mutate(m.id)}>
-                {t('adm_delete')}
-              </button>
-            )}
-          </div>
-        </div>
-      ))}
-      <div className="card">
-        <div className="field">
-          <label>{t('name')}</label>
-          <input
-            className="input"
-            value={inviteForm.name}
-            onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
-          />
-        </div>
-        <div className="field">
-          <label>{t('phone')}</label>
-          <input
-            className="input"
-            value={inviteForm.phone}
-            onChange={(e) => setInviteForm({ ...inviteForm, phone: e.target.value })}
-          />
-        </div>
-        <div className="field">
-          <label>{t('adm_role')}</label>
-          <select
-            className="input"
-            value={inviteForm.role}
-            onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as MemberRole })}
-          >
-            <option value={MemberRole.Manager}>manager</option>
-            <option value={MemberRole.Cook}>cook</option>
-            <option value={MemberRole.Courier}>courier</option>
-          </select>
-        </div>
-        <button
-          className="btn btn-primary"
-          disabled={invite.isPending}
-          onClick={() => invite.mutate(inviteForm)}
-        >
-          {t('bo_invite')}
-        </button>
+      <div className="card" style={{ marginTop: 24 }}>
+        <h3>{t('bo_staff')}</h3>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+          {t('bo_staff_hint')}
+        </p>
+        <Link href="/b/staff/" className="btn btn-primary btn-block">
+          {t('bo_staff')}
+        </Link>
       </div>
     </div>
   );

@@ -22,6 +22,7 @@ import {
 import { OffersRepository } from './offers.repository';
 import { OFFER_BROADCASTER, type IOfferBroadcaster } from '../common/offers/offer-broadcaster';
 import { CreateOfferDto, UpdateOfferDto } from './dto/offer.dto';
+import { OfferRecipientSegment } from './dto/offer-recipient-segment.dto';
 
 /** Default offer TTL from send time (days). */
 const OFFER_TTL_DAYS = 7;
@@ -107,6 +108,13 @@ export class OffersService implements OnModuleInit {
       }
       throw e;
     }
+  }
+
+  async setRecipientsBySegment(id: string, segment: OfferRecipientSegment): Promise<{ count: number; clientIds: string[] }> {
+    const actor = this.actorCtx.getOrThrow();
+    const clientIds = await this.clients.findIdsBySegment(actor.businessId, segment);
+    await this.setRecipients(id, clientIds);
+    return { count: clientIds.length, clientIds };
   }
 
   async send(id: string): Promise<{ offerId: string; queued: number }> {

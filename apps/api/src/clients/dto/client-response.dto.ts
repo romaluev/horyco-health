@@ -2,11 +2,6 @@ import { Language, Role } from '@eatfit/shared';
 import { Client } from '../entities/client.entity';
 import { Money } from '../../common/money/money';
 
-/**
- * Response-DTO клиента — белый список полей (по построению). Сущность из контроллера
- * не возвращаем. balance — строка (Money), не number. Баланс передаётся снаружи
- * (из кошелька business_customers), т.к. Client сам по себе его не хранит.
- */
 export class ClientResponseDto {
   id: string;
   telegramId: string | null;
@@ -34,6 +29,42 @@ export class ClientResponseDto {
     this.role = c.role;
     this.balance = balance.toString();
     this.createdAt = c.createdAt;
+  }
+}
+
+export class ClientCrmListItemDto extends ClientResponseDto {
+  ordersCount: number;
+  lastOrderAt: Date | null;
+  lifetimeSpend: string;
+
+  constructor(
+    c: Client,
+    balance: Money,
+    stats: { ordersCount: number; lastOrderAt: Date | null; lifetimeSpend: Money },
+  ) {
+    super(c, balance);
+    this.ordersCount = stats.ordersCount;
+    this.lastOrderAt = stats.lastOrderAt;
+    this.lifetimeSpend = stats.lifetimeSpend.toString();
+  }
+}
+
+export class ClientTopItemDto {
+  name!: string;
+  quantity!: number;
+}
+
+export class ClientCrmDetailDto extends ClientCrmListItemDto {
+  topItems: ClientTopItemDto[];
+
+  constructor(
+    c: Client,
+    balance: Money,
+    stats: { ordersCount: number; lastOrderAt: Date | null; lifetimeSpend: Money },
+    topItems: ClientTopItemDto[],
+  ) {
+    super(c, balance, stats);
+    this.topItems = topItems;
   }
 }
 

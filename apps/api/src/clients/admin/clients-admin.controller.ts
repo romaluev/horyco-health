@@ -3,6 +3,7 @@ import { Role } from '@eatfit/shared';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ClientsService } from '../clients.service';
 import { ClientSearchQueryDto } from '../dto/client-search-query.dto';
+import { OrdersService } from '../../orders/orders.service';
 
 /**
  * Админ-управление клиентами: поиск (живой фильтр) и просмотр карточки — оба скоуплены
@@ -13,11 +14,25 @@ import { ClientSearchQueryDto } from '../dto/client-search-query.dto';
 @Controller('admin/clients')
 @Roles(Role.Admin)
 export class ClientsAdminController {
-  constructor(private readonly clients: ClientsService) {}
+  constructor(
+    private readonly clients: ClientsService,
+    private readonly orders: OrdersService,
+  ) {}
 
   @Get()
   search(@Query() query: ClientSearchQueryDto) {
     return this.clients.search(query.query);
+  }
+
+  @Get(':id/crm')
+  getCrm(@Param('id', ParseUUIDPipe) id: string) {
+    return this.clients.getCrmDetail(id);
+  }
+
+  @Get(':id/orders')
+  async getOrders(@Param('id', ParseUUIDPipe) id: string) {
+    const rows = await this.clients.getClientOrders(id, 30);
+    return Promise.all(rows.map((o) => this.orders.getAdmin(o.id)));
   }
 
   @Get(':id')

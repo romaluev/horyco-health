@@ -24,6 +24,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useT, type I18nKey } from '@/lib/i18n';
 import { formatMoney, pick } from '@/lib/format';
 import { MenuItemDto } from '@/lib/types';
+import { toast } from 'sonner';
 
 const CATS: { cat: Category; key: I18nKey }[] = [
   { cat: Category.Main, key: 'cat_main' },
@@ -83,8 +84,8 @@ export function AdminMenu() {
 
   const onPublish = (id: string) => {
     publish.mutate(id, {
-      onSuccess: () => window.alert(t('adm_published')),
-      onError: (e) => window.alert((e as Error).message),
+      onSuccess: () => toast.success(t('adm_published')),
+      onError: (e) => toast.error((e as Error).message),
     });
   };
 
@@ -98,12 +99,12 @@ export function AdminMenu() {
   const copyLink = async (id: string) => {
     const link = deepLink(id);
     if (!link) {
-      window.alert(t('adm_no_bot_username'));
+      toast.error(t('adm_no_bot_username'));
       return;
     }
     try {
       await navigator.clipboard.writeText(link);
-      window.alert(t('adm_link_copied'));
+      toast.success(t('adm_link_copied'));
     } catch {
       window.prompt(t('adm_copy_link'), link); // фолбэк: показать для ручного копирования
     }
@@ -190,7 +191,7 @@ export function AdminMenu() {
             setHasPhoto(true);
             setPhotoVer((v) => v + 1);
           },
-          onError: (e) => window.alert(t('adm_photo_error') + (e as Error).message),
+          onError: (e) => toast.error(t('adm_photo_error') + (e as Error).message),
         },
       );
     } else {
@@ -234,12 +235,12 @@ export function AdminMenu() {
     if (editing) {
       update.mutate(
         { id: editing.id, body },
-        { onSuccess: close, onError: (e) => window.alert(`${t('save')}: ${(e as Error).message}`) },
+        { onSuccess: close, onError: (e) => toast.error(`${t('save')}: ${(e as Error).message}`) },
       );
       return;
     }
     create.mutate(body, {
-      onError: (e) => window.alert(`${t('save')}: ${(e as Error).message}`),
+      onError: (e) => toast.error(`${t('save')}: ${(e as Error).message}`),
       onSuccess: (created) => {
         // Блюдо создано — если при создании выбрали фото, грузим его на новый id и затем закрываем.
         if (pendingPhoto) {
@@ -249,7 +250,7 @@ export function AdminMenu() {
               onSuccess: close,
               // Блюдо уже создано — сообщаем, что не загрузилось только фото, и закрываем форму.
               onError: (e) => {
-                window.alert(t('adm_photo_error') + (e as Error).message);
+                toast.error(t('adm_photo_error') + (e as Error).message);
                 close();
               },
             },
@@ -630,9 +631,7 @@ export function AdminMenu() {
             </button>
             <button
               className="btn"
-              onClick={() => {
-                if (window.confirm(t('adm_delete_q'))) del.mutate(it.id);
-              }}
+              onClick={() => del.mutate(it.id)}
             >
               {t('adm_delete')}
             </button>

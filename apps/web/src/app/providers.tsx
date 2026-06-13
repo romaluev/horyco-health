@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { initTelegram, applyTheme, waitForInitData } from '@/lib/telegram';
 import { bootstrapAuth } from '@/lib/auth';
 import { bootstrapStaffSession } from '@/lib/staff-auth';
+import { Toaster } from '@/components/ui/sonner';
 
 /** Роуты back office / платформы используют стафф/платформенную сессию, не клиентскую. */
 function isStaffRoute(pathname: string): boolean {
@@ -40,5 +41,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={qc}>
+      {children}
+      <Toaster richColors position="top-center" />
+    </QueryClientProvider>
+  );
 }

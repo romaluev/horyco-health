@@ -1,15 +1,23 @@
-import { normalizePhone } from '@eatfit/shared';
 import { Injectable } from '@nestjs/common';
+import { OrderStatus } from '@eatfit/shared';
 import { ActorContextService } from '../common/cls/actor-context.service';
 import { NotFoundError } from '../common/errors/domain-error';
 import { Money } from '../common/money/money';
+import { AnalyticsRepository } from '../analytics/analytics.repository';
 import { BusinessCustomersRepository } from '../businesses/business-customers.repository';
 import { ClientRepository } from './clients.repository';
 import { Client } from './entities/client.entity';
 import { BalanceService } from './balance/balance.service';
-import { ClientResponseDto } from './dto/client-response.dto';
+import {
+  ClientCrmDetailDto,
+  ClientCrmListItemDto,
+  ClientResponseDto,
+  ClientTopItemDto,
+} from './dto/client-response.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { hashPassword } from '../auth/password';
+import { normalizePhone } from '@eatfit/shared';
+import { OrderRepository } from '../orders/orders.repository';
 
 @Injectable()
 export class ClientsService {
@@ -18,6 +26,8 @@ export class ClientsService {
     private readonly actorCtx: ActorContextService,
     private readonly balance: BalanceService,
     private readonly wallets: BusinessCustomersRepository,
+    private readonly analyticsRepo: AnalyticsRepository,
+    private readonly orders: OrderRepository,
   ) {}
 
   /** Профиль текущего пользователя (actor из CLS — без IDOR). */
@@ -45,20 +55,31 @@ export class ClientsService {
 
   // --- admin ---
 
-  async search(term?: string): Promise<ClientResponseDto[]> {
+  async search(term?: string): Promise<ClientCrmListItemDto[]> {
     const actor = this.actorCtx.getOrThrow();
-    // Поиск скоуплен бизнесом актора (business_customers): без платформенной утечки клиентов.
-    const list = await this.clients.search(actor.businessId, term);
+    const list = await this.clients.searchWithCrm(actor.businessId, term);
     if (!list.length) return [];
-    // Балансы одним запросом — без N+1.
-    const ids = list.map((c) => c.id);
-    const balMap = await this.wallets.balancesFor(actor.businessId, ids);
-    return list.map((c) => new ClientResponseDto(c, balMap.get(c.id) ?? Money.zero()));
+
+    const spendEntries = await Promise.all(
+      list.map(async (row) => {
+        const spend = await this.analyticsRepo.clientLifetimeSpend(actor.businessId, row.client.id);
+        return [row.client.id, Money.fromMajor(Number(spend))] as const;
+      }),
+    );
+    const spendMap = new Map(spendEntries);
+
+    return list.map(
+      (row) =>
+        new ClientCrmListItemDto(row.client, Money.fromMajor(Number(row.balance)), {
+          ordersCount: row.ordersCount,
+          lastOrderAt: row.lastOrderAt,
+          lifetimeSpend: spendMap.get(row.client.id) ?? Money.zero(),
+        }),
+    );
   }
 
   async getByIdAdmin(id: string): Promise<ClientResponseDto> {
     const actor = this.actorCtx.getOrThrow();
-    // Клиент виден админу, только если есть строка business_customers (actor.businessId, id).
     const wallet = await this.wallets.find(actor.businessId, id);
     if (!wallet) {
       throw new NotFoundError('Клиент не найден');
@@ -66,6 +87,42 @@ export class ClientsService {
     const client = await this.loadOrThrow(id);
     const bal = await this.balance.balanceOf(id, actor.businessId);
     return new ClientResponseDto(client, bal);
+  }
+
+  async getCrmDetail(id: string): Promise<ClientCrmDetailDto> {
+    const actor = this.actorCtx.getOrThrow();
+    const wallet = await this.wallets.find(actor.businessId, id);
+    if (!wallet) {
+      throw new NotFoundError('Клиент не найден');
+    }
+    const client = await this.loadOrThrow(id);
+    const bal = await this.balance.balanceOf(id, actor.businessId);
+    const spendRaw = await this.analyticsRepo.clientLifetimeSpend(actor.businessId, id);
+    const topRows = await this.analyticsRepo.clientTopItems(actor.businessId, id);
+    const topItems: ClientTopItemDto[] = topRows.map((r) => ({
+      name: r.name,
+      quantity: Number(r.quantity),
+    }));
+    return new ClientCrmDetailDto(
+      client,
+      bal,
+      {
+        ordersCount: wallet.ordersCount,
+        lastOrderAt: wallet.lastOrderAt,
+        lifetimeSpend: Money.fromMajor(Number(spendRaw)),
+      },
+      topItems,
+    );
+  }
+
+  async getClientOrders(id: string, limit = 20) {
+    const actor = this.actorCtx.getOrThrow();
+    const wallet = await this.wallets.find(actor.businessId, id);
+    if (!wallet) {
+      throw new NotFoundError('Клиент не найден');
+    }
+    const rows = await this.orders.findByClient(actor.businessId, id);
+    return rows.slice(0, limit);
   }
 
   private async loadOrThrow(id: string): Promise<Client> {

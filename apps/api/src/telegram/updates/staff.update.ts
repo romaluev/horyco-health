@@ -372,6 +372,20 @@ export class StaffUpdate {
     await this.sendReport(ctx, client);
   }
 
+  async onTodayAction(ctx: Context): Promise<void> {
+    const client = await this.requireAdmin(ctx);
+    if (!client) return;
+    await ctx.answerCbQuery();
+    await this.sendReport(ctx, client);
+  }
+
+  async onActiveOrdersAction(ctx: Context): Promise<void> {
+    const client = await this.requireAdmin(ctx);
+    if (!client) return;
+    await ctx.answerCbQuery();
+    await this.staff.showActiveOrdersOnly(ctx, client);
+  }
+
   /** Показать отчёт админу и продублировать в админ-группу (если настроена). */
   private async sendReport(ctx: Context, client: Client): Promise<void> {
     try {

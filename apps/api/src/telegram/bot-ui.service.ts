@@ -8,7 +8,7 @@ import { MenuItem } from '../menu/entities/menu-item.entity';
 import { MenuRepository } from '../menu/menu.repository';
 import { BusinessMembersRepository } from '../businesses/business-members.repository';
 import { ActorContextService } from '../common/cls/actor-context.service';
-import { isOwnerOrManager } from '../businesses/membership.util';
+import { isOwnerOrManager, deriveActorRole } from '../businesses/membership.util';
 import { currentIsoWeekday } from '../common/time/weekday';
 import { CartService } from '../orders/cart/cart.service';
 import { CombosRepository } from '../combos/combos.repository';
@@ -68,10 +68,10 @@ export class BotUiService {
   async showMainMenu(ctx: Context, client: Client): Promise<void> {
     const lang = this.langOf(client);
     const admin = await this.isAdmin(client);
-    await ctx.reply(
-      t(lang, 'main_menu'),
-      mainMenuKeyboard(lang, client.role, admin, this.webAppUrl()),
-    );
+    const bizId = this.actorCtx.getBusinessIdOrThrow();
+    const membership = await this.members.findActive(bizId, client.id);
+    const role = deriveActorRole(membership, client);
+    await ctx.reply(t(lang, 'main_menu'), mainMenuKeyboard(lang, role, admin, this.webAppUrl()));
   }
 
   /** Количества в корзине по ключу `menuItemId:portion` (порции считаются раздельно). */

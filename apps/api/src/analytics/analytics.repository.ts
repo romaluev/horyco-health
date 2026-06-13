@@ -141,4 +141,47 @@ export class AnalyticsRepository {
       )
       .then((rows: OfferFunnelRow[]) => rows[0] ?? { sent: '0', opened: '0', ordered: '0' });
   }
+
+  revenueByDay(businessId: string, start: Date, end: Date): Promise<Array<{ date: string; total: string; orders: string }>> {
+    return this.m.query(
+      `SELECT to_char(o.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
+              COALESCE(SUM(o.total) FILTER (WHERE o.status = $2), 0)::text AS total,
+              COUNT(*) FILTER (WHERE o.status = $2)::text AS orders
+       FROM orders o
+       WHERE o.business_id = $1
+         AND o.created_at >= $3 AND o.created_at < $4
+       GROUP BY 1
+       ORDER BY 1`,
+      [businessId, OrderStatus.Done, start, end],
+    );
+  }
+
+  clientLifetimeSpend(businessId: string, clientId: string): Promise<string> {
+    return this.m
+      .query(
+        `SELECT COALESCE(SUM(o.total), 0)::text AS total
+         FROM orders o
+         WHERE o.business_id = $1 AND o.client_id = $2 AND o.status = $3`,
+        [businessId, clientId, OrderStatus.Done],
+      )
+      .then((rows: Array<{ total: string }>) => rows[0]?.total ?? '0');
+  }
+
+  clientTopItems(
+    businessId: string,
+    clientId: string,
+    limit = 10,
+  ): Promise<Array<{ name: string; quantity: string }>> {
+    return this.m.query(
+      `SELECT COALESCE(oi.name_ru_snapshot, '—') AS name,
+              SUM(oi.quantity)::text AS quantity
+       FROM order_items oi
+       INNER JOIN orders o ON o.id = oi.order_id
+       WHERE o.business_id = $1 AND o.client_id = $2 AND o.status = $3
+       GROUP BY COALESCE(oi.name_ru_snapshot, '—')
+       ORDER BY SUM(oi.quantity) DESC
+       LIMIT $4`,
+      [businessId, clientId, OrderStatus.Done, limit],
+    );
+  }
 }

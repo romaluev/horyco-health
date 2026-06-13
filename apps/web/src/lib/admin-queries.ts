@@ -26,8 +26,12 @@ export interface DishBody {
 }
 
 /* ── заказы ── */
-export function useAdminOrders() {
-  return useQuery({ queryKey: ['admin', 'orders'], queryFn: () => api<OrderDto[]>('/admin/orders') });
+export function useAdminOrders(poll = true) {
+  return useQuery({
+    queryKey: ['admin', 'orders'],
+    queryFn: () => api<OrderDto[]>('/admin/orders'),
+    refetchInterval: poll ? 15_000 : false,
+  });
 }
 export function useTransition() {
   const qc = useQueryClient();

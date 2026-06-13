@@ -1,4 +1,37 @@
 /*
+ * Tailwind v4 (back office only — preflight skipped to preserve consumer Mini App CSS).
+ */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/*
  * Темизация (FR-F5/NFR-15): берём переменные темы Telegram WebApp, с фолбэками для
  * браузера. Переключение светлая/тёмная — через data-theme на <html> (ставит JS).
  */
@@ -533,6 +566,28 @@ button {
 
 /* ───────── admin shell (platform + backoffice) ───────── */
 .adm-root {
+  /* shadcn/ui tokens mapped to admin theme */
+  --background: var(--adm-bg);
+  --foreground: var(--adm-text);
+  --card: var(--adm-surface);
+  --card-foreground: var(--adm-text);
+  --popover: var(--adm-surface);
+  --popover-foreground: var(--adm-text);
+  --primary: var(--adm-primary);
+  --primary-foreground: var(--adm-on-primary);
+  --secondary: var(--adm-surface-2);
+  --secondary-foreground: var(--adm-text);
+  --muted: var(--adm-surface-2);
+  --muted-foreground: var(--adm-text-muted);
+  --accent: color-mix(in srgb, var(--adm-primary) 12%, transparent);
+  --accent-foreground: var(--adm-primary);
+  --destructive: var(--adm-danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--adm-border);
+  --input: var(--adm-border);
+  --ring: var(--adm-ring);
+  --radius: var(--adm-radius);
+
   --adm-primary: #1e40af;
   --adm-primary-hover: #1d4ed8;
   --adm-on-primary: #ffffff;
@@ -695,10 +750,61 @@ html[data-theme='dark'] .adm-root {
 
 .adm-content {
   flex: 1;
-  padding: 20px 16px 32px;
+  padding: 20px 16px calc(32px + env(safe-area-inset-bottom, 0px));
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
+}
+
+@media (max-width: 1023px) {
+  .adm-content {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Mobile bottom tab bar (back office) */
+.adm-bottom-nav {
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--adm-surface);
+  border-top: 1px solid var(--adm-border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (min-width: 1024px) {
+  .adm-bottom-nav {
+    display: none;
+  }
+}
+
+.adm-bottom-nav-link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--adm-text-muted);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.adm-bottom-nav-link.active {
+  color: var(--adm-primary);
+  font-weight: 600;
+}
+
+.adm-bottom-nav-link:focus-visible {
+  outline: 2px solid var(--adm-ring);
+  outline-offset: -2px;
 }
 
 .adm-drawer-backdrop {

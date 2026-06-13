@@ -192,12 +192,30 @@ export interface AnalyticsDto {
   topItems: Array<{ name: string; quantity: number; revenue: string }>;
   customers: { newCustomers: number; repeatCustomers: number };
   offerFunnel: { sent: number; opened: number; ordered: number };
+  revenueByDay: Array<{ date: string; amount: string; orders: number }>;
+  priorPeriod: {
+    totalRevenue: string;
+    orderCount: number;
+    deliveredCount: number;
+    averageOrderValue: string;
+    newCustomers: number;
+  } | null;
 }
 
 export function useAnalytics(range: 'today' | '7d' | '30d') {
   return useQuery({
     queryKey: ['b', 'analytics', range],
     queryFn: () => api<AnalyticsDto>(`/b/analytics?range=${range}`),
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateStaffRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; role: MemberRole }) =>
+      api<StaffMemberRow>(`/b/staff/${v.id}`, { method: 'PUT', body: { role: v.role } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['b', 'staff'] }),
   });
 }
 

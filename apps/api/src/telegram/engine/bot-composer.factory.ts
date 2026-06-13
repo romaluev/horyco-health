@@ -73,6 +73,8 @@ export class BotComposerFactory {
     composer.action('admin:settings', (ctx) => s.onSettings(ctx));
     composer.action(/^admin:set:(topup_tg|topup_phone|support)$/, (ctx) => s.onSettingEdit(ctx));
     composer.action('admin:report', (ctx) => s.onReportAction(ctx));
+    composer.action('admin:today', (ctx) => s.onTodayAction(ctx));
+    composer.action('admin:active', (ctx) => s.onActiveOrdersAction(ctx));
 
     composer.action(/^ord:ph:(\d+)$/, (ctx) => s.onCallCustomer(ctx));
     composer.action(/^ord:set:(.+?):([a-z]+)(?::([a-z]+))?$/, (ctx) => s.onTransition(ctx));

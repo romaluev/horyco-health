@@ -1,7 +1,21 @@
-import { OrderStatus, PaymentMethod } from '@eatfit/shared';
+import { OrderStatus } from '@eatfit/shared';
+
+export class RevenueByDayDto {
+  date!: string;
+  amount!: string;
+  orders!: number;
+}
+
+export class PriorPeriodDto {
+  totalRevenue!: string;
+  orderCount!: number;
+  deliveredCount!: number;
+  averageOrderValue!: string;
+  newCustomers!: number;
+}
 
 export class RevenueByPaymentDto {
-  method!: PaymentMethod;
+  method!: string;
   amount!: string;
   orders!: number;
 }
@@ -40,4 +54,6 @@ export class AnalyticsResponseDto {
   topItems!: TopItemDto[];
   customers!: CustomerMixDto;
   offerFunnel!: OfferFunnelDto;
+  revenueByDay!: RevenueByDayDto[];
+  priorPeriod!: PriorPeriodDto | null;
 }

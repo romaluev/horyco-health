@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { CartDto } from '@/lib/types';
+import { CartDto, ClientDto, OrderDto } from '@/lib/types';
 
 export interface OfferCompositionLine {
   kind: 'dish' | 'combo';
@@ -100,6 +100,41 @@ export function useSetOfferRecipients() {
   return useMutation({
     mutationFn: (v: { id: string; clientIds: string[] }) =>
       api(`/b/offers/${v.id}/recipients`, { method: 'POST', body: { clientIds: v.clientIds } }),
+  });
+}
+
+export type OfferRecipientSegment = 'all' | 'has_balance' | 'ordered_30d' | 'never_ordered';
+
+export function useSetOfferRecipientsBySegment() {
+  return useMutation({
+    mutationFn: (v: { id: string; segment: OfferRecipientSegment }) =>
+      api<{ count: number; clientIds: string[] }>(`/b/offers/${v.id}/recipients/segment`, {
+        method: 'POST',
+        body: { segment: v.segment },
+      }),
+  });
+}
+
+export interface ClientCrmDetail extends ClientDto {
+  ordersCount: number;
+  lastOrderAt: string | null;
+  lifetimeSpend: string;
+  topItems: Array<{ name: string; quantity: number }>;
+}
+
+export function useClientCrm(id: string | null) {
+  return useQuery({
+    queryKey: ['admin', 'clients', id, 'crm'],
+    queryFn: () => api<ClientCrmDetail>(`/admin/clients/${id}/crm`),
+    enabled: Boolean(id),
+  });
+}
+
+export function useClientOrders(id: string | null) {
+  return useQuery({
+    queryKey: ['admin', 'clients', id, 'orders'],
+    queryFn: () => api<OrderDto[]>(`/admin/clients/${id}/orders`),
+    enabled: Boolean(id),
   });
 }
 

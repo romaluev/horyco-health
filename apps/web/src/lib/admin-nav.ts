@@ -12,6 +12,8 @@ import {
   Rocket,
   Building2,
   PlusCircle,
+  UserCog,
+  MoreHorizontal,
 } from 'lucide-react';
 
 export type BackofficeNavId =
@@ -23,7 +25,9 @@ export type BackofficeNavId =
   | 'modifiers'
   | 'customers'
   | 'settings'
-  | 'onboarding';
+  | 'onboarding'
+  | 'staff'
+  | 'more';
 
 export interface NavItem {
   id: BackofficeNavId;
@@ -32,11 +36,29 @@ export interface NavItem {
   icon: LucideIcon;
   /** Empty = all staff with backoffice access */
   roles?: MemberRole[];
+  /** Show in mobile bottom tab bar */
+  primary?: boolean;
 }
 
 export const BACKOFFICE_NAV: NavItem[] = [
-  { id: 'dashboard', href: '/b/dashboard/', labelKey: 'dash_title', icon: LayoutDashboard },
-  { id: 'orders', href: '/b/orders/', labelKey: 'adm_orders', icon: ShoppingBag },
+  { id: 'dashboard', href: '/b/dashboard/', labelKey: 'dash_title', icon: LayoutDashboard, primary: true },
+  { id: 'orders', href: '/b/orders/', labelKey: 'adm_orders', icon: ShoppingBag, primary: true },
+  {
+    id: 'offers',
+    href: '/b/offers/',
+    labelKey: 'bo_offers',
+    icon: Tag,
+    roles: [MemberRole.Owner, MemberRole.Manager],
+    primary: true,
+  },
+  {
+    id: 'customers',
+    href: '/b/customers/',
+    labelKey: 'adm_users',
+    icon: Users,
+    roles: [MemberRole.Owner, MemberRole.Manager],
+    primary: true,
+  },
   {
     id: 'menu',
     href: '/b/menu/',
@@ -52,13 +74,6 @@ export const BACKOFFICE_NAV: NavItem[] = [
     roles: [MemberRole.Owner, MemberRole.Manager],
   },
   {
-    id: 'offers',
-    href: '/b/offers/',
-    labelKey: 'bo_offers',
-    icon: Tag,
-    roles: [MemberRole.Owner, MemberRole.Manager],
-  },
-  {
     id: 'modifiers',
     href: '/b/modifiers/',
     labelKey: 'bo_modifiers',
@@ -66,10 +81,10 @@ export const BACKOFFICE_NAV: NavItem[] = [
     roles: [MemberRole.Owner, MemberRole.Manager],
   },
   {
-    id: 'customers',
-    href: '/b/customers/',
-    labelKey: 'adm_users',
-    icon: Users,
+    id: 'staff',
+    href: '/b/staff/',
+    labelKey: 'bo_staff',
+    icon: UserCog,
     roles: [MemberRole.Owner, MemberRole.Manager],
   },
   {
@@ -87,6 +102,20 @@ export const BACKOFFICE_NAV: NavItem[] = [
     roles: [MemberRole.Owner, MemberRole.Manager],
   },
 ];
+
+/** Bottom tab bar items (mobile). */
+export const BACKOFFICE_PRIMARY_NAV: NavItem[] = BACKOFFICE_NAV.filter((i) => i.primary);
+
+/** Secondary nav shown in drawer / More sheet. */
+export const BACKOFFICE_SECONDARY_NAV: NavItem[] = BACKOFFICE_NAV.filter((i) => !i.primary);
+
+export const BACKOFFICE_MORE_ITEM: NavItem = {
+  id: 'more',
+  href: '#more',
+  labelKey: 'bo_nav_more',
+  icon: MoreHorizontal,
+  primary: true,
+};
 
 export interface PlatformNavItem {
   id: string;
@@ -108,4 +137,13 @@ export function filterNavForRole(items: NavItem[], role: MemberRole | null, isPl
     if (!item.roles?.length) return true;
     return item.roles.includes(role);
   });
+}
+
+export function filterPrimaryNavForRole(role: MemberRole | null, isPlatform: boolean): NavItem[] {
+  const primary = filterNavForRole(BACKOFFICE_PRIMARY_NAV, role, isPlatform);
+  const hasSecondary = filterNavForRole(BACKOFFICE_SECONDARY_NAV, role, isPlatform).length > 0;
+  if (hasSecondary && !primary.some((i) => i.id === 'more')) {
+    return [...primary, BACKOFFICE_MORE_ITEM];
+  }
+  return primary;
 }

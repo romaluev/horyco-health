@@ -11,6 +11,8 @@ import {
   CustomerMixDto,
   OfferFunnelDto,
   OrdersByStatusDto,
+  PriorPeriodDto,
+  RevenueByDayDto,
   RevenueByPaymentDto,
   TopItemDto,
 } from './dto/analytics-response.dto';
@@ -30,6 +32,7 @@ export class AnalyticsService {
 
     const range = parseAnalyticsRange(rangeRaw);
     const period = analyticsPeriod(range, business.tzOffsetHours);
+    const priorPeriod = this.priorPeriod(period, range, business.tzOffsetHours);
 
     const orders = await this.repo.ordersInRange(businessId, period.start, period.end);
     const done = orders.filter((o) => o.status === OrderStatus.Done);
@@ -40,12 +43,32 @@ export class AnalyticsService {
       ? Money.fromMajor(Number(totalRevenue.toString()) / done.length)
       : Money.zero();
 
-    const [revRows, statusRows, topRows, customerRow, funnelRow] = await Promise.all([
+    const [
+      revRows,
+      statusRows,
+      topRows,
+      customerRow,
+      funnelRow,
+      dayRows,
+      priorOrders,
+      priorRevRows,
+      priorCustomerRow,
+    ] = await Promise.all([
       this.repo.revenueByPayment(businessId, period.start, period.end),
       this.repo.ordersByStatus(businessId, period.start, period.end),
       this.repo.topItems(businessId, period.start, period.end),
       this.repo.customerMix(businessId, period.start, period.end),
       this.repo.offerFunnel(businessId, period.start, period.end),
+      this.repo.revenueByDay(businessId, period.start, period.end),
+      priorPeriod
+        ? this.repo.ordersInRange(businessId, priorPeriod.start, priorPeriod.end)
+        : Promise.resolve([]),
+      priorPeriod
+        ? this.repo.revenueByPayment(businessId, priorPeriod.start, priorPeriod.end)
+        : Promise.resolve([]),
+      priorPeriod
+        ? this.repo.customerMix(businessId, priorPeriod.start, priorPeriod.end)
+        : Promise.resolve({ newCustomers: '0', repeatCustomers: '0' }),
     ]);
 
     const revenueByPayment: RevenueByPaymentDto[] = revRows.map((r) => ({
@@ -76,6 +99,29 @@ export class AnalyticsService {
       ordered: Number(funnelRow.ordered),
     };
 
+    const revenueByDay: RevenueByDayDto[] = dayRows.map((r) => ({
+      date: r.date,
+      amount: Money.fromMajor(r.total).toString(),
+      orders: Number(r.orders),
+    }));
+
+    let prior: PriorPeriodDto | null = null;
+    if (priorPeriod) {
+      const priorDone = priorOrders.filter((o) => o.status === OrderStatus.Done);
+      let priorRevenue = Money.zero();
+      for (const o of priorDone) priorRevenue = priorRevenue.add(o.total);
+      const priorAov = priorDone.length
+        ? Money.fromMajor(Number(priorRevenue.toString()) / priorDone.length)
+        : Money.zero();
+      prior = {
+        totalRevenue: priorRevenue.toString(),
+        orderCount: priorOrders.length,
+        deliveredCount: priorDone.length,
+        averageOrderValue: priorAov.toString(),
+        newCustomers: Number(priorCustomerRow.newCustomers),
+      };
+    }
+
     return {
       range: period.range,
       label: period.label,
@@ -88,6 +134,24 @@ export class AnalyticsService {
       topItems,
       customers,
       offerFunnel,
+      revenueByDay,
+      priorPeriod: prior,
     };
+  }
+
+  /** Предыдущий период той же длины для сравнения KPI. */
+  private priorPeriod(
+    current: { start: Date; end: Date },
+    range: 'today' | '7d' | '30d',
+    tzOffsetHours: number,
+  ): { start: Date; end: Date } | null {
+    const durationMs = current.end.getTime() - current.start.getTime();
+    if (durationMs <= 0) return null;
+    const end = new Date(current.start.getTime());
+    const start = new Date(end.getTime() - durationMs);
+    if (range === 'today') {
+      return analyticsPeriod('today', tzOffsetHours, end.getTime() - 24 * 3_600_000);
+    }
+    return { start, end };
   }
 }

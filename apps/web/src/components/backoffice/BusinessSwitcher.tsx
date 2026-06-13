@@ -1,11 +1,20 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
 import { switchBusiness, persistStaffSession } from '@/lib/staff-auth';
 import { useT } from '@/lib/i18n';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export function BusinessSwitcher() {
   const t = useT();
+  const qc = useQueryClient();
   const businesses = useAuthStore((s) => s.staffBusinesses);
   const activeSlug = useAuthStore((s) => s.activeBusinessSlug);
   const setStaffAuth = useAuthStore((s) => s.setStaffAuth);
@@ -17,23 +26,21 @@ export function BusinessSwitcher() {
     const res = await switchBusiness(slug);
     persistStaffSession(res.accessToken, businesses, slug);
     setStaffAuth(res.accessToken, res.client, businesses, slug);
-    window.location.reload();
+    await qc.invalidateQueries();
   };
 
   return (
-    <div className="field" style={{ marginBottom: 16 }}>
-      <label>{t('bo_switch_business')}</label>
-      <select
-        className="input"
-        value={activeSlug ?? ''}
-        onChange={(e) => void onSwitch(e.target.value)}
-      >
+    <Select value={activeSlug ?? ''} onValueChange={(v) => void onSwitch(v)}>
+      <SelectTrigger className="h-9 w-[min(180px,40vw)] text-xs">
+        <SelectValue placeholder={t('bo_switch_business')} />
+      </SelectTrigger>
+      <SelectContent>
         {businesses.map((b) => (
-          <option key={b.businessId} value={b.slug}>
+          <SelectItem key={b.businessId} value={b.slug}>
             {b.name}
-          </option>
+          </SelectItem>
         ))}
-      </select>
-    </div>
+      </SelectContent>
+    </Select>
   );
 }

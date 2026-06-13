@@ -9,6 +9,7 @@ import type { I18nKey } from '@/lib/i18n';
 const TITLE_BY_PREFIX: [string, I18nKey][] = [
   ['/b/onboarding/', 'bo_onboarding'],
   ['/b/settings/', 'adm_settings'],
+  ['/b/staff/', 'bo_staff'],
   ['/b/customers/', 'adm_users'],
   ['/b/modifiers/', 'bo_modifiers'],
   ['/b/offers/', 'bo_offers'],

@@ -11,7 +11,21 @@ import { jwtKind } from '@/lib/jwt';
 import { useT, type I18nKey } from '@/lib/i18n';
 import { StaffLoginCard } from './StaffLoginCard';
 import { BusinessSwitcher } from '../backoffice/BusinessSwitcher';
-import { BACKOFFICE_NAV, filterNavForRole, type NavItem } from '@/lib/admin-nav';
+import {
+  BACKOFFICE_NAV,
+  BACKOFFICE_SECONDARY_NAV,
+  filterNavForRole,
+  filterPrimaryNavForRole,
+  type NavItem,
+} from '@/lib/admin-nav';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface AdminShellProps {
   children: ReactNode;
@@ -29,13 +43,23 @@ function getActiveRole(
   return businesses.find((b) => b.slug === activeSlug)?.role ?? null;
 }
 
-function NavLinks({ items, pathname, onNavigate }: { items: NavItem[]; pathname: string; onNavigate?: () => void }) {
+function NavLinks({
+  items,
+  pathname,
+  onNavigate,
+  className,
+}: {
+  items: NavItem[];
+  pathname: string;
+  onNavigate?: () => void;
+  className?: string;
+}) {
   const t = useT();
   return (
-    <nav className="adm-nav" aria-label="Back office">
+    <nav className={cn('adm-nav', className)} aria-label="Back office">
       {items.map((item) => {
         const Icon = item.icon;
-        const active = pathname.startsWith(item.href);
+        const active = item.id !== 'more' && pathname.startsWith(item.href);
         return (
           <Link
             key={item.id}
@@ -45,6 +69,47 @@ function NavLinks({ items, pathname, onNavigate }: { items: NavItem[]; pathname:
           >
             <Icon size={18} aria-hidden />
             {t(item.labelKey as I18nKey)}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function BottomNav({
+  items,
+  pathname,
+  onMore,
+}: {
+  items: NavItem[];
+  pathname: string;
+  onMore: () => void;
+}) {
+  const t = useT();
+  return (
+    <nav className="adm-bottom-nav" aria-label={t('bo_nav_primary')}>
+      {items.map((item) => {
+        const Icon = item.icon;
+        if (item.id === 'more') {
+          const secondaryActive = BACKOFFICE_SECONDARY_NAV.some((s) => pathname.startsWith(s.href));
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={cn('adm-bottom-nav-link', secondaryActive && 'active')}
+              onClick={onMore}
+              aria-label={t('bo_nav_more')}
+            >
+              <Icon size={20} aria-hidden />
+              <span>{t(item.labelKey as I18nKey)}</span>
+            </button>
+          );
+        }
+        const active = pathname.startsWith(item.href);
+        return (
+          <Link key={item.id} href={item.href} className={cn('adm-bottom-nav-link', active && 'active')}>
+            <Icon size={20} aria-hidden />
+            <span>{t(item.labelKey as I18nKey)}</span>
           </Link>
         );
       })}
@@ -69,6 +134,7 @@ export function AdminShell({
   const activeBusinessSlug = useAuthStore((s) => s.activeBusinessSlug);
   const [booted, setBooted] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     if (status === 'idle') {
@@ -80,6 +146,7 @@ export function AdminShell({
 
   useEffect(() => {
     setDrawerOpen(false);
+    setMoreOpen(false);
   }, [pathname]);
 
   if (!booted || status === 'loading') {
@@ -98,6 +165,8 @@ export function AdminShell({
   const isPlatform = kind === 'platform';
   const memberRole = getActiveRole(staffBusinesses, activeBusinessSlug);
   const visibleNav = filterNavForRole(navItems, memberRole, isPlatform);
+  const primaryNav = filterPrimaryNavForRole(memberRole, isPlatform);
+  const secondaryNav = filterNavForRole(BACKOFFICE_SECONDARY_NAV, memberRole, isPlatform);
 
   const sidebar = (
     <>
@@ -105,7 +174,7 @@ export function AdminShell({
         Horyco
         <span>{t(brandSubtitleKey)}</span>
       </div>
-      <NavLinks items={visibleNav} pathname={pathname} />
+      <NavLinks items={visibleNav} pathname={pathname} onNavigate={() => setDrawerOpen(false)} />
       <div style={{ padding: '8px 12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {platformLink && (
           <Link href="/platform/" className="adm-nav-link">
@@ -113,7 +182,12 @@ export function AdminShell({
             {t('platform_nav_console')}
           </Link>
         )}
-        <button type="button" className="adm-nav-link adm-btn-ghost" onClick={() => logout()} style={{ border: 'none', width: '100%', cursor: 'pointer' }}>
+        <button
+          type="button"
+          className="adm-nav-link adm-btn-ghost"
+          onClick={() => logout()}
+          style={{ border: 'none', width: '100%', cursor: 'pointer' }}
+        >
           <LogOut size={18} aria-hidden />
           {t('logout')}
         </button>
@@ -130,7 +204,7 @@ export function AdminShell({
           <header className="adm-topbar">
             <button
               type="button"
-              className="adm-menu-btn"
+              className="adm-menu-btn lg:hidden"
               aria-label={t('adm_open_menu')}
               onClick={() => setDrawerOpen(true)}
             >
@@ -145,16 +219,23 @@ export function AdminShell({
           <main className="adm-content" id="main-content">
             {children}
           </main>
+
+          <BottomNav items={primaryNav} pathname={pathname} onMore={() => setMoreOpen(true)} />
         </div>
       </div>
 
       {drawerOpen && (
         <>
-          <div className="adm-drawer-backdrop" onClick={() => setDrawerOpen(false)} aria-hidden />
-          <div className="adm-drawer" role="dialog" aria-modal="true" aria-label={t('adm_open_menu')}>
+          <div className="adm-drawer-backdrop lg:hidden" onClick={() => setDrawerOpen(false)} aria-hidden />
+          <div
+            className="adm-drawer lg:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('adm_open_menu')}
+          >
             <div className="adm-topbar" style={{ borderBottom: '1px solid var(--adm-border)' }}>
-              <span className="adm-topbar-title">Menu</span>
-              <button type="button" className="adm-menu-btn" aria-label="Close" onClick={() => setDrawerOpen(false)}>
+              <span className="adm-topbar-title">{t('adm_open_menu')}</span>
+              <button type="button" className="adm-menu-btn" aria-label={t('bo_close')} onClick={() => setDrawerOpen(false)}>
                 <X size={22} />
               </button>
             </div>
@@ -162,6 +243,40 @@ export function AdminShell({
           </div>
         </>
       )}
+
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>{t('bo_nav_more')}</SheetTitle>
+          </SheetHeader>
+          <div className="grid gap-1 py-4">
+            {secondaryNav.map((item) => {
+              const Icon = item.icon;
+              const active = pathname.startsWith(item.href);
+              return (
+                <Button key={item.id} variant={active ? 'secondary' : 'ghost'} className="justify-start min-h-12" asChild>
+                  <Link href={item.href} onClick={() => setMoreOpen(false)}>
+                    <Icon size={18} />
+                    {t(item.labelKey as I18nKey)}
+                  </Link>
+                </Button>
+              );
+            })}
+            {platformLink && (
+              <Button variant="ghost" className="justify-start min-h-12" asChild>
+                <Link href="/platform/" onClick={() => setMoreOpen(false)}>
+                  <ExternalLink size={18} />
+                  {t('platform_nav_console')}
+                </Link>
+              </Button>
+            )}
+            <Button variant="ghost" className="justify-start min-h-12 text-destructive" onClick={() => logout()}>
+              <LogOut size={18} />
+              {t('logout')}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

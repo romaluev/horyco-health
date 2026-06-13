@@ -24,6 +24,9 @@ export interface ClientDto {
   role: Role;
   balance: string;
   createdAt: string;
+  ordersCount?: number;
+  lastOrderAt?: string | null;
+  lifetimeSpend?: string;
 }
 
 export interface MenuItemDto {

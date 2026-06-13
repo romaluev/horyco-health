@@ -11,6 +11,7 @@ import {
 import { BusinessAdminGuard } from '../auth/guards/business-admin.guard';
 import { OffersService } from './offers.service';
 import { CreateOfferDto, SetOfferRecipientsDto, UpdateOfferDto } from './dto/offer.dto';
+import { SetOfferRecipientsBySegmentDto } from './dto/offer-recipient-segment.dto';
 
 @Controller('b/offers')
 @UseGuards(BusinessAdminGuard)
@@ -40,6 +41,14 @@ export class OffersController {
   @Post(':id/recipients')
   setRecipients(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetOfferRecipientsDto) {
     return this.offers.setRecipients(id, dto.clientIds);
+  }
+
+  @Post(':id/recipients/segment')
+  setRecipientsBySegment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetOfferRecipientsBySegmentDto,
+  ) {
+    return this.offers.setRecipientsBySegment(id, dto.segment);
   }
 
   @Post(':id/send')
