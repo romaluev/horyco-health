@@ -13,6 +13,7 @@ import { CartScreen } from './screens/CartScreen';
 import { OrdersScreen } from './screens/OrdersScreen';
 import { ComboDetail } from './screens/ComboDetail';
 import { ProfileScreen } from './screens/ProfileScreen';
+import { OfferCompositionScreen } from './screens/OfferCompositionScreen';
 
 /** Каркас Mini App: вкладки + нижняя навигация (регистрация — при checkout в CartScreen). */
 export function AppShell() {
@@ -21,8 +22,8 @@ export function AppShell() {
   const tab = useUiStore((s) => s.tab);
   const detailId = useUiStore((s) => s.detailId);
   const openDetail = useUiStore((s) => s.openDetail);
-
   const openCombo = useUiStore((s) => s.openCombo);
+  const openOfferDetails = useUiStore((s) => s.openOfferDetails);
   const [offerError, setOfferError] = useState(false);
 
   useEffect(() => {
@@ -31,11 +32,14 @@ export function AppShell() {
     const fromQuery = params.get('dish');
     const comboQuery = params.get('combo');
     const offerQuery = params.get('offer');
+    const offerDetailsQuery = params.get('offer_details');
     const sp = getStartParam();
     const fromStart = sp.startsWith('dish_') ? sp.slice('dish_'.length) : null;
     const comboStart = sp.startsWith('combo_') ? sp.slice('combo_'.length) : null;
     const id = fromQuery || fromStart;
-    if (id) openDetail(id);
+    if (offerDetailsQuery) {
+      openOfferDetails(offerDetailsQuery);
+    } else if (id) openDetail(id);
     else if (comboQuery || comboStart) openCombo(comboQuery ?? comboStart!);
     if (offerQuery) {
       void api(`/cart/from-offer/${offerQuery}`, { method: 'POST' })
@@ -47,7 +51,7 @@ export function AppShell() {
           setOfferError(true);
         });
     }
-  }, [openDetail, openCombo]);
+  }, [openDetail, openCombo, openOfferDetails]);
 
   if (!client) return null;
 
@@ -67,6 +71,7 @@ export function AppShell() {
       <BottomNav />
       {detailId && <DishDetail />}
       <ComboDetail />
+      <OfferCompositionScreen />
     </div>
   );
 }

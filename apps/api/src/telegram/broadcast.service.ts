@@ -128,7 +128,10 @@ export class BroadcastService implements OnModuleInit {
           textCache.set(lang, text);
         }
         const editUrl = this.offerWebAppUrl(slug, recipient.id);
-        const detailUrl = this.offerDetailWebAppUrl(slug, offer.composition);
+        const detailUrl =
+          offer.composition.length > 0
+            ? this.offerCompositionWebAppUrl(slug, recipient.id)
+            : null;
         const rows: InlineKeyboardButton[][] = [
           [
             Markup.button.callback(t(lang, 'broadcast_btn_accept'), `offer:accept:${recipient.id}`),
@@ -198,21 +201,11 @@ export class BroadcastService implements OnModuleInit {
     return `${base}${sep}${params}`;
   }
 
-  /** Mini App URL for dish/combo detail (?dish= / ?combo=) from offer composition. */
-  private offerDetailWebAppUrl(slug: string, composition: OfferCompositionLine[]): string | null {
+  private offerCompositionWebAppUrl(slug: string, recipientId: string): string | null {
     const base = this.webAppBase ?? '';
     if (!base.startsWith('https://')) return null;
-    for (const line of composition) {
-      const sep = base.includes('?') ? '&' : '?';
-      const biz = `biz=${encodeURIComponent(slug)}`;
-      if (line.kind === 'combo' && line.comboId) {
-        return `${base}${sep}${biz}&combo=${encodeURIComponent(line.comboId)}`;
-      }
-      if (line.menuItemId) {
-        return `${base}${sep}${biz}&dish=${encodeURIComponent(line.menuItemId)}`;
-      }
-    }
-    return null;
+    const sep = base.includes('?') ? '&' : '?';
+    return `${base}${sep}biz=${encodeURIComponent(slug)}&offer_details=${encodeURIComponent(recipientId)}`;
   }
 
   private async abortBroadcastNoBot(businessId: string, offerId: string, key: string): Promise<void> {

@@ -21,7 +21,7 @@ import { BotUiService } from '../bot-ui.service';
 import { BotMenuAdminService } from '../bot-menu-admin.service';
 import { t, esc, pick, statusText, Lang } from '../i18n/bot-i18n';
 import { channelPostText, orderDeepLinkButton } from '../channel-post';
-import { transitionToast, formatCustomerPhone } from '../message-formatters';
+import { formatCustomerPhone } from '../message-formatters';
 
 /**
  * Действия персонала (повар/курьер/админ): смена статуса заказа из inline-кнопок панели.
@@ -402,13 +402,15 @@ export class StaffUpdate {
   // ───────────────────────────── привязка групп (/bind) ─────────────────────────────
 
   /**
-   * Бота добавили в группу — подсказка owner/manager привязать роль.
+   * Бота добавили в группу или канал — подсказка owner/manager привязать роль.
    */
   async onMyChatMember(ctx: Context): Promise<void> {
     const update = ctx.myChatMember;
     if (!update) return;
     const chat = update.chat;
-    if (chat.type !== 'group' && chat.type !== 'supergroup') return;
+    const isGroup = chat.type === 'group' || chat.type === 'supergroup';
+    const isChannel = chat.type === 'channel';
+    if (!isGroup && !isChannel) return;
 
     const newStatus = update.new_chat_member.status;
     const oldStatus = update.old_chat_member.status;
@@ -429,28 +431,68 @@ export class StaffUpdate {
     ) {
       const business = await this.businesses.findById(businessId);
       const lang = (business?.languageDefault ?? Language.Ru) as import('../i18n/bot-i18n').Lang;
-      await ctx.telegram.sendMessage(chatId, t(lang, 'bind_bot_added_hint'));
+      const hintKey = isChannel ? 'bind_channel_added_hint' : 'bind_bot_added_hint';
+      await ctx.telegram.sendMessage(chatId, t(lang, hintKey));
     }
   }
 
-  /** /bind cook|courier|admin — только owner/manager, только в группах. */
+  /** /bind cook|courier|admin|channel — owner/manager; groups or channel (channel kind only). */
   async onBindCommand(ctx: Context): Promise<void> {
     const from = ctx.from;
     const chat = ctx.chat;
     if (!from || !chat) return;
-    if (chat.type !== 'group' && chat.type !== 'supergroup') {
-      const client = await this.clients.findByTelegramId(String(from.id));
-      const lang = client?.language ?? Language.Ru;
-      await ctx.reply(t(lang as import('../i18n/bot-i18n').Lang, 'bind_groups_only'));
+    const text = ctx.message && 'text' in ctx.message ? ctx.message.text : '';
+    await this.handleBindCommand(ctx, from.id, chat, text);
+  }
+
+  /** channel_post: Telegram delivers /bind in channels as channel_post, not message. */
+  async onChannelPost(ctx: Context): Promise<void> {
+    const post = ctx.channelPost;
+    if (!post || !('text' in post) || !post.text?.trim().startsWith('/bind')) return;
+    const from = post.from ?? ctx.from;
+    if (!from) return;
+    await this.handleBindCommand(ctx, from.id, post.chat, post.text);
+  }
+
+  private async handleBindCommand(
+    ctx: Context,
+    fromTelegramId: number,
+    chat: NonNullable<Context['chat']>,
+    text: string,
+  ): Promise<void> {
+    const arg = text.trim().split(/\s+/)[1]?.toLowerCase();
+    const kindMap: Record<string, ChatKind> = {
+      cook: ChatKind.Cook,
+      courier: ChatKind.Courier,
+      admin: ChatKind.Admin,
+      channel: ChatKind.Channel,
+    };
+    const kind = arg ? kindMap[arg] : undefined;
+
+    const client = await this.clients.findByTelegramId(String(fromTelegramId));
+    if (!client) {
+      await ctx.reply(t(Language.Ru as Lang, 'bind_start_first'));
+      return;
+    }
+    const lang = client.language as Lang;
+
+    if (!kind) {
+      await ctx.reply(t(lang, 'bind_usage'));
       return;
     }
 
-    const client = await this.clients.findByTelegramId(String(from.id));
-    if (!client) {
-      await ctx.reply(t(Language.Ru as import('../i18n/bot-i18n').Lang, 'bind_start_first'));
+    const isGroup = chat.type === 'group' || chat.type === 'supergroup';
+    const isChannel = chat.type === 'channel';
+
+    if (kind === ChatKind.Channel) {
+      if (!isChannel) {
+        await ctx.reply(t(lang, 'bind_channel_only'));
+        return;
+      }
+    } else if (!isGroup) {
+      await ctx.reply(t(lang, 'bind_groups_only'));
       return;
     }
-    const lang = client.language as import('../i18n/bot-i18n').Lang;
 
     const businessId = this.actorCtx.getBusinessIdOrThrow();
     const membership = await this.members.findActive(businessId, client.id);
@@ -461,23 +503,10 @@ export class StaffUpdate {
       }
     }
 
-    const text = ctx.message && 'text' in ctx.message ? ctx.message.text : '';
-    const arg = text.split(/\s+/)[1]?.toLowerCase();
-    const kindMap: Record<string, ChatKind> = {
-      cook: ChatKind.Cook,
-      courier: ChatKind.Courier,
-      admin: ChatKind.Admin,
-      channel: ChatKind.Channel,
-    };
-    const kind = arg ? kindMap[arg] : undefined;
-    if (!kind) {
-      await ctx.reply(t(lang, 'bind_usage'));
-      return;
-    }
-
     const title = 'title' in chat ? chat.title : null;
     await this.chats.bind(businessId, kind, String(chat.id), title);
-    await ctx.reply(t(lang, 'bind_success'));
+    const successKey = kind === ChatKind.Channel ? 'bind_success_channel' : 'bind_success';
+    await ctx.reply(t(lang, successKey));
   }
 
   async onCallCustomer(ctx: Context): Promise<void> {
@@ -505,7 +534,8 @@ export class StaffUpdate {
 
   async onTransition(ctx: Context): Promise<void> {
     const cbId = (ctx.callbackQuery as { id?: string } | undefined)?.id;
-    if (cbId && this.state.isDuplicateCallback(cbId, Date.now())) {
+    const now = Date.now();
+    if (cbId && this.state.isDuplicateCallback(cbId, now)) {
       await ctx.answerCbQuery();
       return;
     }
@@ -522,16 +552,26 @@ export class StaffUpdate {
       return;
     }
 
+    if (!this.state.tryAcquireOrderTransition(orderId, now)) {
+      await ctx.answerCbQuery(t(lang, 'order_transition_busy'));
+      return;
+    }
+
+    // Ack immediately — transition + Telegram card updates can take several seconds.
+    if (cbId) {
+      await ctx.answerCbQuery();
+    }
+
     try {
-      const updated = await this.orders.transition(orderId, target as OrderStatus);
-      await ctx.answerCbQuery(transitionToast(lang, target as OrderStatus, updated.number));
+      await this.orders.transition(orderId, target as OrderStatus);
     } catch (err) {
       if (err instanceof DomainError) {
-        await ctx.answerCbQuery(err.message);
+        this.logger.warn(`Переход заказа ${orderId}→${target}: ${err.message}`);
       } else {
         this.logger.error(`Переход заказа ${orderId}→${target}: ${(err as Error).message}`);
-        await ctx.answerCbQuery(t(lang, 'error_generic'));
       }
+    } finally {
+      this.state.releaseOrderTransition(orderId);
     }
   }
 }

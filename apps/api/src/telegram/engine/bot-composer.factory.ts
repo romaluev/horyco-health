@@ -46,6 +46,7 @@ export class BotComposerFactory {
 
     composer.command('chatid', (ctx) => s.onChatId(ctx));
     composer.command('bind', (ctx) => s.onBindCommand(ctx));
+    composer.on('channel_post', (ctx) => s.onChannelPost(ctx));
     composer.command('admin', (ctx) => s.onAdminCommand(ctx));
     composer.command('report', (ctx) => s.onReportCommand(ctx));
 

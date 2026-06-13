@@ -20,6 +20,7 @@ const BIND_COMMANDS = [
   { kind: 'cook', cmd: '/bind cook', labelKey: 'bo_bind_cmd_cook' as const },
   { kind: 'courier', cmd: '/bind courier', labelKey: 'bo_bind_cmd_courier' as const },
   { kind: 'admin', cmd: '/bind admin', labelKey: 'bo_bind_cmd_admin' as const },
+  { kind: 'channel', cmd: '/bind channel', labelKey: 'bo_bind_cmd_channel' as const },
 ];
 
 function mutationErrorMessage(err: unknown, fallback: string): string {
@@ -273,6 +274,9 @@ export function BackofficeSettings() {
         <h3>{t('bo_chats')}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
           {t('bo_reset_chats_hint')}
+        </p>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+          {t('bo_bind_channel_hint')}
         </p>
         {BIND_COMMANDS.map(({ kind, cmd, labelKey }) => {
           const row = chats?.find((c) => c.kind === kind);

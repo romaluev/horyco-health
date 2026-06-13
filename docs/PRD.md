@@ -62,7 +62,7 @@ Platform-admin seed: `ADMIN_TELEGRAM_IDS` (env). Остальные роли —
 
 - `offers` + `offer_recipients` (sent → opened → ordered)
 - Back office: compose cart → select CRM → broadcast FIFO
-- Customer DM: ✅ one-tap (`offer:accept:<id>`) | ✏️ customize (prefilled cart)
+- Customer DM: ✅ one-tap (`offer:accept:<id>`) | ✏️ customize (prefilled cart) | 🔎 details (`?offer_details=<recipientId>` — browse all lines)
 
 ### 3.5 Тенантность
 
@@ -83,6 +83,7 @@ Platform-admin seed: `ADMIN_TELEGRAM_IDS` (env). Остальные роли —
 | `POST /cart/lines` | Upsert строки корзины |
 | `POST /orders` | Checkout |
 | `GET /combos/:id` | Детали комбо |
+| `GET /offers/recipient/:id` | Состав оффера для получателя (кнопка «Подробнее») |
 
 ### 4.2 Back office `/b`
 
@@ -172,7 +173,7 @@ Login: phone + password → JWT `kind=platform`. Env `PLATFORM_ADMIN_*` or setup
 - Кастомное приветствие per-business в `/b` → Settings (`welcome_message_ru/uz`, placeholder `{businessName}`)
 - Push-уведомления клиенту по заказу (все статусы incl. `pending`) с inline «Мои заказы»
 - Required modifiers → web_app «Выбрать →»
-- `/bind cook|courier|admin` in group
+- `/bind cook|courier|admin` in group; `/bind channel` in Telegram channel (bot must be channel admin)
 - Admin panel shortcuts: **📊 Сегодня** (daily report), **📦 Активные** (active orders), **📢 Рассылка** (Web App → `/b/offers/`)
 - Main menu uses **membership role** (not legacy `clients.role`) for cook/courier/admin buttons
 - Daily report: orders + revenue + top + **offer funnel line**

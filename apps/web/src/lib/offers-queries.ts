@@ -114,6 +114,32 @@ export function useSetOfferRecipients() {
 
 export type OfferRecipientSegment = 'all' | 'has_balance' | 'ordered_30d' | 'never_ordered';
 
+export interface OfferRecipientLine {
+  kind: 'dish' | 'combo';
+  menuItemId: string | null;
+  comboId: string | null;
+  quantity: number;
+  nameRu: string;
+  nameUz: string;
+  calories: number | null;
+  lineTotal: string;
+}
+
+export interface OfferRecipientView {
+  descriptionRu: string | null;
+  descriptionUz: string | null;
+  estimatedTotal: string;
+  lines: OfferRecipientLine[];
+}
+
+export function useOfferRecipient(id: string | null) {
+  return useQuery({
+    queryKey: ['offers', 'recipient', id],
+    queryFn: () => api<OfferRecipientView>(`/offers/recipient/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
 export function useSetOfferRecipientsBySegment() {
   return useMutation({
     mutationFn: (v: { id: string; segment: OfferRecipientSegment }) =>

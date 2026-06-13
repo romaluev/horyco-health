@@ -40,6 +40,10 @@ const dict = {
   checkout: { ru: 'Оформить заказ', uz: 'Buyurtma berish' },
   currency: { ru: 'сум', uz: 'so‘m' },
 
+  offer_composition_title: { ru: 'Состав предложения', uz: 'Taklif tarkibi' },
+  offer_composition_empty: { ru: 'Состав пуст', uz: 'Tarkib bo‘sh' },
+  offer_composition_tap: { ru: 'Нажмите, чтобы открыть карточку', uz: 'Kartochkani ochish uchun bosing' },
+
   // оформление
   comment: { ru: 'Комментарий', uz: 'Izoh' },
   comment_ph: { ru: 'Комментарий к заказу (необязательно)', uz: 'Buyurtmaga izoh (ixtiyoriy)' },
@@ -262,6 +266,11 @@ const dict = {
   bo_bind_cmd_cook: { ru: '/bind cook — группа поваров', uz: '/bind cook — oshpazlar guruhi' },
   bo_bind_cmd_courier: { ru: '/bind courier — группа курьеров', uz: '/bind courier — kuryerlar guruhi' },
   bo_bind_cmd_admin: { ru: '/bind admin — админ-группа', uz: '/bind admin — admin guruhi' },
+  bo_bind_cmd_channel: { ru: '/bind channel — Telegram-канал', uz: '/bind channel — Telegram kanali' },
+  bo_bind_channel_hint: {
+    ru: 'Канал: добавьте бота админом канала и опубликуйте в канале /bind channel (только owner/manager).',
+    uz: 'Kanal: botni kanal admini qiling va kanalda /bind channel joylang (faqat egasi/menejer).',
+  },
   bo_ready: { ru: 'Готово к работе!', uz: 'Ishga tayyor!' },
   bo_bind_hint: { ru: 'Привяжите группы через Telegram:', uz: 'Telegram orqali guruhlarni ulang:' },
   bo_welcome_ru: { ru: 'Приветствие в боте (RU)', uz: 'Bot salomlashuvi (RU)' },

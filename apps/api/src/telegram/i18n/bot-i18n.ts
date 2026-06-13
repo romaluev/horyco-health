@@ -97,12 +97,20 @@ const dict = {
   broadcast_btn_accept: { ru: '✅ Оформить', uz: '✅ Rasmiylashtirish' },
   broadcast_btn_customize: { ru: '✏️ Изменить', uz: '✏️ O‘zgartirish' },
   bind_usage: {
-    ru: 'Использование: /bind cook | courier | admin',
-    uz: 'Foydalanish: /bind cook | courier | admin',
+    ru: 'Использование: /bind cook | courier | admin (в группе) или /bind channel (в канале)',
+    uz: 'Foydalanish: /bind cook | courier | admin (guruhda) yoki /bind channel (kanalda)',
   },
   bind_success: { ru: 'Группа привязана ✅', uz: 'Guruh bog‘landi ✅' },
+  bind_success_channel: { ru: 'Канал привязан ✅', uz: 'Kanal bog‘landi ✅' },
   bind_unknown_kind: { ru: 'Неизвестный тип группы.', uz: 'Noma’lum guruh turi.' },
-  bind_groups_only: { ru: 'Привязка работает только в группах.', uz: 'Bog‘lash faqat guruhlarda ishlaydi.' },
+  bind_groups_only: {
+    ru: 'Привязка cook/courier/admin работает только в группах. Канал: /bind channel внутри канала.',
+    uz: 'cook/courier/admin faqat guruhlarda. Kanal: kanal ichida /bind channel.',
+  },
+  bind_channel_only: {
+    ru: 'Команда /bind channel работает только в Telegram-канале.',
+    uz: '/bind channel faqat Telegram kanalida ishlaydi.',
+  },
   bind_start_first: { ru: 'Сначала напишите боту в личку /start', uz: 'Avval botga shaxsiy chatda /start yuboring' },
   bind_owner_only: {
     ru: 'Только владелец или менеджер может привязать группу.',
@@ -111,6 +119,10 @@ const dict = {
   bind_bot_added_hint: {
     ru: '👋 Бот добавлен в группу.\n\nВладелец или менеджер: выполните команду\n/bind cook, /bind courier или /bind admin',
     uz: '👋 Bot guruhga qo‘shildi.\n\nEga yoki menejer:\n/bind cook, /bind courier yoki /bind admin buyrug‘ini bajaring',
+  },
+  bind_channel_added_hint: {
+    ru: '👋 Бот добавлен в канал.\n\nВладелец или менеджер: опубликуйте в канале\n/bind channel',
+    uz: '👋 Bot kanalga qo‘shildi.\n\nEga yoki menejer: kanalda\n/bind channel buyrug‘ini joylang',
   },
   profile_link_hint: {
     ru: 'Откройте профиль в приложении, чтобы указать адрес:',
@@ -403,12 +415,16 @@ const dict = {
   btn_publish_channel: { ru: '📤 Опубликовать в канал', uz: '📤 Kanalga joylash' },
   published_ok: { ru: 'Опубликовано в канал ✅', uz: 'Kanalga joylandi ✅' },
   channel_not_set: {
-    ru: '⚠️ CHANNEL_ID не задан. Укажите канал и добавьте бота его админом.',
-    uz: '⚠️ CHANNEL_ID ko‘rsatilmagan. Kanalni qo‘shing va botni unga admin qiling.',
+    ru: '⚠️ Канал не привязан. Добавьте бота админом канала и выполните /bind channel в канале.',
+    uz: '⚠️ Kanal ulanmagan. Botni kanal admini qiling va kanalda /bind channel bajaring.',
   },
 
   // ---- Ошибки / доступ ----
   error_generic: { ru: '⚠️ Произошла ошибка. Попробуйте позже.', uz: '⚠️ Xatolik yuz berdi. Keyinroq urinib ko‘ring.' },
+  order_transition_busy: {
+    ru: '⏳ Заказ уже обрабатывается…',
+    uz: '⏳ Buyurtma allaqachon qayta ishlanmoqda…',
+  },
   access_denied: { ru: '⛔ Недостаточно прав.', uz: '⛔ Ruxsat yetarli emas.' },
   not_registered: {
     ru: 'Пожалуйста, завершите регистрацию — отправьте /start',

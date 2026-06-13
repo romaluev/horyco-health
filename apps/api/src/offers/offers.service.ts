@@ -23,6 +23,7 @@ import { OffersRepository } from './offers.repository';
 import { OFFER_BROADCASTER, type IOfferBroadcaster } from '../common/offers/offer-broadcaster';
 import { CreateOfferDto, UpdateOfferDto } from './dto/offer.dto';
 import { OfferRecipientSegment } from './dto/offer-recipient-segment.dto';
+import { OfferRecipientViewDto, OfferRecipientLineDto } from './dto/offer-recipient-view.dto';
 
 /** Default offer TTL from send time (days). */
 const OFFER_TTL_DAYS = 7;
@@ -282,9 +283,50 @@ export class OffersService implements OnModuleInit {
         quantity: l.quantity,
       })),
     );
-    await this.offers.setRecipientStatus(actor.businessId, recipient.id, OfferRecipientStatus.Opened, {
-      openedAt: new Date(),
-    });
+    await this.markRecipientOpened(actor.businessId, recipient.id);
+  }
+
+  async getRecipientOffer(recipientId: string): Promise<OfferRecipientViewDto> {
+    const actor = this.actorCtx.getOrThrow();
+    const recipient = await this.offers.findRecipientById(actor.businessId, recipientId);
+    if (!recipient || recipient.offer.businessId !== actor.businessId) {
+      throw new NotFoundError('Предложение не найдено');
+    }
+    if (recipient.clientId !== actor.userId) {
+      throw new NotFoundError('Предложение не найдено');
+    }
+
+    await this.markRecipientOpened(actor.businessId, recipient.id);
+
+    const cartLines = compositionToCartLines(recipient.offer.composition);
+    const { items, total } = await this.linePricing.buildOrderItems(actor.businessId, cartLines);
+    const lines: OfferRecipientLineDto[] = items.map((item, idx) => ({
+      kind: item.kind,
+      menuItemId: item.menuItemId,
+      comboId: item.comboId,
+      quantity: item.quantity,
+      nameRu: item.nameRuSnapshot,
+      nameUz: item.nameUzSnapshot,
+      calories: item.caloriesAtOrder,
+      lineTotal: item.priceAtOrder.multiply(item.quantity).toString(),
+    }));
+
+    return {
+      descriptionRu: recipient.offer.descriptionRu,
+      descriptionUz: recipient.offer.descriptionUz,
+      estimatedTotal: total.toString(),
+      lines,
+    };
+  }
+
+  private async markRecipientOpened(businessId: string, recipientId: string): Promise<void> {
+    await this.offers.setRecipientStatus(
+      businessId,
+      recipientId,
+      OfferRecipientStatus.Opened,
+      { openedAt: new Date() },
+      [OfferRecipientStatus.Sent],
+    );
   }
 
   private async requireDraft(businessId: string, id: string): Promise<Offer> {
