@@ -80,4 +80,9 @@ export class BusinessAdminController {
   listChats() {
     return this.admin.listChats();
   }
+
+  @Post('chats/reset')
+  resetChatBindings() {
+    return this.admin.resetChatBindings();
+  }
 }

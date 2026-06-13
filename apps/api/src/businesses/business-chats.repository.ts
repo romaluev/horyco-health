@@ -46,4 +46,13 @@ export class BusinessChatsRepository extends TransactionalRepository<BusinessCha
       [businessId, chatId],
     );
   }
+
+  /** Сбросить все привязки (смена бота — нужен /bind заново в каждой группе). */
+  async markAllBroken(businessId: string): Promise<void> {
+    await this.txHost.tx.query(
+      `UPDATE business_chats SET status = 'broken', updated_at = now()
+       WHERE business_id = $1 AND status = 'active'`,
+      [businessId],
+    );
+  }
 }

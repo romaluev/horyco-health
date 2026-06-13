@@ -85,6 +85,7 @@ export function useSetBotToken() {
     onSuccess: (data) => {
       qc.setQueryData(['b', 'settings'], data);
       qc.invalidateQueries({ queryKey: ['b', 'checklist'] });
+      qc.invalidateQueries({ queryKey: ['b', 'chats'] });
     },
   });
 }
@@ -96,6 +97,7 @@ export function useRemoveBotToken() {
     onSuccess: (data) => {
       qc.setQueryData(['b', 'settings'], data);
       qc.invalidateQueries({ queryKey: ['b', 'checklist'] });
+      qc.invalidateQueries({ queryKey: ['b', 'chats'] });
     },
   });
 }
@@ -107,6 +109,7 @@ export function useReconnectBot() {
     onSuccess: (data) => {
       qc.setQueryData(['b', 'settings'], data);
       qc.invalidateQueries({ queryKey: ['b', 'checklist'] });
+      qc.invalidateQueries({ queryKey: ['b', 'chats'] });
     },
   });
 }
@@ -147,6 +150,17 @@ export function useBusinessChats() {
   return useQuery({
     queryKey: ['b', 'chats'],
     queryFn: () => api<BusinessChatRow[]>('/b/chats'),
+  });
+}
+
+export function useResetChatBindings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<BusinessChatRow[]>('/b/chats/reset', { method: 'POST' }),
+    onSuccess: (data) => {
+      qc.setQueryData(['b', 'chats'], data);
+      qc.invalidateQueries({ queryKey: ['b', 'checklist'] });
+    },
   });
 }
 

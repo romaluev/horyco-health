@@ -106,6 +106,7 @@ export class BusinessAdminService {
 
     if (prevBotId && prevBotId !== newBotId) {
       await this.menu.clearPhotoFileIds(businessId);
+      await this.chats.markAllBroken(businessId);
     }
 
     this.botTokens.invalidate(businessId);
@@ -121,6 +122,7 @@ export class BusinessAdminService {
     const business = await this.requireBusiness();
 
     await this.botConnector.disconnect(businessId);
+    await this.chats.markAllBroken(businessId);
     business.botTokenEnc = null;
     business.botId = null;
     business.botUsername = null;
@@ -348,6 +350,14 @@ export class BusinessAdminService {
     return [ChatKind.Cook, ChatKind.Courier, ChatKind.Admin, ChatKind.Channel].map(
       (kind) => new BusinessChatDto(kind, byKind.get(kind)),
     );
+  }
+
+  @Transactional()
+  async resetChatBindings(): Promise<BusinessChatDto[]> {
+    const businessId = this.businessId();
+    await this.requireBusiness();
+    await this.chats.markAllBroken(businessId);
+    return this.listChats();
   }
 
   private async requireBusiness() {

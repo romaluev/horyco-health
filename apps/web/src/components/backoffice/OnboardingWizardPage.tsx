@@ -78,7 +78,7 @@ export function OnboardingWizardPage() {
           <p className="adm-muted">{t('bo_bind_hint')}</p>
           <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0' }}>
             {BIND_COMMANDS.map(({ kind, cmd }) => {
-              const bound = chats?.find((c) => c.kind === kind && c.chatId);
+              const bound = chats?.find((c) => c.kind === kind && c.chatId && c.status === 'active');
               return (
                 <li key={kind} style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <code>{cmd}</code>

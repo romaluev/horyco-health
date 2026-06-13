@@ -8,12 +8,19 @@ import {
   useRemoveBotToken,
   useReconnectBot,
   useBusinessChats,
+  useResetChatBindings,
 } from '@/lib/backoffice-queries';
 import { ApiError } from '@/lib/api';
 import { useT } from '@/lib/i18n';
 import Link from 'next/link';
 
 type BotFeedback = { type: 'success' | 'error'; message: string };
+
+const BIND_COMMANDS = [
+  { kind: 'cook', cmd: '/bind cook', labelKey: 'bo_bind_cmd_cook' as const },
+  { kind: 'courier', cmd: '/bind courier', labelKey: 'bo_bind_cmd_courier' as const },
+  { kind: 'admin', cmd: '/bind admin', labelKey: 'bo_bind_cmd_admin' as const },
+];
 
 function mutationErrorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
@@ -26,6 +33,7 @@ export function BackofficeSettings() {
   const setBot = useSetBotToken();
   const removeBot = useRemoveBotToken();
   const reconnectBot = useReconnectBot();
+  const resetChats = useResetChatBindings();
   const { data: chats } = useBusinessChats();
 
   const [form, setForm] = useState({
@@ -80,12 +88,16 @@ export function BackofficeSettings() {
   const handleConnect = async () => {
     const trimmed = token.trim();
     if (!trimmed) return;
+    const wasReplace = showReplaceToken;
     setBotFeedback(null);
     try {
       await setBot.mutateAsync(trimmed);
       setToken('');
       setShowReplaceToken(false);
-      setBotFeedback({ type: 'success', message: t('bo_bot_connected_ok') });
+      setBotFeedback({
+        type: 'success',
+        message: wasReplace ? t('bo_bot_replaced_ok') : t('bo_bot_connected_ok'),
+      });
     } catch (err) {
       setBotFeedback({ type: 'error', message: mutationErrorMessage(err, t('error_generic')) });
     }
@@ -114,7 +126,24 @@ export function BackofficeSettings() {
     }
   };
 
-  const botBusy = setBot.isPending || removeBot.isPending || reconnectBot.isPending;
+  const handleResetChats = async () => {
+    setBotFeedback(null);
+    try {
+      await resetChats.mutateAsync();
+      setBotFeedback({ type: 'success', message: t('bo_reset_chats_ok') });
+    } catch (err) {
+      setBotFeedback({ type: 'error', message: mutationErrorMessage(err, t('error_generic')) });
+    }
+  };
+
+  const chatStatusLabel = (kind: string) => {
+    const row = chats?.find((c) => c.kind === kind);
+    if (!row?.chatId) return t('bo_chat_unbound');
+    if (row.status === 'active') return t('bo_chat_active');
+    return t('bo_chat_broken');
+  };
+
+  const botBusy = setBot.isPending || removeBot.isPending || reconnectBot.isPending || resetChats.isPending;
 
   return (
     <div>
@@ -242,15 +271,38 @@ export function BackofficeSettings() {
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h3>{t('bo_chats')}</h3>
-        {chats?.map((c) => (
-          <div key={c.kind} className="row" style={{ marginBottom: 6 }}>
-            <span>{c.kind}</span>
-            <span className="muted">{c.chatId ? `✅ ${c.title ?? c.chatId}` : '—'}</span>
-          </div>
-        ))}
-        <p className="muted" style={{ marginTop: 8, fontSize: 13 }}>
-          {t('bo_bind_hint')}
+        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+          {t('bo_reset_chats_hint')}
         </p>
+        {BIND_COMMANDS.map(({ kind, cmd, labelKey }) => {
+          const row = chats?.find((c) => c.kind === kind);
+          const active = row?.chatId && row.status === 'active';
+          return (
+            <div key={kind} className="row" style={{ marginBottom: 8, alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <div>{t(labelKey)}</div>
+                <code style={{ fontSize: 12 }}>{cmd}</code>
+              </div>
+              <span className="muted" style={{ textAlign: 'right', fontSize: 13 }}>
+                {active ? `✅ ${row?.title ?? row?.chatId}` : chatStatusLabel(kind)}
+              </span>
+            </div>
+          );
+        })}
+        {settings?.hasBotToken && (
+          <div className="seg" style={{ marginTop: 12 }}>
+            <button
+              className="btn"
+              disabled={botBusy}
+              onClick={() => void handleResetChats()}
+            >
+              {t('bo_reset_chats')}
+            </button>
+            <Link href="/b/onboarding/" className="btn btn-primary">
+              {t('bo_onboarding_continue')}
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="field">

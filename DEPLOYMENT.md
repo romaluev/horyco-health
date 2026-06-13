@@ -118,7 +118,7 @@ Set in Coolify → Application → **Environment Variables**.
 | Action | When to use | What happens |
 | ------ | ----------- | -------------- |
 | **Подключить** | No bot token yet (`hasBotToken=false`) | Validates token via Telegram `getMe`, encrypts and saves token, registers webhook (requires `PUBLIC_URL`), sets bot status to `webhook`. |
-| **Заменить бота** | Switch to a different `@BotFather` bot without downtime | Same as connect but while a bot is already linked. If the new bot has a **different bot ID**, menu photo Telegram `file_id`s are cleared — republish dishes/combos to the channel. |
+| **Заменить бота** | Switch to a different `@BotFather` bot without downtime | Same as connect but while a bot is already linked. If the new bot has a **different bot ID**, menu photo Telegram `file_id`s are cleared and **group bindings are reset** — add the new bot to each group and run `/bind cook`, `/bind admin`, etc. again. |
 | **Переподключить** | Bot status is `error`/`off` but token is still saved | Re-runs connect + webhook registration. Surfaces API errors if `TOKEN_ENC_KEY` changed (decrypt fail) or `PUBLIC_URL` is missing. |
 | **Отключить** | Remove bot integration entirely | Drops webhook, clears token from DB. **Menu/orders/clients are kept.** Prefer **Заменить** when swapping bots. |
 
@@ -311,6 +311,7 @@ Typical pattern: bot works briefly, then **all users** stop getting replies; red
 - If `TOKEN_ENC_KEY` was rotated, paste the bot token again (**Заменить бота** or **Подключить**).
 - Use **Переподключить** when token is saved but status is `error`/`off`.
 - Prefer **Заменить бота** over **Отключить** when switching bots — disconnect drops webhook and clears the token.
+- After replacing a bot, use **Сбросить привязки групп** in `/b` → Settings if onboarding still shows groups as done, then `/bind` in each Telegram group with the new bot added as member.
 
 ### Schema / migration issues
 
