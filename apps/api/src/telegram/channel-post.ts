@@ -1,6 +1,7 @@
 import { Markup } from 'telegraf';
 import { MenuItem } from '../menu/entities/menu-item.entity';
-import { Lang, t, esc, formatMoney } from './i18n/bot-i18n';
+import { Lang, t } from './i18n/bot-i18n';
+import { channelComboPostLines, channelDishPostLines } from './message-formatters';
 
 /**
  * Пост блюда для канала — общий источник для бота (StaffUpdate) и публикации с сайта
@@ -9,16 +10,7 @@ import { Lang, t, esc, formatMoney } from './i18n/bot-i18n';
 
 /** Двуязычный текст поста блюда (канал публичный для обеих аудиторий). */
 export function channelPostText(item: MenuItem): string {
-  const nameRu = item.nameRu?.trim();
-  const nameUz = item.nameUz?.trim();
-  // В посте — сначала UZ-название, затем RU.
-  const nameLine =
-    nameRu && nameUz && nameRu !== nameUz ? `${nameUz} / ${nameRu}` : nameUz || nameRu || '';
-
-  // В посте/боте — только название и цена (описание показывается лишь в Mini App).
-  const lines = [`🍽 <b>${esc(nameLine)}</b>`];
-  lines.push(`💵 ${esc(formatMoney(item.price.toString()))} сум / so‘m`);
-  return lines.join('\n');
+  return channelDishPostLines(item).join('\n');
 }
 
 /**
@@ -49,19 +41,7 @@ export function channelPostComboText(combo: {
   price: { toString(): string };
   originalPrice?: { toString(): string } | null;
 }): string {
-  const nameRu = combo.nameRu?.trim();
-  const nameUz = combo.nameUz?.trim();
-  const nameLine =
-    nameRu && nameUz && nameRu !== nameUz ? `${nameUz} / ${nameRu}` : nameUz || nameRu || '';
-  const lines = [`🍱 <b>${esc(nameLine)}</b>`];
-  if (combo.originalPrice) {
-    lines.push(
-      `💵 <s>${esc(formatMoney(combo.originalPrice.toString()))}</s> ${esc(formatMoney(combo.price.toString()))} сум / so‘m`,
-    );
-  } else {
-    lines.push(`💵 ${esc(formatMoney(combo.price.toString()))} сум / so‘m`);
-  }
-  return lines.join('\n');
+  return channelComboPostLines(combo).join('\n');
 }
 
 /** Inline-кнопки под постом комбо: deep link ?start=combo_<id>. */

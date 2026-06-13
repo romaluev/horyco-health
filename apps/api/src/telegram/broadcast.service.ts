@@ -9,7 +9,7 @@ import { BotRegistryService } from './engine/bot-registry.service';
 import { BusinessesRepository } from '../businesses/businesses.repository';
 import { LinePricingService } from '../orders/pricing/build-order-items';
 import { newLineId, normalizeCartLine } from '../orders/cart/cart-line.types';
-import { esc, formatMoney, t, Lang } from './i18n/bot-i18n';
+import { esc, formatMoney, t, pick, Lang } from './i18n/bot-i18n';
 
 /** FIFO broadcast ~28 msg/s per bot with 429 retry. */
 @Injectable()
@@ -239,9 +239,14 @@ export class BroadcastService implements OnModuleInit {
     for (const l of lines) {
       const built = await this.linePricing.buildOrderItems(businessId, [l]);
       const item = built.items[0];
-      parts.push(`• ${esc(item.nameRuSnapshot)} ×${l.quantity}`);
+      const name = pick(lang, item.nameRuSnapshot, item.nameUzSnapshot);
+      const kcalSuffix =
+        item.caloriesAtOrder != null
+          ? ` · 🔥 ${formatMoney(item.caloriesAtOrder)} ${t(lang, 'unit_kcal')}`
+          : '';
+      parts.push(`• ${esc(name)} ×${l.quantity}${kcalSuffix}`);
     }
-    parts.push(`💵 ${esc(formatMoney(total.toString()))} сум`);
+    parts.push(`💵 ${esc(formatMoney(total.toString()))} ${esc(t(lang, 'currency'))}`);
     return parts.join('\n');
   }
 }

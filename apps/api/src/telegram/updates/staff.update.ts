@@ -21,6 +21,7 @@ import { BotUiService } from '../bot-ui.service';
 import { BotMenuAdminService } from '../bot-menu-admin.service';
 import { t, esc, pick, statusText, Lang } from '../i18n/bot-i18n';
 import { channelPostText, orderDeepLinkButton } from '../channel-post';
+import { transitionToast } from '../message-formatters';
 
 /**
  * Действия персонала (повар/курьер/админ): смена статуса заказа из inline-кнопок панели.
@@ -486,7 +487,7 @@ export class StaffUpdate {
 
     try {
       const updated = await this.orders.transition(orderId, target as OrderStatus);
-      await ctx.answerCbQuery(statusText(lang, updated.status));
+      await ctx.answerCbQuery(transitionToast(lang, target as OrderStatus, updated.number));
     } catch (err) {
       if (err instanceof DomainError) {
         await ctx.answerCbQuery(err.message);

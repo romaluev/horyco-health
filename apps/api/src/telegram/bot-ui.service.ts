@@ -15,6 +15,7 @@ import { CombosRepository } from '../combos/combos.repository';
 import { BotStateService } from './bot-state.service';
 import { Lang, t, categoryName, pick, formatMoney, esc } from './i18n/bot-i18n';
 import { mainMenuKeyboard, stepperRow, detailButtonRow, comboButtonRow, profileButtonRow } from './telegram-keyboards';
+import { comboTeaserLines, dishTeaserText } from './message-formatters';
 
 /**
  * Презентационный слой бота. Витрина — карточки блюд (фото + степпер); количество правится
@@ -241,9 +242,7 @@ export class BotUiService {
       await this.sendDishCard(ctx, lang, item, 0);
       return;
     }
-    const name = pick(lang, item.nameRu, item.nameUz);
-    const price = `${formatMoney(item.price.toString())} ${t(lang, 'currency')}`;
-    await ctx.reply(`🍽 <b>${esc(name)}</b>\n💵 ${esc(price)}`, {
+    await ctx.reply(dishTeaserText(lang, item, 1), {
       parse_mode: 'HTML',
       reply_markup: { inline_keyboard: [row] },
     });
@@ -257,7 +256,7 @@ export class BotUiService {
     portion = 1,
   ): Promise<void> {
     const lang = this.langOf(client);
-    const text = this.dishCardCaption(lang, item, portion);
+    const text = dishTeaserText(lang, item, portion);
     const orderBtn: InlineKeyboardButton = {
       text: t(lang, 'btn_order_now'),
       callback_data: `quick:order:item:${item.id}:${portion}`,
@@ -287,15 +286,12 @@ export class BotUiService {
       return;
     }
     const snapshots = await this.combos.resolveSlotSelections(bizId, combo, {});
-    const name = pick(lang, combo.nameRu, combo.nameUz);
-    const lines = [`🍱 <b>${esc(name)}</b>`, `💵 ${esc(formatMoney(combo.price.toString()))} ${esc(t(lang, 'currency'))}`];
-    if (snapshots.length) {
-      lines.push(`<i>${esc(t(lang, 'quick_order_combo_includes'))}:</i>`);
-      for (const slot of snapshots) {
-        const itemName = pick(lang, slot.itemNameRu, slot.itemNameUz);
-        lines.push(`• ${esc(itemName)}`);
-      }
+    let totalCalories = 0;
+    for (const slot of snapshots) {
+      const mi = await this.menu.findById(bizId, slot.menuItemId);
+      if (mi?.nutrition?.calories) totalCalories += mi.nutrition.calories;
     }
+    const lines = comboTeaserLines(lang, combo, snapshots, totalCalories || null);
     const orderBtn: InlineKeyboardButton = {
       text: t(lang, 'btn_order_now'),
       callback_data: `quick:order:combo:${comboId}`,

@@ -61,6 +61,13 @@ export function mapsLinkButton(lang: Lang, lat: number, lng: number): InlineKeyb
   return Markup.button.url(t(lang, 'btn_open_maps'), `https://maps.google.com/?q=${lat},${lng}`);
 }
 
+/** URL-кнопка «Позвонить клиенту». */
+export function callCustomerButton(lang: Lang, phone: string): InlineKeyboardButton {
+  const digits = phone.replace(/[^\d+]/g, '');
+  const tel = digits.startsWith('+') ? digits : `+${digits.replace(/^\+/, '')}`;
+  return Markup.button.url(t(lang, 'btn_call_customer'), `tel:${tel}`);
+}
+
 /** Reply-клавиатура «Поделиться контактом». */
 export function shareContactKeyboard(lang: Lang) {
   return Markup.keyboard([[Markup.button.contactRequest(t(lang, 'share_contact'))]])

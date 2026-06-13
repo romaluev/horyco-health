@@ -5,16 +5,18 @@ export interface OrderNotifyContext {
   total?: string;
   paymentMethod?: PaymentMethod;
   refundAmount?: string;
+  itemSummary?: string;
+  address?: string;
 }
 
 const ORDER_NOTIFY_MESSAGES: Partial<Record<OrderStatus, Record<Language, string>>> = {
   [OrderStatus.Pending]: {
-    ru: 'принят, готовим 🍳',
-    uz: 'qabul qilindi, tayyorlayapmiz 🍳',
+    ru: 'принят! Скоро начнём готовить 🍳',
+    uz: 'qabul qilindi! Tez orada tayyorlashni boshlaymiz 🍳',
   },
   [OrderStatus.Cooking]: {
-    ru: 'принят, готовим 🍳',
-    uz: 'qabul qilindi, tayyorlayapmiz 🍳',
+    ru: 'повар принял заказ, готовим 👨‍🍳',
+    uz: 'oshpaz buyurtmani qabul qildi, tayyorlayapmiz 👨‍🍳',
   },
   [OrderStatus.Ready]: {
     ru: 'готов, передаём курьеру 🍽',
@@ -54,12 +56,18 @@ export function orderClientNotifyMessage(
     lang === Language.Uz ? `Buyurtma #${ctx.orderNumber}: ` : `Заказ #${ctx.orderNumber}: `;
   const parts = [`${prefix}${body}`];
 
-  if (ctx.total && status === OrderStatus.Pending) {
+  if (ctx.itemSummary && status !== OrderStatus.Done && status !== OrderStatus.Cancelled) {
+    parts.push(ctx.itemSummary);
+  }
+  if (ctx.total && (status === OrderStatus.Pending || status === OrderStatus.Cooking)) {
     parts.push(lang === Language.Uz ? `Jami: ${ctx.total} so‘m` : `Итого: ${ctx.total} сум`);
   }
   if (ctx.paymentMethod && status === OrderStatus.Pending) {
     const pay = PAYMENT_LABEL[ctx.paymentMethod][lang];
     parts.push(lang === Language.Uz ? `To‘lov: ${pay}` : `Оплата: ${pay}`);
+  }
+  if (status === OrderStatus.Delivering && ctx.address?.trim()) {
+    parts.push(lang === Language.Uz ? `📍 ${ctx.address}` : `📍 ${ctx.address}`);
   }
   if (status === OrderStatus.Cancelled && ctx.refundAmount) {
     parts.push(

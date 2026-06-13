@@ -9,24 +9,33 @@ describe('orderClientNotifyMessage', () => {
     assert.equal(msg, null);
   });
 
-  it('returns preparing copy for pending and cooking', () => {
+  it('returns distinct copy for pending and cooking', () => {
     const pending = orderClientNotifyMessage(Language.Ru, OrderStatus.Pending, {
       orderNumber: 42,
       total: '25000',
+      itemSummary: '🍽 Курица ×1',
     });
     assert.match(pending!, /#42/);
-    assert.match(pending!, /готовим/i);
+    assert.match(pending!, /Скоро начнём/i);
+    assert.match(pending!, /Курица/);
     assert.match(pending!, /25000/);
 
-    const cooking = orderClientNotifyMessage(Language.Ru, OrderStatus.Cooking, { orderNumber: 42 });
+    const cooking = orderClientNotifyMessage(Language.Ru, OrderStatus.Cooking, {
+      orderNumber: 42,
+      itemSummary: '🍽 Курица ×1',
+    });
     assert.match(cooking!, /#42/);
-    assert.match(cooking!, /готовим/i);
+    assert.match(cooking!, /повар принял/i);
+    assert.doesNotMatch(cooking!, /Скоро начнём/i);
   });
 
-  it('returns pending acknowledgment on create', () => {
-    const msg = orderClientNotifyMessage(Language.Ru, OrderStatus.Pending, { orderNumber: 1 });
-    assert.match(msg!, /#1/);
-    assert.match(msg!, /готовим/i);
+  it('includes address on delivering', () => {
+    const msg = orderClientNotifyMessage(Language.Ru, OrderStatus.Delivering, {
+      orderNumber: 5,
+      address: 'Подъезд 2',
+    });
+    assert.match(msg!, /Курьер выехал/i);
+    assert.match(msg!, /Подъезд 2/);
   });
 
   it('includes refund note on cancelled balance order', () => {

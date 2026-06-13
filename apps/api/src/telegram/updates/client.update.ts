@@ -35,6 +35,7 @@ import {
   statusText,
 } from '../i18n/bot-i18n';
 import { languageKeyboard, shareContactKeyboard, shareLocationKeyboard, skipLandmarkKeyboard } from '../telegram-keyboards';
+import { quickOrderConfirmation } from '../message-formatters';
 import { extractActorFromClient } from '../bot-actor.util';
 import { invalidateActorCache } from '../bot-context.middleware';
 import type { BotSession } from '../bot-state.service';
@@ -1010,12 +1011,17 @@ export class ClientUpdate {
         await ctx.answerCbQuery(t(lang, 'offer_accept_ok'));
         return;
       }
-      let msg = t(lang, 'offer_accept_ok');
-      if (result.priceNotice) {
-        msg += `\n${result.priceNotice}`;
-      }
       await ctx.answerCbQuery();
-      await ctx.reply(msg);
+      if (result.orderId) {
+        const order = await this.orders.getMy(result.orderId);
+        let msg = quickOrderConfirmation(lang, order);
+        if (result.priceNotice) {
+          msg += `\n${result.priceNotice}`;
+        }
+        await ctx.reply(msg, { parse_mode: 'HTML' });
+      } else {
+        await ctx.reply(t(lang, 'offer_accept_ok'));
+      }
     } catch (e) {
       const err = e as DomainError;
       if (err.message === 'NEED_ADDRESS') {
@@ -1103,7 +1109,7 @@ export class ClientUpdate {
 
     const customerBefore = await this.customers.find(businessId, client.id);
     const order = await this.orders.create({ paymentMethod: method });
-    await this.editOrReply(ctx, `${t(lang, 'quick_order_created')} #${order.number} ✅`);
+    await this.editOrReply(ctx, quickOrderConfirmation(lang, order));
     const customerAfter = await this.customers.find(businessId, client.id);
     if ((customerBefore?.ordersCount ?? 0) === 0 && (customerAfter?.ordersCount ?? 0) === 1) {
       await ctx.reply(t(lang, 'first_order_congrats'));

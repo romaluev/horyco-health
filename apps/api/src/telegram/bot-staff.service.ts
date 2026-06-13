@@ -27,7 +27,7 @@ export class BotStaffService {
     await this.renderOrders(
       ctx,
       client,
-      [OrderStatus.Pending, OrderStatus.Cooking],
+      [OrderStatus.Pending, OrderStatus.Confirmed, OrderStatus.Cooking],
       'cook_panel_title',
       'cook_no_orders',
     );
@@ -71,7 +71,7 @@ export class BotStaffService {
         OrderStatus.Delivering,
       ],
       'admin_orders',
-      'cook_no_orders',
+      'admin_no_orders',
     );
   }
 
@@ -81,7 +81,7 @@ export class BotStaffService {
     client: Client,
     statuses: OrderStatus[],
     titleKey: 'cook_panel_title' | 'courier_panel_title' | 'admin_orders',
-    emptyKey: 'cook_no_orders' | 'courier_no_orders',
+    emptyKey: 'cook_no_orders' | 'courier_no_orders' | 'admin_no_orders',
   ): Promise<void> {
     const lang = this.langOf(client);
     const all = await this.orders.listAll();
