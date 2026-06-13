@@ -6,29 +6,35 @@
 @import 'tailwindcss/utilities.css' layer(utilities);
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--adm-bg);
+  --color-foreground: var(--adm-text);
+  --color-card: var(--adm-surface);
+  --color-card-foreground: var(--adm-text);
+  --color-popover: var(--adm-surface);
+  --color-popover-foreground: var(--adm-text);
+  --color-primary: var(--adm-primary);
+  --color-primary-foreground: var(--adm-on-primary);
+  --color-secondary: var(--adm-surface-2);
+  --color-secondary-foreground: var(--adm-text);
+  --color-muted: var(--adm-surface-2);
+  --color-muted-foreground: var(--adm-text-muted);
+  --color-accent: color-mix(in srgb, var(--adm-primary) 12%, transparent);
+  --color-accent-foreground: var(--adm-primary);
+  --color-destructive: var(--adm-danger);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--adm-border);
+  --color-input: var(--adm-border);
+  --color-ring: var(--adm-ring);
+  --radius-sm: calc(var(--adm-radius) - 4px);
+  --radius-md: calc(var(--adm-radius) - 2px);
+  --radius-lg: var(--adm-radius);
+  --radius-xl: calc(var(--adm-radius) + 4px);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
 }
 
 /*
@@ -46,6 +52,25 @@
   --card: var(--tg-theme-section-bg-color, #ffffff);
   --danger: #e0394f;
   --radius: 12px;
+
+  /* Back office palette (global so Radix portals on document.body resolve tokens) */
+  --adm-primary: #1e40af;
+  --adm-primary-hover: #1d4ed8;
+  --adm-on-primary: #ffffff;
+  --adm-accent: #d97706;
+  --adm-bg: #f8fafc;
+  --adm-surface: #ffffff;
+  --adm-surface-2: #f1f5f9;
+  --adm-text: #0f172a;
+  --adm-text-muted: #64748b;
+  --adm-border: #e2e8f0;
+  --adm-danger: #dc2626;
+  --adm-success: #059669;
+  --adm-ring: #1e40af;
+  --adm-sidebar-w: 260px;
+  --adm-topbar-h: 56px;
+  --adm-radius: 10px;
+  --adm-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
 html[data-theme='dark'] {
@@ -57,6 +82,16 @@ html[data-theme='dark'] {
   --button-text: #ffffff;
   --secondary-bg: #1f2023;
   --card: #1f2023;
+
+  --adm-primary: #3b82f6;
+  --adm-primary-hover: #60a5fa;
+  --adm-bg: #0f172a;
+  --adm-surface: #1e293b;
+  --adm-surface-2: #334155;
+  --adm-text: #f1f5f9;
+  --adm-text-muted: #94a3b8;
+  --adm-border: #334155;
+  --adm-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 * {
@@ -566,61 +601,10 @@ button {
 
 /* ───────── admin shell (platform + backoffice) ───────── */
 .adm-root {
-  /* shadcn/ui tokens mapped to admin theme */
-  --background: var(--adm-bg);
-  --foreground: var(--adm-text);
-  --card: var(--adm-surface);
-  --card-foreground: var(--adm-text);
-  --popover: var(--adm-surface);
-  --popover-foreground: var(--adm-text);
-  --primary: var(--adm-primary);
-  --primary-foreground: var(--adm-on-primary);
-  --secondary: var(--adm-surface-2);
-  --secondary-foreground: var(--adm-text);
-  --muted: var(--adm-surface-2);
-  --muted-foreground: var(--adm-text-muted);
-  --accent: color-mix(in srgb, var(--adm-primary) 12%, transparent);
-  --accent-foreground: var(--adm-primary);
-  --destructive: var(--adm-danger);
-  --destructive-foreground: #ffffff;
-  --border: var(--adm-border);
-  --input: var(--adm-border);
-  --ring: var(--adm-ring);
-  --radius: var(--adm-radius);
-
-  --adm-primary: #1e40af;
-  --adm-primary-hover: #1d4ed8;
-  --adm-on-primary: #ffffff;
-  --adm-accent: #d97706;
-  --adm-bg: #f8fafc;
-  --adm-surface: #ffffff;
-  --adm-surface-2: #f1f5f9;
-  --adm-text: #0f172a;
-  --adm-text-muted: #64748b;
-  --adm-border: #e2e8f0;
-  --adm-danger: #dc2626;
-  --adm-success: #059669;
-  --adm-ring: #1e40af;
-  --adm-sidebar-w: 260px;
-  --adm-topbar-h: 56px;
-  --adm-radius: 10px;
-  --adm-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
   min-height: 100dvh;
   background: var(--adm-bg);
   color: var(--adm-text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-}
-
-html[data-theme='dark'] .adm-root {
-  --adm-primary: #3b82f6;
-  --adm-primary-hover: #60a5fa;
-  --adm-bg: #0f172a;
-  --adm-surface: #1e293b;
-  --adm-surface-2: #334155;
-  --adm-text: #f1f5f9;
-  --adm-text-muted: #94a3b8;
-  --adm-border: #334155;
-  --adm-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .adm-layout {
