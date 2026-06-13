@@ -15,6 +15,8 @@
     "build": "npm run shared:build && npm run web:build && npm run api:build",
     "api:dev": "npm run start:dev -w @eatfit/api",
     "dev": "npm run api:dev",
+    "menu:import": "node apps/api/scripts/import-eatfit-menu.mjs",
+    "menu:parse": "node apps/api/scripts/parse-menu-docx.mjs",
     "start": "node apps/api/dist/main.js"
   },
   "keywords": [
