@@ -222,7 +222,7 @@ In **polling mode** (local dev), Telegram allows **one long-polling connection**
 | Control          | Config                                                        |
 | ---------------- | ------------------------------------------------------------- |
 | CSP              | Helmet; `CSP_REPORT_ONLY=true` (default) → `false` to enforce |
-| Rate limit       | `@nestjs/throttler`: auth 15/min, webhooks 600/min, default 120/min, `/b/offers` 300/min |
+| Rate limit       | `@nestjs/throttler`: auth 15/min, webhooks 600/min, default 240/min, `/b/*` staff API skipped, `/cart` 300/min, `/b/offers` 300/min |
 | Tenant isolation | Business-scoped JWT; run `cd apps/api && npm test`            |
 
 
@@ -317,6 +317,13 @@ Typical pattern: bot works briefly, then **all users** stop getting replies; red
 
 - Caused by the offers wizard auto-saving draft via `PATCH /b/offers/:id` in a loop (fixed in web). **Hard-refresh** `/b/offers` after deploy — old cached JS keeps looping until reload.
 - Progress polling while `sending` is every 5s; stop refreshing if you see repeated 429s.
+
+### Bulk order acceptance in Telegram groups (cook / courier)
+
+- Rapid clicks on many order buttons used to block: each callback waited for DB + 3 group message edits before Telegram got `answerCbQuery`, so buttons looked frozen and users clicked again.
+- **Fix (API):** immediate callback ack, per-order lock against double-clicks, parallel group card updates.
+- **429 in logs during bursts** is usually **not** webhooks (they skip throttle) — check open `/b/offers` tabs (hard-refresh) or many clients in Mini App hitting `/cart`.
+- Accept orders at a steady pace (~1–2/sec) if cards lag; cards update asynchronously after the click is acknowledged.
 
 ### Schema / migration issues
 

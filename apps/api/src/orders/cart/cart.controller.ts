@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { OffersService } from '../../offers/offers.service';
 import { CartService } from './cart.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
@@ -7,6 +8,7 @@ import { PatchCartLineDto, SetCartLinesDto, UpsertCartLineDto } from './dto/cart
 
 /** Корзина текущего клиента (actor из CLS). */
 @Controller('cart')
+@Throttle({ default: { limit: 300, ttl: 60_000 } })
 export class CartController {
   constructor(
     private readonly cart: CartService,

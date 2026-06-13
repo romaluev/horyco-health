@@ -21,8 +21,10 @@ interface Timestamped<T> {
 export class BotStateService {
   private readonly sessions = new Map<string, Timestamped<BotSession>>();
   private readonly processedCallbacks = new Map<string, number>();
+  private readonly orderTransitionLocks = new Map<string, number>();
   private readonly menuMessages = new Map<string, Timestamped<number[]>>();
   private static readonly CALLBACK_DEDUP_TTL_MS = 120_000;
+  private static readonly ORDER_TRANSITION_LOCK_MS = 45_000;
   private static readonly SESSION_TTL_MS = 86_400_000; // 24h
   private static readonly MAX_SESSIONS = 10_000;
   private static readonly MAX_MENU_MESSAGES = 10_000;
@@ -92,6 +94,25 @@ export class BotStateService {
     if (this.processedCallbacks.has(key)) return true;
     this.processedCallbacks.set(key, now);
     return false;
+  }
+
+  /** Blocks concurrent transitions for the same order (rapid button clicks in groups). */
+  tryAcquireOrderTransition(orderId: string, now: number): boolean {
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const key = `${businessId}:${orderId}`;
+    for (const [id, ts] of this.orderTransitionLocks) {
+      if (now - ts > BotStateService.ORDER_TRANSITION_LOCK_MS) {
+        this.orderTransitionLocks.delete(id);
+      }
+    }
+    if (this.orderTransitionLocks.has(key)) return false;
+    this.orderTransitionLocks.set(key, now);
+    return true;
+  }
+
+  releaseOrderTransition(orderId: string): void {
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    this.orderTransitionLocks.delete(`${businessId}:${orderId}`);
   }
 
   private evictStaleSessions(now: number): void {

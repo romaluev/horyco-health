@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Role } from '@eatfit/shared';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { OrdersService } from '../orders.service';
@@ -7,6 +8,7 @@ import { UpdateStatusDto } from '../dto/update-status.dto';
 
 /** Управление заказами: обзор (админ) и смена статусов (персонал; права — в FSM). */
 @Controller('admin/orders')
+@SkipThrottle()
 export class OrdersAdminController {
   constructor(private readonly orders: OrdersService) {}
 

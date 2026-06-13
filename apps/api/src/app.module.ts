@@ -53,7 +53,7 @@ import { APP_GUARD } from '@nestjs/core';
     // ModifiersModule, CombosModule — via MenuModule / TelegramModule (duplicate deadlocks Nest).
     AnalyticsModule,
     ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60_000, limit: 120 },
+      { name: 'default', ttl: 60_000, limit: 240 },
       { name: 'auth', ttl: 60_000, limit: 15 },
       { name: 'webhook', ttl: 60_000, limit: 600 },
     ]),

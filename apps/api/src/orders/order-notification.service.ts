@@ -31,8 +31,10 @@ export class OrderNotificationService {
     const order = await this.orders.findById(businessId, orderId);
     if (!order) return;
 
-    await this.notifyClient(order, response, newStatus);
-    await this.syncGroupCards(businessId, order, response, newStatus);
+    await Promise.all([
+      this.notifyClient(order, response, newStatus),
+      this.syncGroupCards(businessId, order, response, newStatus),
+    ]);
   }
 
   private async notifyClient(
@@ -117,95 +119,33 @@ export class OrderNotificationService {
     const groupLang: Lang = business?.languageDefault ?? Language.Ru;
 
     const terminal = TERMINAL_STATUSES.has(newStatus);
-    let cookMsgId = order.cookMsgId;
-    let adminMsgId = order.adminMsgId;
-    let courierMsgId = order.courierMsgId;
+    const syncCourier = newStatus === OrderStatus.Ready || !!order.courierMsgId;
 
-    if (!cookMsgId) {
-      cookMsgId = await this.postCard(businessId, NotifyGroup.Cooks, response, Role.Cook, groupLang, newStatus);
-    } else if (terminal) {
-      await this.clearOrRepost(businessId, NotifyGroup.Cooks, cookMsgId, response, groupLang, newStatus, (id) => {
-        cookMsgId = id;
-      });
-    } else {
-      const ok = await this.notifier!.updateGroupOrder(
+    const [cookMsgId, adminMsgId, courierMsgId] = await Promise.all([
+      this.syncGroupCard(
         businessId,
         NotifyGroup.Cooks,
-        cookMsgId,
+        order.cookMsgId,
         response,
         Role.Cook,
-        this.header(NotifyGroup.Cooks, groupLang, response, newStatus),
-      );
-      if (!ok) {
-        cookMsgId = await this.postCard(businessId, NotifyGroup.Cooks, response, Role.Cook, groupLang, newStatus);
-      }
-    }
-
-    if (!adminMsgId) {
-      adminMsgId = await this.postCard(businessId, NotifyGroup.Admins, response, Role.Admin, groupLang, newStatus);
-    } else if (terminal) {
-      await this.clearOrRepost(businessId, NotifyGroup.Admins, adminMsgId, response, groupLang, newStatus, (id) => {
-        adminMsgId = id;
-      });
-    } else {
-      const ok = await this.notifier!.updateGroupOrder(
+        groupLang,
+        newStatus,
+        terminal,
+      ),
+      this.syncGroupCard(
         businessId,
         NotifyGroup.Admins,
-        adminMsgId,
+        order.adminMsgId,
         response,
         Role.Admin,
-        this.header(NotifyGroup.Admins, groupLang, response, newStatus),
-      );
-      if (!ok) {
-        adminMsgId = await this.postCard(businessId, NotifyGroup.Admins, response, Role.Admin, groupLang, newStatus);
-      }
-    }
-
-    if (newStatus === OrderStatus.Ready || courierMsgId) {
-      if (!courierMsgId && newStatus === OrderStatus.Ready) {
-        courierMsgId = await this.postCard(
-          businessId,
-          NotifyGroup.Couriers,
-          response,
-          Role.Courier,
-          groupLang,
-          newStatus,
-        );
-      } else if (courierMsgId) {
-        if (terminal) {
-          await this.clearOrRepost(
-            businessId,
-            NotifyGroup.Couriers,
-            courierMsgId,
-            response,
-            groupLang,
-            newStatus,
-            (id) => {
-              courierMsgId = id;
-            },
-          );
-        } else {
-          const ok = await this.notifier!.updateGroupOrder(
-            businessId,
-            NotifyGroup.Couriers,
-            courierMsgId,
-            response,
-            Role.Courier,
-            this.header(NotifyGroup.Couriers, groupLang, response, newStatus),
-          );
-          if (!ok) {
-            courierMsgId = await this.postCard(
-              businessId,
-              NotifyGroup.Couriers,
-              response,
-              Role.Courier,
-              groupLang,
-              newStatus,
-            );
-          }
-        }
-      }
-    }
+        groupLang,
+        newStatus,
+        terminal,
+      ),
+      syncCourier
+        ? this.syncCourierCard(businessId, order.courierMsgId, response, groupLang, newStatus, terminal)
+        : Promise.resolve(order.courierMsgId),
+    ]);
 
     if (
       cookMsgId !== order.cookMsgId ||
@@ -217,6 +157,62 @@ export class OrderNotificationService {
       order.courierMsgId = courierMsgId;
       await this.orders.save(order);
     }
+  }
+
+  private async syncGroupCard(
+    businessId: string,
+    group: NotifyGroup,
+    currentMsgId: string | null,
+    response: OrderResponseDto,
+    role: Role,
+    groupLang: Lang,
+    newStatus: OrderStatus,
+    terminal: boolean,
+  ): Promise<string | null> {
+    if (!currentMsgId) {
+      return this.postCard(businessId, group, response, role, groupLang, newStatus);
+    }
+    if (terminal) {
+      return this.clearOrRepost(businessId, group, currentMsgId, response, groupLang, newStatus);
+    }
+    const ok = await this.notifier!.updateGroupOrder(
+      businessId,
+      group,
+      currentMsgId,
+      response,
+      role,
+      this.header(group, groupLang, response, newStatus),
+    );
+    if (!ok) {
+      return this.postCard(businessId, group, response, role, groupLang, newStatus);
+    }
+    return currentMsgId;
+  }
+
+  private async syncCourierCard(
+    businessId: string,
+    courierMsgId: string | null,
+    response: OrderResponseDto,
+    groupLang: Lang,
+    newStatus: OrderStatus,
+    terminal: boolean,
+  ): Promise<string | null> {
+    if (!courierMsgId && newStatus === OrderStatus.Ready) {
+      return this.postCard(businessId, NotifyGroup.Couriers, response, Role.Courier, groupLang, newStatus);
+    }
+    if (!courierMsgId) {
+      return null;
+    }
+    return this.syncGroupCard(
+      businessId,
+      NotifyGroup.Couriers,
+      courierMsgId,
+      response,
+      Role.Courier,
+      groupLang,
+      newStatus,
+      terminal,
+    );
   }
 
   private header(
@@ -252,8 +248,7 @@ export class OrderNotificationService {
     response: OrderResponseDto,
     groupLang: Lang,
     status: OrderStatus,
-    setId: (id: string | null) => void,
-  ): Promise<void> {
+  ): Promise<string | null> {
     const ok = await this.notifier!.clearGroupOrderButtons(
       businessId,
       group,
@@ -262,8 +257,9 @@ export class OrderNotificationService {
       this.header(group, groupLang, response, status),
     );
     if (!ok) {
-      setId(await this.postCard(businessId, group, response, this.roleForGroup(group), groupLang, status));
+      return this.postCard(businessId, group, response, this.roleForGroup(group), groupLang, status);
     }
+    return messageId;
   }
 
   private roleForGroup(group: NotifyGroup): Role {
