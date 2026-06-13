@@ -2,8 +2,9 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { Markup } from 'telegraf';
+import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
 import { OffersRepository } from '../offers/offers.repository';
-import { OfferRecipientStatus, OfferStatus } from '../offers/entities/offer.entity';
+import { OfferCompositionLine, OfferRecipientStatus, OfferStatus } from '../offers/entities/offer.entity';
 import { Language } from '@eatfit/shared';
 import { BotRegistryService } from './engine/bot-registry.service';
 import { BusinessesRepository } from '../businesses/businesses.repository';
@@ -127,12 +128,17 @@ export class BroadcastService implements OnModuleInit {
           textCache.set(lang, text);
         }
         const editUrl = this.offerWebAppUrl(slug, recipient.id);
-        const keyboard = Markup.inlineKeyboard([
+        const detailUrl = this.offerDetailWebAppUrl(slug, offer.composition);
+        const rows: InlineKeyboardButton[][] = [
           [
             Markup.button.callback(t(lang, 'broadcast_btn_accept'), `offer:accept:${recipient.id}`),
             Markup.button.webApp(t(lang, 'broadcast_btn_customize'), editUrl),
           ],
-        ]);
+        ];
+        if (detailUrl) {
+          rows.push([Markup.button.webApp(t(lang, 'btn_details'), detailUrl)]);
+        }
+        const keyboard = Markup.inlineKeyboard(rows);
 
         try {
           const msg = await tg.sendMessage(telegramId, text, {
@@ -190,6 +196,23 @@ export class BroadcastService implements OnModuleInit {
     const sep = base.includes('?') ? '&' : '?';
     const params = `biz=${encodeURIComponent(slug)}${offerRecipientId ? `&offer=${encodeURIComponent(offerRecipientId)}` : ''}`;
     return `${base}${sep}${params}`;
+  }
+
+  /** Mini App URL for dish/combo detail (?dish= / ?combo=) from offer composition. */
+  private offerDetailWebAppUrl(slug: string, composition: OfferCompositionLine[]): string | null {
+    const base = this.webAppBase ?? '';
+    if (!base.startsWith('https://')) return null;
+    for (const line of composition) {
+      const sep = base.includes('?') ? '&' : '?';
+      const biz = `biz=${encodeURIComponent(slug)}`;
+      if (line.kind === 'combo' && line.comboId) {
+        return `${base}${sep}${biz}&combo=${encodeURIComponent(line.comboId)}`;
+      }
+      if (line.menuItemId) {
+        return `${base}${sep}${biz}&dish=${encodeURIComponent(line.menuItemId)}`;
+      }
+    }
+    return null;
   }
 
   private async abortBroadcastNoBot(businessId: string, offerId: string, key: string): Promise<void> {
