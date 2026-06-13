@@ -13,6 +13,7 @@ import { ConflictError } from '../../common/errors/domain-error';
 import { AppClsStore } from '../../common/cls/actor-context';
 import { createBotContextMiddleware } from '../bot-context.middleware';
 import { BotComposerFactory } from './bot-composer.factory';
+import { isStaleCallbackError } from '../telegram-callback.util';
 import type { RegisteredBot } from './bot-context.types';
 
 /**
@@ -88,7 +89,9 @@ export class BotRegistryService implements OnModuleDestroy {
 
     const telegraf = new Telegraf(token);
     telegraf.catch((err, ctx) => {
-      this.logger.error(`Ошибка хендлера бота ${business.slug}: ${(err as Error).message}`);
+      if (!isStaleCallbackError(err)) {
+        this.logger.error(`Ошибка хендлера бота ${business.slug}: ${(err as Error).message}`);
+      }
       void ctx.answerCbQuery().catch(() => undefined);
       if (ctx.callbackQuery) return;
       void ctx

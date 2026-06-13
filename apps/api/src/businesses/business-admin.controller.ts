@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
+import { SKIP_ALL_THROTTLE } from '../common/throttler/throttle-names';
 import { BusinessAdminGuard } from '../auth/guards/business-admin.guard';
 import { CurrentActor } from '../common/decorators/current-actor.decorator';
 import { ActorContext } from '../common/cls/actor-context';
@@ -21,7 +22,7 @@ import { SetBotTokenDto } from './dto/set-bot-token.dto';
 import { InviteStaffDto, UpdateStaffDto } from './dto/staff.dto';
 
 @Controller('b')
-@SkipThrottle()
+@SkipThrottle(SKIP_ALL_THROTTLE)
 @UseGuards(BusinessAdminGuard)
 export class BusinessAdminController {
   constructor(private readonly admin: BusinessAdminService) {}

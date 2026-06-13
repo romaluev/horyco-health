@@ -222,7 +222,7 @@ In **polling mode** (local dev), Telegram allows **one long-polling connection**
 | Control          | Config                                                        |
 | ---------------- | ------------------------------------------------------------- |
 | CSP              | Helmet; `CSP_REPORT_ONLY=true` (default) → `false` to enforce |
-| Rate limit       | `@nestjs/throttler`: auth 15/min, webhooks 600/min, default 240/min, `/b/*` staff API skipped, `/cart` 300/min, `/b/offers` 300/min |
+| Rate limit       | `@nestjs/throttler`: named `default` (240/min), `auth` (15/min, `/auth` only), `webhook` (600/min). Bare `@SkipThrottle()` only skips `default` — webhooks use `@SkipThrottle({ default, auth, webhook })`. |
 | Tenant isolation | Business-scoped JWT; run `cd apps/api && npm test`            |
 
 
@@ -322,7 +322,9 @@ Typical pattern: bot works briefly, then **all users** stop getting replies; red
 
 - Rapid clicks on many order buttons used to block: each callback waited for DB + 3 group message edits before Telegram got `answerCbQuery`, so buttons looked frozen and users clicked again.
 - **Fix (API):** immediate callback ack, per-order lock against double-clicks, parallel group card updates.
-- **429 in logs during bursts** is usually **not** webhooks (they skip throttle) — check open `/b/offers` tabs (hard-refresh) or many clients in Mini App hitting `/cart`.
+- **`Webhook last_error: 429 Too Many Requests`:** caused by the `auth` throttler (15/min) still applying to `/api/tg/wh/*` when `@SkipThrottle()` omitted `auth`/`webhook` names. Fixed — redeploy required.
+- **`query is too old`:** stale callbacks after webhook 429 / queue lag; harmless after fix, transition still runs if ack succeeded.
+- **429 in HTTP logs** during bursts — check open `/b/offers` tabs (hard-refresh) or many clients in Mini App hitting `/cart`.
 - Accept orders at a steady pace (~1–2/sec) if cards lag; cards update asynchronously after the click is acknowledged.
 
 ### Schema / migration issues

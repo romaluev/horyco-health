@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { timingSafeEqual } from 'crypto';
 import { SkipThrottle } from '@nestjs/throttler';
+import { SKIP_ALL_THROTTLE } from '../../common/throttler/throttle-names';
 import { Public } from '../../common/decorators/public.decorator';
 import { BotRegistryService } from './bot-registry.service';
 import { BotHealthService } from './bot-health.service';
@@ -24,7 +25,7 @@ import type { Update } from 'telegraf/types';
  * 401/403 до ответа; иначе сразу 200 и async-очередь (Telegram не ждёт handler).
  */
 @Controller('tg/wh')
-@SkipThrottle()
+@SkipThrottle(SKIP_ALL_THROTTLE)
 export class TelegramWebhookController {
   private readonly logger = new Logger(TelegramWebhookController.name);
 

@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { SKIP_AUTH_WEBHOOK } from '../common/throttler/throttle-names';
 import { Public } from '../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -10,6 +11,7 @@ import { StaffLoginResponseDto } from './dto/staff-login-response.dto';
 import { SwitchBusinessDto } from './dto/switch-business.dto';
 
 @Controller('auth')
+@SkipThrottle({ ...SKIP_AUTH_WEBHOOK, default: true })
 @Throttle({ auth: { limit: 15, ttl: 60_000 } })
 export class AuthController {
   constructor(private readonly auth: AuthService) {}

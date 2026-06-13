@@ -22,6 +22,7 @@ import { BotMenuAdminService } from '../bot-menu-admin.service';
 import { t, esc, pick, statusText, Lang } from '../i18n/bot-i18n';
 import { channelPostText, orderDeepLinkButton } from '../channel-post';
 import { formatCustomerPhone } from '../message-formatters';
+import { safeAnswerCbQuery } from '../telegram-callback.util';
 
 /**
  * Действия персонала (повар/курьер/админ): смена статуса заказа из inline-кнопок панели.
@@ -536,7 +537,7 @@ export class StaffUpdate {
     const cbId = (ctx.callbackQuery as { id?: string } | undefined)?.id;
     const now = Date.now();
     if (cbId && this.state.isDuplicateCallback(cbId, now)) {
-      await ctx.answerCbQuery();
+      await safeAnswerCbQuery(ctx);
       return;
     }
 
@@ -544,22 +545,17 @@ export class StaffUpdate {
     const orderId = match?.[1] ?? '';
     const target = match?.[2] ?? '';
 
-    const client = await this.clients.findByTelegramId(String(ctx.from?.id));
-    const lang: Lang = client?.language ?? ('ru' as Lang);
+    // Ack before any DB — stale callbacks when webhook queue lags behind Telegram.
+    if (cbId) {
+      await safeAnswerCbQuery(ctx);
+    }
 
     if (!Object.values(OrderStatus).includes(target as OrderStatus)) {
-      await ctx.answerCbQuery(t(lang, 'error_generic'));
       return;
     }
 
     if (!this.state.tryAcquireOrderTransition(orderId, now)) {
-      await ctx.answerCbQuery(t(lang, 'order_transition_busy'));
       return;
-    }
-
-    // Ack immediately — transition + Telegram card updates can take several seconds.
-    if (cbId) {
-      await ctx.answerCbQuery();
     }
 
     try {
