@@ -9,8 +9,15 @@ import {
   useReconnectBot,
   useBusinessChats,
 } from '@/lib/backoffice-queries';
+import { ApiError } from '@/lib/api';
 import { useT } from '@/lib/i18n';
 import Link from 'next/link';
+
+type BotFeedback = { type: 'success' | 'error'; message: string };
+
+function mutationErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
+}
 
 export function BackofficeSettings() {
   const t = useT();
@@ -31,6 +38,9 @@ export function BackofficeSettings() {
     welcomeMessageUz: '',
   });
   const [token, setToken] = useState('');
+  const [showReplaceToken, setShowReplaceToken] = useState(false);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+  const [botFeedback, setBotFeedback] = useState<BotFeedback | null>(null);
 
   useEffect(() => {
     if (settings) {
@@ -67,6 +77,45 @@ export function BackofficeSettings() {
     return 'var(--danger, #e74c3c)';
   };
 
+  const handleConnect = async () => {
+    const trimmed = token.trim();
+    if (!trimmed) return;
+    setBotFeedback(null);
+    try {
+      await setBot.mutateAsync(trimmed);
+      setToken('');
+      setShowReplaceToken(false);
+      setBotFeedback({ type: 'success', message: t('bo_bot_connected_ok') });
+    } catch (err) {
+      setBotFeedback({ type: 'error', message: mutationErrorMessage(err, t('error_generic')) });
+    }
+  };
+
+  const handleReconnect = async () => {
+    setBotFeedback(null);
+    try {
+      await reconnectBot.mutateAsync();
+      setBotFeedback({ type: 'success', message: t('bo_bot_reconnected_ok') });
+    } catch (err) {
+      setBotFeedback({ type: 'error', message: mutationErrorMessage(err, t('error_generic')) });
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setBotFeedback(null);
+    try {
+      await removeBot.mutateAsync();
+      setShowDisconnectConfirm(false);
+      setShowReplaceToken(false);
+      setToken('');
+      setBotFeedback({ type: 'success', message: t('bo_bot_disconnected_ok') });
+    } catch (err) {
+      setBotFeedback({ type: 'error', message: mutationErrorMessage(err, t('error_generic')) });
+    }
+  };
+
+  const botBusy = setBot.isPending || removeBot.isPending || reconnectBot.isPending;
+
   return (
     <div>
       {showWizardLink && (
@@ -75,6 +124,19 @@ export function BackofficeSettings() {
           <Link href="/b/onboarding/" className="adm-btn adm-btn-sm adm-btn-primary">
             {t('bo_onboarding_continue')}
           </Link>
+        </div>
+      )}
+
+      {botFeedback && (
+        <div
+          className="adm-banner"
+          style={{
+            marginBottom: 16,
+            borderColor: botFeedback.type === 'error' ? 'var(--danger, #e74c3c)' : 'var(--accent)',
+            color: botFeedback.type === 'error' ? 'var(--danger, #e74c3c)' : undefined,
+          }}
+        >
+          <span>{botFeedback.message}</span>
         </div>
       )}
 
@@ -87,23 +149,80 @@ export function BackofficeSettings() {
             </span>
           </div>
           <div className="seg" style={{ marginTop: 8 }}>
-            <button
-              className="btn btn-primary"
-              disabled={reconnectBot.isPending}
-              onClick={() => reconnectBot.mutate()}
-            >
+            <button className="btn btn-primary" disabled={botBusy} onClick={() => void handleReconnect()}>
               {t('bo_reconnect_bot')}
             </button>
-            <button className="btn" disabled={removeBot.isPending} onClick={() => removeBot.mutate()}>
-              {t('bo_disconnect_bot')}
-            </button>
+            {!showReplaceToken && (
+              <button className="btn" disabled={botBusy} onClick={() => setShowReplaceToken(true)}>
+                {t('bo_replace_bot')}
+              </button>
+            )}
+            {!showDisconnectConfirm && (
+              <button className="btn" disabled={botBusy} onClick={() => setShowDisconnectConfirm(true)}>
+                {t('bo_disconnect_bot')}
+              </button>
+            )}
           </div>
+
+          {showReplaceToken && (
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>{t('bo_bot_token')}</label>
+              <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
+                {t('bo_replace_bot_hint')}
+              </p>
+              <input
+                className="input"
+                type="password"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+              />
+              <div className="seg" style={{ marginTop: 8 }}>
+                <button
+                  className="btn btn-primary"
+                  disabled={!token.trim() || botBusy}
+                  onClick={() => void handleConnect()}
+                >
+                  {t('bo_replace_bot')}
+                </button>
+                <button
+                  className="btn"
+                  disabled={botBusy}
+                  onClick={() => {
+                    setShowReplaceToken(false);
+                    setToken('');
+                  }}
+                >
+                  {t('act_cancel')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showDisconnectConfirm && (
+            <div className="card" style={{ marginTop: 12, background: 'var(--surface-2, rgba(0,0,0,0.03))' }}>
+              <p style={{ marginBottom: 8 }}>{t('bo_disconnect_confirm')}</p>
+              <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
+                {t('bo_disconnect_confirm_hint')}
+              </p>
+              <div className="seg">
+                <button className="btn" disabled={botBusy} onClick={() => void handleDisconnect()}>
+                  {t('bo_disconnect_confirm_yes')}
+                </button>
+                <button className="btn btn-primary" disabled={botBusy} onClick={() => setShowDisconnectConfirm(false)}>
+                  {t('bo_cancel_confirm_no')}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {!settings?.hasBotToken && (
-        <div className="field">
+        <div className="field" style={{ marginBottom: 16 }}>
           <label>{t('bo_bot_token')}</label>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
+            {t('bo_token_hint')}
+          </p>
           <input
             className="input"
             type="password"
@@ -113,8 +232,8 @@ export function BackofficeSettings() {
           <button
             className="btn btn-primary"
             style={{ marginTop: 8 }}
-            disabled={!token.trim() || setBot.isPending}
-            onClick={() => setBot.mutate(token.trim())}
+            disabled={!token.trim() || botBusy}
+            onClick={() => void handleConnect()}
           >
             {t('bo_connect_bot')}
           </button>

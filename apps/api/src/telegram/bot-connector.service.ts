@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BusinessesRepository } from '../businesses/businesses.repository';
+import { ConflictError } from '../common/errors/domain-error';
 import { BotLifecycleService } from './engine/bot-lifecycle.service';
 import { BotRegistryService } from './engine/bot-registry.service';
 import type { IBotConnector } from '../common/bot/bot-connector';
@@ -14,11 +15,11 @@ export class BotConnectorService implements IBotConnector {
 
   async connectAndBootstrap(businessId: string): Promise<void> {
     const withToken = await this.businesses.findByIdWithToken(businessId);
-    if (!withToken) return;
-    const handle = await this.registry.connectBusiness(withToken);
-    if (handle) {
-      await this.lifecycle.bootstrapBot(handle);
+    if (!withToken?.botTokenEnc) {
+      throw new ConflictError('Сначала подключите токен бота');
     }
+    const handle = await this.registry.connectBusiness(withToken);
+    await this.lifecycle.bootstrapBot(handle);
   }
 
   async disconnect(businessId: string, opts?: { dropWebhook?: boolean }): Promise<void> {

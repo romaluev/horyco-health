@@ -109,7 +109,7 @@ export class BusinessAdminService {
     }
 
     this.botTokens.invalidate(businessId);
-    await this.botConnector.connectAndBootstrap(businessId);
+    await this.connectBotOrThrow(businessId);
 
     const fresh = await this.businesses.findById(businessId);
     return this.toSettingsDto(fresh!);
@@ -143,9 +143,33 @@ export class BusinessAdminService {
       business.webhookSecret = randomBytes(24).toString('hex');
       await this.businesses.save(business);
     }
-    await this.botConnector.connectAndBootstrap(businessId);
+    await this.connectBotOrThrow(businessId);
     const fresh = await this.businesses.findById(businessId);
     return this.toSettingsDto(fresh!);
+  }
+
+  /** Подключить бота и убедиться, что webhook/polling реально поднялся. */
+  private async connectBotOrThrow(businessId: string): Promise<void> {
+    await this.botConnector.connectAndBootstrap(businessId);
+    const fresh = await this.businesses.findById(businessId);
+    if (!fresh) {
+      throw new NotFoundError('Бизнес не найден');
+    }
+    if (fresh.botStatus === BotStatus.Webhook || fresh.botStatus === BotStatus.Polling) {
+      return;
+    }
+    const publicUrl = this.config.get<string>('bot.publicUrl')?.trim();
+    if (!publicUrl) {
+      throw new ConflictError(
+        'PUBLIC_URL не задан на сервере — webhook не регистрируется. Задайте PUBLIC_URL и нажмите «Переподключить».',
+      );
+    }
+    if (fresh.botStatus === BotStatus.Error) {
+      throw new ConflictError(
+        'Не удалось подключить бота: проверьте токен и доступность PUBLIC_URL для Telegram.',
+      );
+    }
+    throw new ConflictError('Бот не запущен — попробуйте «Переподключить» или вставьте токен заново.');
   }
 
   async getChecklist(): Promise<BusinessChecklistDto> {

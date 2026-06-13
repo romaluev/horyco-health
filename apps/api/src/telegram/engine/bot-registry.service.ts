@@ -9,6 +9,7 @@ import { ClientRepository } from '../../clients/clients.repository';
 import { BusinessMembersRepository } from '../../businesses/business-members.repository';
 import { BusinessCustomersRepository } from '../../businesses/business-customers.repository';
 import { decryptToken, parseEncKey } from '../../businesses/token-crypto';
+import { ConflictError } from '../../common/errors/domain-error';
 import { AppClsStore } from '../../common/cls/actor-context';
 import { createBotContextMiddleware } from '../bot-context.middleware';
 import { BotComposerFactory } from './bot-composer.factory';
@@ -69,8 +70,10 @@ export class BotRegistryService implements OnModuleDestroy {
     }
   }
 
-  async connectBusiness(business: Business): Promise<RegisteredBot | null> {
-    if (!business.botTokenEnc) return null;
+  async connectBusiness(business: Business): Promise<RegisteredBot> {
+    if (!business.botTokenEnc) {
+      throw new ConflictError('Сначала подключите токен бота');
+    }
     await this.disconnect(business.id);
 
     let token: string;
@@ -78,7 +81,9 @@ export class BotRegistryService implements OnModuleDestroy {
       token = decryptToken(business.botTokenEnc, this.encKey);
     } catch (err) {
       this.logger.error(`Не удалось расшифровать токен ${business.id}: ${(err as Error).message}`);
-      return null;
+      throw new ConflictError(
+        'Не удалось расшифровать токен бота. Вставьте токен заново — TOKEN_ENC_KEY на сервере мог измениться.',
+      );
     }
 
     const telegraf = new Telegraf(token);

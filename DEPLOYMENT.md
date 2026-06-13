@@ -100,6 +100,9 @@ Set in Coolify → Application → **Environment Variables**.
 | `DAILY_REPORT_HOUR`       | Default report hour; per-business override in settings                      |
 | `JWT_EXPIRES_IN`          | JWT lifetime (default `7d`)                                                 |
 | `PORT`                    | Container port (Coolify sets this; default `3000`)                          |
+| `PLATFORM_ADMIN_PHONE`    | Platform owner phone for staff login (synced on every boot)                 |
+| `PLATFORM_ADMIN_PASSWORD` | Platform owner password (synced on every boot — must match what you type)   |
+| `PLATFORM_ADMIN_NAME`     | Platform owner display name (optional)                                      |
 
 
 **Removed (multi-tenant):** `CHANNEL_ID`, `COOK_GROUP_ID`, `COURIER_GROUP_ID`, `ADMIN_GROUP_ID` — bind groups per business via `/bind` in Telegram.
@@ -109,6 +112,31 @@ Set in Coolify → Application → **Environment Variables**.
 - Per-business bot tokens are stored encrypted (`TOKEN_ENC_KEY`) after connect via `/b` → Settings.
 - **`webhook_secret`** is generated when connecting token in back office, or **automatically on app startup** if a business has a token but no secret (fixes env-seeded `BOT_TOKEN` on fresh DB).
 - Owners can **reconnect** the bot from `/b` → Settings → «Переподключить бота» without re-pasting the token (re-registers Telegram webhook).
+
+### Back office: connect / replace / reconnect / disconnect bot
+
+| Action | When to use | What happens |
+| ------ | ----------- | -------------- |
+| **Подключить** | No bot token yet (`hasBotToken=false`) | Validates token via Telegram `getMe`, encrypts and saves token, registers webhook (requires `PUBLIC_URL`), sets bot status to `webhook`. |
+| **Заменить бота** | Switch to a different `@BotFather` bot without downtime | Same as connect but while a bot is already linked. If the new bot has a **different bot ID**, menu photo Telegram `file_id`s are cleared — republish dishes/combos to the channel. |
+| **Переподключить** | Bot status is `error`/`off` but token is still saved | Re-runs connect + webhook registration. Surfaces API errors if `TOKEN_ENC_KEY` changed (decrypt fail) or `PUBLIC_URL` is missing. |
+| **Отключить** | Remove bot integration entirely | Drops webhook, clears token from DB. **Menu/orders/clients are kept.** Prefer **Заменить** when swapping bots. |
+
+UI shows success/error banners for each action. Disconnect requires confirmation.
+
+### Platform admin login (`/auth/staff-login`)
+
+Optional cold-start env (also used on **every app restart** to sync the platform owner password):
+
+| Variable | Description |
+| -------- | ----------- |
+| `PLATFORM_ADMIN_PHONE` | E.164 phone, e.g. `+998901172772` |
+| `PLATFORM_ADMIN_PASSWORD` | Password for back-office / platform login — **overwritten in DB on each boot** |
+| `PLATFORM_ADMIN_NAME` | Display name (optional) |
+
+If staff login returns 401 but the phone looks correct, the hash in DB reflects `PLATFORM_ADMIN_PASSWORD` from the **last restart**, not necessarily what you type in the browser. Fix: set env to the intended password (no quotes/spaces) and restart, or use `/platform/setup` only when `needsSetup=true`.
+
+Do **not** change `TOKEN_ENC_KEY` without re-pasting bot tokens — existing `bot_token_enc` values become undecryptable.
 
 ## Migrations
 
@@ -270,6 +298,19 @@ Typical pattern: bot works briefly, then **all users** stop getting replies; red
 
 - `WEB_APP_URL` must be a valid HTTPS URL matching the deployed domain
 - Redeploy after setting `WEB_APP_URL`
+
+### Staff login 401 (Неверный телефон или пароль)
+
+- Data is usually intact — check `/api/platform/setup-status` (`needsSetup: false` means an admin account exists).
+- Password in DB is synced from `PLATFORM_ADMIN_PASSWORD` on **every app restart**. Ensure env value matches exactly (no quotes, no trailing spaces).
+- After fixing env, restart the app or reset password via DB only together with env fix.
+
+### Bot connect / replace fails silently in UI
+
+- Ensure `PUBLIC_URL` is HTTPS and reachable from Telegram.
+- If `TOKEN_ENC_KEY` was rotated, paste the bot token again (**Заменить бота** or **Подключить**).
+- Use **Переподключить** when token is saved but status is `error`/`off`.
+- Prefer **Заменить бота** over **Отключить** when switching bots — disconnect drops webhook and clears the token.
 
 ### Schema / migration issues
 
