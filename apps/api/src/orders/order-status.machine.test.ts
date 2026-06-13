@@ -5,9 +5,22 @@ import { assertTransition, allowedTargets } from './order-status.machine';
 import { ForbiddenError, InvalidStatusTransitionError } from '../common/errors/domain-error';
 
 describe('order-status.machine', () => {
-  it('allows cook pending to confirmed', () => {
+  it('allows cook pending to cooking', () => {
     assert.doesNotThrow(() =>
-      assertTransition(OrderStatus.Pending, OrderStatus.Confirmed, Role.Cook),
+      assertTransition(OrderStatus.Pending, OrderStatus.Cooking, Role.Cook),
+    );
+  });
+
+  it('blocks cook pending to confirmed', () => {
+    assert.throws(
+      () => assertTransition(OrderStatus.Pending, OrderStatus.Confirmed, Role.Cook),
+      ForbiddenError,
+    );
+  });
+
+  it('allows admin pending to confirmed', () => {
+    assert.doesNotThrow(() =>
+      assertTransition(OrderStatus.Pending, OrderStatus.Confirmed, Role.Admin),
     );
   });
 

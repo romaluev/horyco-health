@@ -172,7 +172,7 @@ If needed manually in BotFather: set Mini App URL to `https://health.horyco.com/
 ## 4. Production E2E smoke (~30 min)
 
 - [ ] Customer: `/start` → registration (location pin) → menu → add dish → checkout (cash + balance deposit test)
-- [ ] Customer receives order status DMs with **«Мои заказы»** button (pending → confirmed → …)
+- [ ] Customer receives **one editable** order status DM through kitchen stages, then a **new** DM when courier is en route (`delivering`), with **«Мои заказы»** button
 - [ ] Courier group card has **«Открыть на карте»** link
 - [ ] Kitchen: order card in cook group → statuses to **ready**
 - [ ] Courier: card → **delivered**

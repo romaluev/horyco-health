@@ -19,6 +19,24 @@ PostgreSQL via TypeORM migrations. Each business has its own Telegram bot (per-t
 
 **Staff login:** phone + password (`POST /api/auth/staff-login`). Platform admins need JWT `kind=platform` (`is_platform_admin` in DB).
 
+### Menu seed (Eat&fit)
+
+Bulk-import dishes from a Word «технологическая карта» docx:
+
+```bash
+# Re-parse docx → apps/api/scripts/seed/eatfit-menu/menu.json + photos/
+npm run menu:parse -- ~/Downloads/menu.docx
+
+# Import seed into Postgres (uses DATABASE_URL from .env; idempotent)
+npm run menu:import
+
+# Preview without writes
+npm run menu:import -- --dry-run
+
+# Replace existing dishes with same name_ru
+npm run menu:import -- --force
+```
+
 ---
 
 Legacy sections below describe the original single-tenant bot; the production stack is Nest + Next as above. See [docs/GO-LIVE.md](./docs/GO-LIVE.md) and [docs/PRD.md](./docs/PRD.md).
@@ -171,8 +189,11 @@ eatfit-bot/
 **Как работает:**
 1. Админ создаёт блюдо — бот сразу выдаёт **готовый пост для канала**: фото + текст + inline-кнопка «👉 Заказать».
 2. Админ **пересылает** этот пост в канал (URL-кнопка сохраняется при пересылке).
-3. Клиент жмёт кнопку → бот парсит `start=item_<id>`, **кладёт блюдо в корзину (1 шт)** и открывает меню с живой панелью корзины.
-4. Добор напитков/десертов степпером → **✅ Оформить заказ** → комментарий (или «Без комментария») → оплата → подтверждение.
+3. Клиент жмёт кнопку → бот парсит `start=item_<id>` (или `combo_<id>` для комбо), показывает **карточку одного блюда/комбо** с кнопкой «👉 Заказать».
+4. Клиент жмёт «Заказать» → если адрес доставки не указан, бот просит геолокацию → заказ создаётся автоматически (оплата с баланса, если хватает, иначе при получении).
+5. Полное меню с добором напитков/десертов — через **«Сделать заказ»** в главном меню или `/menu`.
+
+Ссылка на комбо: `https://t.me/<BOT_USERNAME>?start=combo_<combo_id>`.
 
 Массовая генерация постов: **Админ-панель → 📢 Генерировать пост → 📢 Все активные блюда**.
 
@@ -210,14 +231,15 @@ eatfit-bot/
 | Статус       | Что происходит                                | Кто меняет |
 |--------------|-----------------------------------------------|------------|
 | `pending`    | Заказ создан → карточки в группы поваров и админов | система    |
-| `confirmed`  | Принят — клиенту уведомление                  | повар/админ |
-| `cooking`    | Готовится — клиенту уведомление               | повар/админ |
+| `cooking`    | Повар нажал «Принять в работу» — готовим      | повар/админ |
 | `ready`      | Готово → карточка в группу курьеров           | повар/админ |
-| `delivering` | Курьер в пути — клиенту уведомление           | курьер/админ |
+| `delivering` | Курьер в пути — клиенту **новое** сообщение   | курьер/админ |
 | `done`       | Доставлен — кнопки в группах убираются        | курьер/админ |
 | `cancelled`  | Отмена + возврат баланса при необходимости    | админ      |
 
-При каждой смене статуса клиент с `telegram_id` получает уведомление на своём языке (RU/UZ). Web-only аккаунты без Telegram — только in-app «Мои заказы».
+Статус `confirmed` сохранён для старых заказов и ручных действий админа в веб-панели.
+
+**Уведомления клиенту в Telegram:** одно сообщение редактируется на этапах `pending` → `cooking` → `ready`; при выезде курьера (`delivering`) отправляется новое; финал (`done`) — правка сообщения о доставке.
 
 ---
 

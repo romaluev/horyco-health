@@ -8,7 +8,8 @@ import { formatMoney } from '@/lib/format';
 
 const NEXT: Partial<Record<OrderStatus, { status: OrderStatus; key: I18nKey; primary?: boolean }[]>> = {
   [OrderStatus.Pending]: [
-    { status: OrderStatus.Confirmed, key: 'act_confirm', primary: true },
+    { status: OrderStatus.Cooking, key: 'act_cook', primary: true },
+    { status: OrderStatus.Confirmed, key: 'act_confirm' },
     { status: OrderStatus.Cancelled, key: 'act_cancel' },
   ],
   [OrderStatus.Confirmed]: [

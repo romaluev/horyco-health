@@ -13,7 +13,8 @@ interface Transition {
  * Отмена — только админ; возврат денег делается при переходе в cancelled.
  */
 const TRANSITIONS: Transition[] = [
-  { from: OrderStatus.Pending, to: OrderStatus.Confirmed, roles: [Role.Admin, Role.Cook] },
+  { from: OrderStatus.Pending, to: OrderStatus.Cooking, roles: [Role.Admin, Role.Cook] },
+  { from: OrderStatus.Pending, to: OrderStatus.Confirmed, roles: [Role.Admin] },
   { from: OrderStatus.Pending, to: OrderStatus.Cancelled, roles: [Role.Admin] },
   { from: OrderStatus.Confirmed, to: OrderStatus.Cooking, roles: [Role.Admin, Role.Cook] },
   { from: OrderStatus.Confirmed, to: OrderStatus.Cancelled, roles: [Role.Admin] },

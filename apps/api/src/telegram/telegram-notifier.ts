@@ -43,10 +43,35 @@ export class TelegramNotifier implements INotifier {
     telegramId: string,
     message: string,
     lang: Language,
-  ): Promise<void> {
+  ): Promise<string | null> {
     const webAppUrl = await this.webAppUrlFor(businessId);
     const keyboard = orderNotifyKeyboard(lang as Lang, webAppUrl);
-    await this.send(businessId, telegramId, message, keyboard.reply_markup);
+    return this.sendReturningId(businessId, telegramId, message, keyboard.reply_markup);
+  }
+
+  async updateOrderClient(
+    businessId: string,
+    telegramId: string,
+    messageId: string,
+    message: string,
+    lang: Language,
+  ): Promise<boolean> {
+    const tg = this.telegramApi(businessId);
+    if (!tg) return false;
+    const webAppUrl = await this.webAppUrlFor(businessId);
+    const keyboard = orderNotifyKeyboard(lang as Lang, webAppUrl);
+    try {
+      await tg.editMessageText(telegramId, Number(messageId), undefined, message, {
+        parse_mode: 'HTML',
+        ...keyboard,
+      });
+      return true;
+    } catch (err) {
+      this.logger.warn(
+        `Не удалось обновить уведомление клиента ${messageId}: ${(err as Error).message}`,
+      );
+      return false;
+    }
   }
 
   async notifyGroup(businessId: string, group: NotifyGroup, message: string): Promise<void> {
@@ -194,15 +219,26 @@ export class TelegramNotifier implements INotifier {
     message: string,
     replyMarkup?: { inline_keyboard: import('telegraf/typings/core/types/typegram').InlineKeyboardButton[][] },
   ): Promise<void> {
+    await this.sendReturningId(businessId, chatId, message, replyMarkup);
+  }
+
+  private async sendReturningId(
+    businessId: string,
+    chatId: string,
+    message: string,
+    replyMarkup?: { inline_keyboard: import('telegraf/typings/core/types/typegram').InlineKeyboardButton[][] },
+  ): Promise<string | null> {
     const tg = this.telegramApi(businessId);
-    if (!tg) return;
+    if (!tg) return null;
     try {
-      await tg.sendMessage(chatId, message, {
+      const sent = await tg.sendMessage(chatId, message, {
         parse_mode: 'HTML',
         ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
       });
+      return String(sent.message_id);
     } catch (err) {
       this.logger.warn(`Не удалось отправить сообщение в ${chatId}: ${(err as Error).message}`);
+      return null;
     }
   }
 }

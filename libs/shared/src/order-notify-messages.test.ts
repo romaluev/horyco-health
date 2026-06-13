@@ -4,20 +4,29 @@ import { Language, OrderStatus, PaymentMethod } from './enums';
 import { orderClientNotifyMessage } from './order-notify-messages';
 
 describe('orderClientNotifyMessage', () => {
-  it('returns localized milestone for confirmed', () => {
-    const msg = orderClientNotifyMessage(Language.Ru, OrderStatus.Confirmed, {
+  it('skips confirmed status', () => {
+    const msg = orderClientNotifyMessage(Language.Ru, OrderStatus.Confirmed, { orderNumber: 42 });
+    assert.equal(msg, null);
+  });
+
+  it('returns preparing copy for pending and cooking', () => {
+    const pending = orderClientNotifyMessage(Language.Ru, OrderStatus.Pending, {
       orderNumber: 42,
       total: '25000',
     });
-    assert.match(msg!, /#42/);
-    assert.match(msg!, /принят/i);
-    assert.match(msg!, /25000/);
+    assert.match(pending!, /#42/);
+    assert.match(pending!, /готовим/i);
+    assert.match(pending!, /25000/);
+
+    const cooking = orderClientNotifyMessage(Language.Ru, OrderStatus.Cooking, { orderNumber: 42 });
+    assert.match(cooking!, /#42/);
+    assert.match(cooking!, /готовим/i);
   });
 
   it('returns pending acknowledgment on create', () => {
     const msg = orderClientNotifyMessage(Language.Ru, OrderStatus.Pending, { orderNumber: 1 });
     assert.match(msg!, /#1/);
-    assert.match(msg!, /принят/i);
+    assert.match(msg!, /готовим/i);
   });
 
   it('includes refund note on cancelled balance order', () => {
@@ -25,7 +34,7 @@ describe('orderClientNotifyMessage', () => {
       orderNumber: 3,
       refundAmount: '15000',
     });
-    assert.match(msg!, /Возврат/);
+    assert.match(msg!, /отменён/i);
     assert.match(msg!, /15000/);
   });
 
@@ -35,6 +44,6 @@ describe('orderClientNotifyMessage', () => {
       paymentMethod: PaymentMethod.OnDelivery,
     });
     assert.match(msg!, /Buyurtma #5/);
-    assert.match(msg!, /Yetkazib berishda/i);
+    assert.match(msg!, /Kuryer/i);
   });
 });

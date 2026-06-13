@@ -63,4 +63,8 @@ export class Order extends BaseEntity {
 
   @Column({ type: 'bigint', nullable: true })
   courierMsgId!: string | null;
+
+  /** Telegram DM для live-обновления статуса клиенту (editMessageText). */
+  @Column({ type: 'bigint', nullable: true })
+  clientNotifyMsgId!: string | null;
 }

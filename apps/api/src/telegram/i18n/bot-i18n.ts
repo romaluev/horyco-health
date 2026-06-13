@@ -223,6 +223,13 @@ const dict = {
   btn_pay_balance: { ru: '💰 Оплатить с баланса', uz: '💰 Balansdan to‘lash' },
   btn_pay_cash: { ru: '💵 Оплатить при получении', uz: '💵 Yetkazib berishda to‘lash' },
   btn_confirm_order: { ru: '✅ Подтвердить заказ', uz: '✅ Buyurtmani tasdiqlash' },
+  btn_order_now: { ru: '👉 Заказать', uz: '👉 Buyurtma berish' },
+  quick_order_need_location: {
+    ru: 'Укажите точку доставки на карте — отправьте геолокацию:',
+    uz: 'Yetkazib berish nuqtasini xaritada ko‘rsating — geolokatsiyani yuboring:',
+  },
+  quick_order_created: { ru: 'Заказ оформлен! Номер', uz: 'Buyurtma qabul qilindi! Raqam' },
+  quick_order_combo_includes: { ru: 'В составе', uz: 'Tarkibida' },
   btn_cancel: { ru: '❌ Отмена', uz: '❌ Bekor qilish' },
   order_created: { ru: 'Ваш заказ оформлен! Номер заказа', uz: 'Buyurtmangiz qabul qilindi! Buyurtma raqami' },
   order_cancelled_msg: { ru: 'Оформление отменено.', uz: 'Rasmiylashtirish bekor qilindi.' },

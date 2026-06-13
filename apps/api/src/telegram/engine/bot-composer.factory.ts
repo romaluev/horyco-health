@@ -77,6 +77,7 @@ export class BotComposerFactory {
     composer.action(/^ord:set:(.+?):([a-z]+)(?::([a-z]+))?$/, (ctx) => s.onTransition(ctx));
 
     composer.action(/^offer:accept:(.+)$/, (ctx) => c.onOfferAccept(ctx));
+    composer.action(/^quick:order:(item|combo):([^:]+)(?::(\d+))?$/, (ctx) => c.onQuickOrder(ctx));
 
     return composer;
   }

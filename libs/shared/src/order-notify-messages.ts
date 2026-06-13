@@ -9,20 +9,16 @@ export interface OrderNotifyContext {
 
 const ORDER_NOTIFY_MESSAGES: Partial<Record<OrderStatus, Record<Language, string>>> = {
   [OrderStatus.Pending]: {
-    ru: 'Заказ принят! Скоро подтвердим и начнём готовить 📝',
-    uz: 'Buyurtma qabul qilindi! Tez orada tasdiqlab tayyorlashni boshlaymiz 📝',
-  },
-  [OrderStatus.Confirmed]: {
-    ru: 'Ваш заказ принят, готовим! 🍳',
-    uz: 'Buyurtmangiz qabul qilindi, tayyorlayapmiz! 🍳',
+    ru: 'принят, готовим 🍳',
+    uz: 'qabul qilindi, tayyorlayapmiz 🍳',
   },
   [OrderStatus.Cooking]: {
-    ru: 'Повар приступил к готовке 👨‍🍳',
-    uz: 'Oshpaz tayyorlashga kirishdi 👨‍🍳',
+    ru: 'принят, готовим 🍳',
+    uz: 'qabul qilindi, tayyorlayapmiz 🍳',
   },
   [OrderStatus.Ready]: {
-    ru: 'Заказ готов, скоро передадим курьеру 🍽',
-    uz: 'Buyurtma tayyor, tez orada kuryerga topshiramiz 🍽',
+    ru: 'готов, передаём курьеру 🍽',
+    uz: 'tayyor, kuryerga topshiramiz 🍽',
   },
   [OrderStatus.Delivering]: {
     ru: 'Курьер выехал! 🚗',
@@ -49,6 +45,8 @@ export function orderClientNotifyMessage(
   status: OrderStatus,
   ctx: OrderNotifyContext,
 ): string | null {
+  if (status === OrderStatus.Confirmed) return null;
+
   const body = ORDER_NOTIFY_MESSAGES[status]?.[lang];
   if (!body) return null;
 
@@ -56,10 +54,10 @@ export function orderClientNotifyMessage(
     lang === Language.Uz ? `Buyurtma #${ctx.orderNumber}: ` : `Заказ #${ctx.orderNumber}: `;
   const parts = [`${prefix}${body}`];
 
-  if (ctx.total) {
+  if (ctx.total && status === OrderStatus.Pending) {
     parts.push(lang === Language.Uz ? `Jami: ${ctx.total} so‘m` : `Итого: ${ctx.total} сум`);
   }
-  if (ctx.paymentMethod) {
+  if (ctx.paymentMethod && status === OrderStatus.Pending) {
     const pay = PAYMENT_LABEL[ctx.paymentMethod][lang];
     parts.push(lang === Language.Uz ? `To‘lov: ${pay}` : `Оплата: ${pay}`);
   }

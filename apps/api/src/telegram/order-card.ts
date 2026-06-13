@@ -47,12 +47,22 @@ export function orderActionButtons(
   role: Role,
 ): InlineKeyboardButton[] {
   return allowedTargets(order.status, role).map((target) => {
-    const label =
-      target === OrderStatus.Cancelled
-        ? t(lang, 'btn_cancel_order')
-        : `▶️ ${statusText(lang, target)}`;
+    const label = actionButtonLabel(lang, order.status, target);
     return Markup.button.callback(label, `ord:set:${order.id}:${target}:${role}`);
   });
+}
+
+function actionButtonLabel(lang: Lang, from: OrderStatus, target: OrderStatus): string {
+  if (target === OrderStatus.Cancelled) return t(lang, 'btn_cancel_order');
+  if (from === OrderStatus.Pending && target === OrderStatus.Cooking) return t(lang, 'btn_take_to_work');
+  if (from === OrderStatus.Confirmed && target === OrderStatus.Cooking) return t(lang, 'btn_take_to_work');
+  if (from === OrderStatus.Cooking && target === OrderStatus.Ready) return t(lang, 'btn_ready');
+  if (from === OrderStatus.Ready && target === OrderStatus.Delivering) return t(lang, 'btn_take_delivery');
+  if (from === OrderStatus.Delivering && target === OrderStatus.Done) return t(lang, 'btn_delivered');
+  if (from === OrderStatus.Pending && target === OrderStatus.Confirmed) {
+    return `▶️ ${statusText(lang, target)}`;
+  }
+  return `▶️ ${statusText(lang, target)}`;
 }
 
 export function orderActionKeyboard(lang: Lang, order: OrderResponseDto, role: Role) {

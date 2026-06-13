@@ -28,13 +28,21 @@ export interface INotifier {
     message: string,
     options?: NotifyUserOptions,
   ): Promise<void>;
-  /** Push клиенту о заказе с inline «Мои заказы» (+ web app при HTTPS). */
+  /** Push клиенту о заказе с inline «Мои заказы» (+ web app при HTTPS). Возвращает message_id. */
   notifyOrderClient(
     businessId: string,
     telegramId: string,
     message: string,
     lang: import('@eatfit/shared').Language,
-  ): Promise<void>;
+  ): Promise<string | null>;
+  /** Обновить существующее уведомление клиенту о заказе. false — сообщение недоступно. */
+  updateOrderClient(
+    businessId: string,
+    telegramId: string,
+    messageId: string,
+    message: string,
+    lang: import('@eatfit/shared').Language,
+  ): Promise<boolean>;
   /** Сообщение в рабочую группу бизнеса (повара/курьеры/админы). */
   notifyGroup(businessId: string, group: NotifyGroup, message: string): Promise<void>;
   /**

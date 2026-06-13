@@ -11,6 +11,7 @@ import { ActorContextService } from '../common/cls/actor-context.service';
 import { isOwnerOrManager } from '../businesses/membership.util';
 import { currentIsoWeekday } from '../common/time/weekday';
 import { CartService } from '../orders/cart/cart.service';
+import { CombosRepository } from '../combos/combos.repository';
 import { BotStateService } from './bot-state.service';
 import { Lang, t, categoryName, pick, formatMoney, esc } from './i18n/bot-i18n';
 import { mainMenuKeyboard, stepperRow, detailButtonRow, comboButtonRow, profileButtonRow } from './telegram-keyboards';
@@ -30,6 +31,7 @@ export class BotUiService {
     private readonly config: ConfigService,
     private readonly menu: MenuRepository,
     private readonly cart: CartService,
+    private readonly combos: CombosRepository,
     private readonly state: BotStateService,
     private readonly actorCtx: ActorContextService,
     private readonly members: BusinessMembersRepository,
@@ -245,6 +247,71 @@ export class BotUiService {
       parse_mode: 'HTML',
       reply_markup: { inline_keyboard: [row] },
     });
+  }
+
+  /** Deep link: одно блюдо + кнопка «Заказать» (без полной витрины). */
+  async sendQuickOrderItemCard(
+    ctx: Context,
+    client: Client,
+    item: MenuItem,
+    portion = 1,
+  ): Promise<void> {
+    const lang = this.langOf(client);
+    const text = this.dishCardCaption(lang, item, portion);
+    const orderBtn: InlineKeyboardButton = {
+      text: t(lang, 'btn_order_now'),
+      callback_data: `quick:order:item:${item.id}:${portion}`,
+    };
+    const markup = { reply_markup: { inline_keyboard: [[orderBtn]] } };
+    const photo = await this.photoInput(item);
+    if (photo) {
+      try {
+        await ctx.replyWithPhoto(photo, { caption: text, parse_mode: 'HTML', ...markup });
+        return;
+      } catch (err) {
+        this.logger.warn(`sendPhoto quick-order ${item.id}: ${(err as Error).message}`);
+        await this.clearInvalidPhoto(item, (err as Error).message);
+      }
+    }
+    await ctx.reply(text, { parse_mode: 'HTML', ...markup });
+    void client;
+  }
+
+  /** Deep link: комбо + состав слотов + кнопка «Заказать». */
+  async sendQuickOrderComboCard(ctx: Context, client: Client, comboId: string): Promise<void> {
+    const lang = this.langOf(client);
+    const bizId = this.actorCtx.getBusinessIdOrThrow();
+    const combo = await this.combos.findByIdWithDetails(bizId, comboId);
+    if (!combo || !combo.isActive) {
+      await ctx.reply(t(lang, 'dish_not_found'));
+      return;
+    }
+    const snapshots = await this.combos.resolveSlotSelections(bizId, combo, {});
+    const name = pick(lang, combo.nameRu, combo.nameUz);
+    const lines = [`🍱 <b>${esc(name)}</b>`, `💵 ${esc(formatMoney(combo.price.toString()))} ${esc(t(lang, 'currency'))}`];
+    if (snapshots.length) {
+      lines.push(`<i>${esc(t(lang, 'quick_order_combo_includes'))}:</i>`);
+      for (const slot of snapshots) {
+        const itemName = pick(lang, slot.itemNameRu, slot.itemNameUz);
+        lines.push(`• ${esc(itemName)}`);
+      }
+    }
+    const orderBtn: InlineKeyboardButton = {
+      text: t(lang, 'btn_order_now'),
+      callback_data: `quick:order:combo:${comboId}`,
+    };
+    const markup = { reply_markup: { inline_keyboard: [[orderBtn]] } };
+    const photo = combo.photoFileId ?? combo.photoUrl;
+    if (photo) {
+      try {
+        await ctx.replyWithPhoto(photo, { caption: lines.join('\n'), parse_mode: 'HTML', ...markup });
+        return;
+      } catch (err) {
+        this.logger.warn(`sendPhoto quick-order combo ${comboId}: ${(err as Error).message}`);
+      }
+    }
+    await ctx.reply(lines.join('\n'), { parse_mode: 'HTML', ...markup });
+    void client;
   }
 
   async sendComboLink(ctx: Context, client: Client, comboId: string): Promise<void> {

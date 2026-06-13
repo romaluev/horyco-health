@@ -140,10 +140,15 @@ export class ClientUpdate {
     }
 
     await ctx.reply(this.welcome.welcomeBack(lang, bizName));
-    await this.ui.showMainMenu(ctx, client);
+    const hasProductDeepLink = Boolean(deepItemId || deepComboId);
+    if (!hasProductDeepLink) {
+      await this.ui.showMainMenu(ctx, client);
+    }
     if (deepItemId) await this.openDish(ctx, client, deepItemId);
-    else if (deepDetailId) await this.openDishDetail(ctx, client, deepDetailId);
-    else if (deepComboId) await this.openComboDetail(ctx, client, deepComboId);
+    else if (deepDetailId) {
+      await this.ui.showMainMenu(ctx, client);
+      await this.openDishDetail(ctx, client, deepDetailId);
+    } else if (deepComboId) await this.openComboDetail(ctx, client, deepComboId);
   }
 
   /** Активация приглашения staff по deep link. */
@@ -251,6 +256,14 @@ export class ClientUpdate {
       await ctx.reply(t(lang, 'location_saved'), { reply_markup: { remove_keyboard: true } });
       await ctx.reply(t(lang, 'profile_saved'));
       await this.showProfile(ctx, client);
+      return;
+    }
+
+    if (session?.flow === 'quick_order' && session.step === 'location') {
+      await this.saveDeliveryCoords(client, loc);
+      this.state.clearSession(from.id);
+      await ctx.reply(t(lang, 'location_saved'), { reply_markup: { remove_keyboard: true } });
+      await this.completeQuickOrder(ctx, client, session.data);
       return;
     }
 
@@ -667,10 +680,17 @@ export class ClientUpdate {
     const deepComboId = data.deepComboId as string | null | undefined;
     this.state.clearSession(from.id);
     await ctx.reply(t(lang, 'registration_done'), { reply_markup: { remove_keyboard: true } });
-    await this.ui.showMainMenu(ctx, client);
+    const hasProductDeepLink = Boolean(deepItemId || deepComboId);
+    if (!hasProductDeepLink) {
+      await this.ui.showMainMenu(ctx, client);
+    } else {
+      await ctx.reply(this.welcome.welcomeBack(lang, this.actorCtx.getBotBusiness()?.name ?? 'Eat&fit'));
+    }
     if (deepItemId) await this.openDish(ctx, client, deepItemId);
-    else if (deepDetailId) await this.openDishDetail(ctx, client, deepDetailId);
-    else if (deepComboId) await this.openComboDetail(ctx, client, deepComboId);
+    else if (deepDetailId) {
+      if (!hasProductDeepLink) await this.ui.showMainMenu(ctx, client);
+      await this.openDishDetail(ctx, client, deepDetailId);
+    } else if (deepComboId) await this.openComboDetail(ctx, client, deepComboId);
   }
 
   private async applyPhone(ctx: Context, flow: string, phone: string): Promise<void> {
@@ -1009,13 +1029,92 @@ export class ClientUpdate {
     }
   }
 
-  private async openComboDetail(ctx: Context, client: Client, comboId: string): Promise<void> {
+  /** One-tap order from deep-link product card (quick:order:*). */
+  async onQuickOrder(ctx: Context): Promise<void> {
+    if (await this.dupCallback(ctx)) return;
+    const from = ctx.from;
+    if (!from) return;
+    const client = await this.requireRegistered(ctx);
+    if (!client) return void (await ctx.answerCbQuery());
     const lang = this.ui.langOf(client);
-    await this.ui.sendComboLink(ctx, client, comboId);
-    void lang;
+    const data = (ctx.callbackQuery as { data?: string })?.data ?? '';
+    const itemMatch = data.match(/^quick:order:item:([^:]+):(\d+)$/);
+    const comboMatch = data.match(/^quick:order:combo:(.+)$/);
+    if (!itemMatch && !comboMatch) return void (await ctx.answerCbQuery());
+
+    const orderData: Record<string, unknown> = itemMatch
+      ? { kind: 'item', id: itemMatch[1], portion: Number(itemMatch[2]) || 1 }
+      : { kind: 'combo', id: comboMatch![1] };
+
+    if (!this.hasDeliveryLocation(client)) {
+      this.state.setSession(from.id, 'quick_order', 'location', orderData);
+      await ctx.answerCbQuery();
+      await ctx.reply(t(lang, 'quick_order_need_location'), shareLocationKeyboard(lang));
+      return;
+    }
+
+    await ctx.answerCbQuery();
+    try {
+      await this.completeQuickOrder(ctx, client, orderData);
+    } catch (err) {
+      await this.editOrReply(ctx, this.errText(err, lang));
+    }
   }
 
-  /** Открыть блюдо из deep link: добавить 1 шт и показать витрину. */
+  private async completeQuickOrder(
+    ctx: Context,
+    client: Client,
+    data: Record<string, unknown>,
+  ): Promise<void> {
+    const lang = this.ui.langOf(client);
+    const businessId = this.actorCtx.getBusinessIdOrThrow();
+    const kind = data.kind as string;
+    const id = data.id as string;
+    const portion = (data.portion as number | undefined) ?? 1;
+
+    this.cart.clear();
+    if (kind === 'item') {
+      const item = await this.menu.findById(businessId, id);
+      if (!item || !item.isActive) {
+        await ctx.reply(t(lang, 'dish_not_found'));
+        return;
+      }
+      if (await this.modifiers.hasRequiredModifiers(businessId, id)) {
+        await this.ui.sendDetailLink(ctx, client, item);
+        return;
+      }
+      await this.cart.addItem(id, 1, portion);
+    } else if (kind === 'combo') {
+      await this.cart.setLines([{ kind: 'combo', comboId: id, quantity: 1, slotSelections: {} }]);
+    } else {
+      await ctx.reply(t(lang, 'error_generic'));
+      return;
+    }
+
+    const cart = await this.cart.getCart();
+    if (!cart.items.length) {
+      await ctx.reply(t(lang, 'dish_not_found'));
+      return;
+    }
+
+    const balance = await this.balance.balanceOf(client.id, businessId);
+    const total = Money.fromMajor(cart.total);
+    const method = balance.gte(total) ? PaymentMethod.Balance : PaymentMethod.OnDelivery;
+
+    const customerBefore = await this.customers.find(businessId, client.id);
+    const order = await this.orders.create({ paymentMethod: method });
+    await this.editOrReply(ctx, `${t(lang, 'quick_order_created')} #${order.number} ✅`);
+    const customerAfter = await this.customers.find(businessId, client.id);
+    if ((customerBefore?.ordersCount ?? 0) === 0 && (customerAfter?.ordersCount ?? 0) === 1) {
+      await ctx.reply(t(lang, 'first_order_congrats'));
+    }
+  }
+
+  private async openComboDetail(ctx: Context, client: Client, comboId: string): Promise<void> {
+    await this.ui.sendQuickOrderComboCard(ctx, client, comboId);
+  }
+
+  /** Открыть блюдо из deep link: карточка одного блюда + «Заказать». */
   private async openDish(ctx: Context, client: Client, itemId: string): Promise<void> {
     const lang = this.ui.langOf(client);
     const businessId = this.actorCtx.getBusinessIdOrThrow();
@@ -1029,13 +1128,7 @@ export class ClientUpdate {
       await this.ui.sendDetailLink(ctx, client, item);
       return;
     }
-    try {
-      await this.cart.addItem(itemId, 1);
-    } catch (err) {
-      await ctx.reply(this.errText(err, lang));
-      return;
-    }
-    await this.ui.renderMenu(ctx, client);
+    await this.ui.sendQuickOrderItemCard(ctx, client, item, 1);
   }
 
   /** «Подробнее» из поста в канал (/start detail_<id>): открыть деталь блюда в Mini App. */

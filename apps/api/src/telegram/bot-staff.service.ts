@@ -27,7 +27,7 @@ export class BotStaffService {
     await this.renderOrders(
       ctx,
       client,
-      [OrderStatus.Pending, OrderStatus.Confirmed, OrderStatus.Cooking],
+      [OrderStatus.Pending, OrderStatus.Cooking],
       'cook_panel_title',
       'cook_no_orders',
     );

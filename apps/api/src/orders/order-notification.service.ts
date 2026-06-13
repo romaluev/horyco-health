@@ -55,12 +55,53 @@ export class OrderNotificationService {
     });
     if (!message) return;
 
-    await this.notifier!.notifyOrderClient(
-      order.businessId,
-      client.telegramId,
-      message,
-      client.language,
-    );
+    const lang = client.language ?? Language.Ru;
+    let clientNotifyMsgId = order.clientNotifyMsgId;
+
+    if (newStatus === OrderStatus.Delivering) {
+      clientNotifyMsgId = await this.notifier!.notifyOrderClient(
+        order.businessId,
+        client.telegramId,
+        message,
+        lang,
+      );
+    } else if (
+      clientNotifyMsgId &&
+      (newStatus === OrderStatus.Cooking ||
+        newStatus === OrderStatus.Ready ||
+        newStatus === OrderStatus.Done ||
+        newStatus === OrderStatus.Cancelled)
+    ) {
+      const ok = await this.notifier!.updateOrderClient(
+        order.businessId,
+        client.telegramId,
+        clientNotifyMsgId,
+        message,
+        lang,
+      );
+      if (!ok) {
+        clientNotifyMsgId = await this.notifier!.notifyOrderClient(
+          order.businessId,
+          client.telegramId,
+          message,
+          lang,
+        );
+      }
+    } else if (newStatus === OrderStatus.Pending) {
+      clientNotifyMsgId = await this.notifier!.notifyOrderClient(
+        order.businessId,
+        client.telegramId,
+        message,
+        lang,
+      );
+    } else {
+      return;
+    }
+
+    if (clientNotifyMsgId !== order.clientNotifyMsgId) {
+      order.clientNotifyMsgId = clientNotifyMsgId;
+      await this.orders.save(order);
+    }
   }
 
   private async syncGroupCards(
