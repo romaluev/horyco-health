@@ -54,4 +54,11 @@ export default () => ({
     tzOffsetHours: parseInt(process.env.TZ_OFFSET_HOURS ?? '5', 10),
     dailyReportHour: parseInt(process.env.DAILY_REPORT_HOUR ?? '19', 10),
   },
+  seed: {
+    menu: {
+      enabled: (process.env.SEED_MENU ?? 'false') === 'true',
+      businessId: process.env.MENU_SEED_BUSINESS_ID ?? 'c12704d8-0e0d-4226-94b9-e84d43cb76dc',
+      price: parseInt(process.env.MENU_SEED_PRICE ?? '55000', 10),
+    },
+  },
 });

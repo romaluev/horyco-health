@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Category, Ingredient, Language } from '@eatfit/shared';
+import { Category, Ingredient, Language, RecipeStep } from '@eatfit/shared';
 import { useQuery } from '@tanstack/react-query';
 import {
   useAdminMenu,
@@ -60,6 +60,9 @@ function emptyForm(): DishBody {
     allergens: { containsRu: '', containsUz: '', mayContainRu: '', mayContainUz: '' },
     nutrition: { calories: null, protein: null, fat: null, carbs: null },
     nutrition2: { calories: null, protein: null, fat: null, carbs: null },
+    instructions: [],
+    tipRu: '',
+    tipUz: '',
   };
 }
 
@@ -173,6 +176,9 @@ export function AdminMenu() {
         fat: it.nutrition2?.fat ?? null,
         carbs: it.nutrition2?.carbs ?? null,
       },
+      instructions: it.instructions ?? [],
+      tipRu: it.tipRu ?? '',
+      tipUz: it.tipUz ?? '',
     });
     setHasPhoto(it.hasPhoto);
     setPending(null);
@@ -215,6 +221,14 @@ export function AdminMenu() {
         nameRu: r.nameRu.trim(),
         nameUz: (r.nameUz ?? '').trim(),
         grams: r.grams == null ? null : Math.round(r.grams),
+        amountText: r.amountText?.trim() || null,
+        section: r.section?.trim() || null,
+      }));
+    const instructions = (form.instructions ?? [])
+      .filter((s) => s.textRu?.trim())
+      .map<RecipeStep>((s) => ({
+        textRu: s.textRu.trim(),
+        textUz: (s.textUz ?? s.textRu).trim(),
       }));
     const body: DishBody = {
       ...form,
@@ -231,6 +245,9 @@ export function AdminMenu() {
       allergens: form.allergens,
       nutrition: form.nutrition,
       nutrition2: form.nutrition2,
+      instructions: instructions.length ? instructions : null,
+      tipRu: form.tipRu?.trim() || null,
+      tipUz: form.tipUz?.trim() || null,
     };
     if (editing) {
       update.mutate(
@@ -267,12 +284,22 @@ export function AdminMenu() {
     const nu = form.nutrition ?? { calories: null, protein: null, fat: null, carbs: null };
     const nu2 = form.nutrition2 ?? { calories: null, protein: null, fat: null, carbs: null };
     const ings = form.ingredients ?? [];
+    const steps = form.instructions ?? [];
     const setIng = (i: number, patch: Partial<Ingredient>) =>
       setForm({ ...form, ingredients: ings.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) });
     const addIng = () =>
-      setForm({ ...form, ingredients: [...ings, { nameRu: '', nameUz: '', grams: null }] });
+      setForm({
+        ...form,
+        ingredients: [...ings, { nameRu: '', nameUz: '', grams: null, amountText: null, section: null }],
+      });
     const removeIng = (i: number) =>
       setForm({ ...form, ingredients: ings.filter((_, idx) => idx !== i) });
+    const setStep = (i: number, patch: Partial<RecipeStep>) =>
+      setForm({ ...form, instructions: steps.map((s, idx) => (idx === i ? { ...s, ...patch } : s)) });
+    const addStep = () =>
+      setForm({ ...form, instructions: [...steps, { textRu: '', textUz: '' }] });
+    const removeStep = (i: number) =>
+      setForm({ ...form, instructions: steps.filter((_, idx) => idx !== i) });
 
     return (
       <div>
@@ -380,6 +407,18 @@ export function AdminMenu() {
                 value={row.grams ?? ''}
                 onChange={(e) => setIng(i, { grams: numOrNull(e.target.value) })}
               />
+              <input
+                className="input"
+                placeholder={t('adm_ing_amount')}
+                value={row.amountText ?? ''}
+                onChange={(e) => setIng(i, { amountText: e.target.value || null })}
+              />
+              <input
+                className="input"
+                placeholder={t('adm_ing_section')}
+                value={row.section ?? ''}
+                onChange={(e) => setIng(i, { section: e.target.value || null })}
+              />
               <button className="btn ing-del" onClick={() => removeIng(i)}>
                 {t('adm_remove_row')}
               </button>
@@ -388,6 +427,52 @@ export function AdminMenu() {
           <button className="btn" onClick={addIng} style={{ marginTop: 6 }}>
             {t('adm_add_ingredient')}
           </button>
+        </div>
+
+        <div className="field">
+          <label>{t('adm_instructions')}</label>
+          {steps.map((row, i) => (
+            <div className="ing-row" key={i}>
+              <span className="dish-desc" style={{ minWidth: 48 }}>
+                {t('adm_instruction_step')} {i + 1}
+              </span>
+              <textarea
+                className="textarea"
+                placeholder={t('adm_name_ru')}
+                value={row.textRu}
+                onChange={(e) => setStep(i, { textRu: e.target.value })}
+              />
+              <textarea
+                className="textarea"
+                placeholder={t('adm_name_uz')}
+                value={row.textUz}
+                onChange={(e) => setStep(i, { textUz: e.target.value })}
+              />
+              <button className="btn ing-del" onClick={() => removeStep(i)}>
+                {t('adm_remove_row')}
+              </button>
+            </div>
+          ))}
+          <button className="btn" onClick={addStep} style={{ marginTop: 6 }}>
+            {t('adm_add_step')}
+          </button>
+        </div>
+
+        <div className="field">
+          <label>{t('adm_tip_ru')}</label>
+          <textarea
+            className="textarea"
+            value={form.tipRu ?? ''}
+            onChange={(e) => setForm({ ...form, tipRu: e.target.value })}
+          />
+        </div>
+        <div className="field">
+          <label>{t('adm_tip_uz')}</label>
+          <textarea
+            className="textarea"
+            value={form.tipUz ?? ''}
+            onChange={(e) => setForm({ ...form, tipUz: e.target.value })}
+          />
         </div>
 
         <div className="field">

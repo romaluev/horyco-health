@@ -5,7 +5,18 @@
 export interface Ingredient {
   nameRu: string;
   nameUz: string;
+  /** Граммы (если заданы числом). */
   grams: number | null;
+  /** Текстовая порция: «2 шт.», «5 мл», «1 ч. л.» и т.п. */
+  amountText?: string | null;
+  /** Секция в составе: «Для соуса», «Для тефтелей» и т.п. */
+  section?: string | null;
+}
+
+/** Шаг приготовления (нумерованный список в карточке блюда). */
+export interface RecipeStep {
+  textRu: string;
+  textUz: string;
 }
 
 /** Аллергены: свободный текст «содержит» / «может содержать» на двух языках. */

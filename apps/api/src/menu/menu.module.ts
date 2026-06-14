@@ -5,11 +5,12 @@ import { MenuAdminController } from './admin/menu-admin.controller';
 import { MenuService } from './menu.service';
 import { MenuRepository } from './menu.repository';
 import { MenuPhotoService } from './menu-photo.service';
+import { MenuSeedService } from './seed/menu-seed.service';
 
 @Module({
   imports: [ModifiersModule],
   controllers: [MenuController, MenuAdminController],
-  providers: [MenuService, MenuRepository, MenuPhotoService],
+  providers: [MenuService, MenuRepository, MenuPhotoService, MenuSeedService],
   exports: [MenuService, MenuRepository],
 })
 export class MenuModule {}

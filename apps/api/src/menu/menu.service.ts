@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Allergens, Category, Ingredient, Nutrition } from '@eatfit/shared';
+import { Allergens, Category, Ingredient, Nutrition, RecipeStep } from '@eatfit/shared';
 import { ActorContextService } from '../common/cls/actor-context.service';
 import { DefaultBusinessService } from '../businesses/default-business.service';
 import { NotFoundError } from '../common/errors/domain-error';
@@ -10,7 +10,7 @@ import { MenuRepository } from './menu.repository';
 import { MenuItem } from './entities/menu-item.entity';
 import { ModifiersService } from '../modifiers/modifiers.service';
 import { CreateMenuItemDto } from './dto/create-menu-item.dto';
-import { AllergensDto, IngredientDto, NutritionDto } from './dto/menu-detail.dto';
+import { AllergensDto, IngredientDto, NutritionDto, RecipeStepDto } from './dto/menu-detail.dto';
 import { UpdateMenuItemDto } from './dto/update-menu-item.dto';
 import { MenuItemResponseDto } from './dto/menu-item-response.dto';
 
@@ -86,6 +86,9 @@ export class MenuService {
       allergens: normalizeAllergens(dto.allergens),
       nutrition: normalizeNutrition(dto.nutrition),
       nutrition2: normalizeNutrition(dto.nutrition2),
+      instructions: normalizeInstructions(dto.instructions),
+      tipRu: normalizeTip(dto.tipRu),
+      tipUz: normalizeTip(dto.tipUz),
     });
     return new MenuItemResponseDto(item);
   }
@@ -110,6 +113,9 @@ export class MenuService {
     if (dto.allergens !== undefined) item.allergens = normalizeAllergens(dto.allergens);
     if (dto.nutrition !== undefined) item.nutrition = normalizeNutrition(dto.nutrition);
     if (dto.nutrition2 !== undefined) item.nutrition2 = normalizeNutrition(dto.nutrition2);
+    if (dto.instructions !== undefined) item.instructions = normalizeInstructions(dto.instructions);
+    if (dto.tipRu !== undefined) item.tipRu = normalizeTip(dto.tipRu);
+    if (dto.tipUz !== undefined) item.tipUz = normalizeTip(dto.tipUz);
     return new MenuItemResponseDto(await this.repo.save(item));
   }
 
@@ -171,6 +177,8 @@ function normalizeIngredients(rows?: IngredientDto[] | null): Ingredient[] | nul
       nameRu: r.nameRu.trim(),
       nameUz: (r.nameUz ?? '').trim(),
       grams: r.grams ?? null,
+      amountText: normalizeTip(r.amountText),
+      section: normalizeTip(r.section),
     }));
   return cleaned.length ? cleaned : null;
 }
@@ -189,6 +197,24 @@ function normalizeAllergens(a?: AllergensDto | null): Allergens | null {
     mayContainUz: norm(a.mayContainUz),
   };
   return Object.values(result).some((v) => v !== null) ? result : null;
+}
+
+/** Приготовление: отбрасываем пустые шаги; пустой список → null. */
+function normalizeInstructions(rows?: RecipeStepDto[] | null): RecipeStep[] | null {
+  if (!rows?.length) return null;
+  const cleaned = rows
+    .filter((r) => r?.textRu?.trim())
+    .map<RecipeStep>((r) => ({
+      textRu: r.textRu.trim(),
+      textUz: (r.textUz ?? r.textRu).trim(),
+    }));
+  return cleaned.length ? cleaned : null;
+}
+
+/** Короткий текст (tip, amountText, section): пусто → null. */
+function normalizeTip(v?: string | null): string | null {
+  const s = (v ?? '').trim();
+  return s ? s : null;
 }
 
 /** КБЖУ: пустые значения → null; если всё пусто → null целиком. */

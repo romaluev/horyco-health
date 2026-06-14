@@ -1,4 +1,4 @@
-import { Allergens, Category, Ingredient, Nutrition } from '@eatfit/shared';
+import { Allergens, Category, Ingredient, Nutrition, RecipeStep } from '@eatfit/shared';
 import { MenuItem } from '../entities/menu-item.entity';
 
 /**
@@ -25,6 +25,9 @@ export class MenuItemResponseDto {
   allergens: Allergens | null;
   nutrition: Nutrition | null;
   nutrition2: Nutrition | null;
+  instructions: RecipeStep[] | null;
+  tipRu: string | null;
+  tipUz: string | null;
   hasRequiredModifiers: boolean;
   createdAt: Date;
 
@@ -47,6 +50,9 @@ export class MenuItemResponseDto {
     this.allergens = item.allergens ?? null;
     this.nutrition = item.nutrition ?? null;
     this.nutrition2 = item.nutrition2 ?? null;
+    this.instructions = item.instructions ?? null;
+    this.tipRu = item.tipRu ?? null;
+    this.tipUz = item.tipUz ?? null;
     this.hasRequiredModifiers = opts?.hasRequiredModifiers ?? false;
     this.createdAt = item.createdAt;
   }

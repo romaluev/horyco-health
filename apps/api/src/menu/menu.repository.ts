@@ -46,6 +46,10 @@ export class MenuRepository extends TransactionalRepository<MenuItem> {
     return this.repo.findOne({ where: { id, businessId } });
   }
 
+  findByNameRu(businessId: string, nameRu: string): Promise<MenuItem | null> {
+    return this.repo.findOne({ where: { businessId, nameRu } });
+  }
+
   /** Бинарь фото (колонка select:false) — грузим явно только при отдаче картинки. */
   async findPhotoBytes(businessId: string, id: string): Promise<{ data: Buffer; mime: string } | null> {
     const row = await this.repo

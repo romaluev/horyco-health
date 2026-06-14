@@ -25,6 +25,10 @@ export class ModifiersRepository extends TransactionalRepository<ModifierGroup> 
     return this.repo.findOne({ where: { id, businessId } });
   }
 
+  findGroupByNameRu(businessId: string, nameRu: string): Promise<ModifierGroup | null> {
+    return this.repo.findOne({ where: { businessId, nameRu } });
+  }
+
   save(data: Partial<ModifierGroup>): Promise<ModifierGroup> {
     return this.repo.save(this.repo.create(data));
   }

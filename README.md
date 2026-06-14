@@ -42,6 +42,21 @@ npm run menu:import -- --dry-run
 npm run menu:import -- --force
 ```
 
+### Bowl menu boot seed (9 dishes + modifiers)
+
+On API start, when `SEED_MENU=true`, the app idempotently inserts bowl dishes (full recipe cards: ingredients, КБЖU, cooking steps, P.S. tip, photos) and example modifier groups (**Размер порции**, **Вес порции**, **Тип мяса**) for business `MENU_SEED_BUSINESS_ID` (default `c12704d8-0e0d-4226-94b9-e84d43cb76dc`).
+
+```bash
+# In .env
+SEED_MENU=true
+MENU_SEED_BUSINESS_ID=c12704d8-0e0d-4226-94b9-e84d43cb76dc
+MENU_SEED_PRICE=55000   # placeholder price (UZS) — edit in back office later
+
+npm run api:dev   # or deploy with same env vars
+```
+
+Seed data lives in `apps/api/src/menu/seed/`; photos are bundled via `nest-cli.json` assets.
+
 ---
 
 Legacy sections below describe the original single-tenant bot; the production stack is Nest + Next as above. See [docs/GO-LIVE.md](./docs/GO-LIVE.md) and [docs/PRD.md](./docs/PRD.md).

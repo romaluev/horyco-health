@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { Language } from '@eatfit/shared';
+import { Language, type Ingredient } from '@eatfit/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useMenuItem, useCart, useDeleteCartLine } from '@/lib/queries';
 import { useUpsertCartLine } from '@/lib/offers-queries';
@@ -12,6 +12,37 @@ import { formatMoney, pick } from '@/lib/format';
 import { Stepper } from '@/components/Stepper';
 import { ModifierPicker, type ModifierGroupDto } from '@/components/backoffice/ModifierPicker';
 import { api } from '@/lib/api';
+
+function formatIngredientAmount(ing: Ingredient, t: (k: import('@/lib/i18n').I18nKey) => string): string {
+  if (ing.amountText?.trim()) return ing.amountText.trim();
+  if (ing.grams != null) return `${ing.grams} ${t('unit_gram')}`;
+  return '—';
+}
+
+function groupIngredientsBySection(ings: Ingredient[]): Array<{ section: string | null; items: Ingredient[] }> {
+  const groups: Array<{ section: string | null; items: Ingredient[] }> = [];
+  for (const ing of ings) {
+    const section = ing.section?.trim() || null;
+    const last = groups[groups.length - 1];
+    if (last && last.section === section) {
+      last.items.push(ing);
+    } else {
+      groups.push({ section, items: [ing] });
+    }
+  }
+  return groups;
+}
+
+function defaultModifierIds(groups: ModifierGroupDto[] | undefined): string[] {
+  if (!groups?.length) return [];
+  const ids: string[] = [];
+  for (const g of groups) {
+    if (g.isRequired && g.selectionType === 'SINGLE' && g.modifiers[0]) {
+      ids.push(g.modifiers[0].id);
+    }
+  }
+  return ids;
+}
 
 function Accordion({ title, children }: { title: string; children: ReactNode }) {
   const [open, setOpen] = useState(true);
@@ -49,6 +80,12 @@ export function DishDetail() {
     queryFn: () => api<ModifierGroupDto[]>(`/menu/${id}/modifier-groups`),
     enabled: Boolean(id),
   });
+
+  // Автовыбор первого варианта в обязательных SINGLE-группах — меньше кликов до «Добавить».
+  useEffect(() => {
+    if (!modifierGroups?.length) return;
+    setModifierIds((prev) => (prev.length > 0 ? prev : defaultModifierIds(modifierGroups)));
+  }, [modifierGroups, id]);
 
   if (!id) return null;
 
@@ -120,6 +157,10 @@ export function DishDetail() {
       return sum;
     }, 0) ?? 0;
   const displayPrice = Number(curPrice) + modDelta;
+  const tip = pick(lang, item.tipRu, item.tipUz);
+  const ingredientGroups = item.ingredients?.length
+    ? groupIngredientsBySection(item.ingredients)
+    : [];
 
   return (
     <div className="dd">
@@ -177,24 +218,33 @@ export function DishDetail() {
           )}
         </div>
 
-        {item.ingredients && item.ingredients.length > 0 && (
+        {ingredientGroups.length > 0 && (
           <Accordion title={t('detail_composition')}>
-            <table className="dd-table">
-              <thead>
-                <tr>
-                  <th>{t('detail_ingredient')}</th>
-                  <th>{t('detail_portion')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {item.ingredients.map((ing, i) => (
-                  <tr key={i}>
-                    <td>{pick(lang, ing.nameRu, ing.nameUz)}</td>
-                    <td>{ing.grams != null ? `${ing.grams} ${t('unit_gram')}` : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {ingredientGroups.map((group, gi) => (
+              <div key={gi} style={{ marginBottom: group.section ? 12 : 0 }}>
+                {group.section && (
+                  <div className="dish-desc" style={{ marginBottom: 6, fontWeight: 600 }}>
+                    {group.section}
+                  </div>
+                )}
+                <table className="dd-table">
+                  <thead>
+                    <tr>
+                      <th>{t('detail_ingredient')}</th>
+                      <th>{t('detail_portion')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.items.map((ing, i) => (
+                      <tr key={i}>
+                        <td>{pick(lang, ing.nameRu, ing.nameUz)}</td>
+                        <td>{formatIngredientAmount(ing, t)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
           </Accordion>
         )}
 
@@ -243,6 +293,22 @@ export function DishDetail() {
                 )}
               </tbody>
             </table>
+          </Accordion>
+        )}
+
+        {item.instructions && item.instructions.length > 0 && (
+          <Accordion title={t('detail_instructions')}>
+            <ol className="dd-steps">
+              {item.instructions.map((s, i) => (
+                <li key={i}>{pick(lang, s.textRu, s.textUz)}</li>
+              ))}
+            </ol>
+          </Accordion>
+        )}
+
+        {tip && (
+          <Accordion title={t('detail_tip')}>
+            <div className="dd-tip">{tip}</div>
           </Accordion>
         )}
       </div>

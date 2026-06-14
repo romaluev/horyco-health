@@ -17,7 +17,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Category } from '@eatfit/shared';
-import { AllergensDto, IngredientDto, NutritionDto } from './menu-detail.dto';
+import { AllergensDto, IngredientDto, NutritionDto, RecipeStepDto } from './menu-detail.dto';
 
 export class CreateMenuItemDto {
   @IsEnum(Category)
@@ -109,4 +109,18 @@ export class CreateMenuItemDto {
   @ValidateNested()
   @Type(() => NutritionDto)
   nutrition2?: NutritionDto | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RecipeStepDto)
+  instructions?: RecipeStepDto[] | null;
+
+  @IsOptional()
+  @IsString()
+  tipRu?: string | null;
+
+  @IsOptional()
+  @IsString()
+  tipUz?: string | null;
 }

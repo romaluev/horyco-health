@@ -15,6 +15,25 @@ export class IngredientDto {
   @IsInt()
   @Min(0)
   grams?: number | null;
+
+  @IsOptional()
+  @IsString()
+  amountText?: string | null;
+
+  @IsOptional()
+  @IsString()
+  section?: string | null;
+}
+
+/** Шаг приготовления. */
+export class RecipeStepDto {
+  @IsString()
+  @IsNotEmpty()
+  textRu!: string;
+
+  @IsOptional()
+  @IsString()
+  textUz?: string;
 }
 
 /** Аллергены: «содержит» / «может содержать» (двуязычно, свободный текст). */
@@ -37,3 +56,4 @@ export class NutritionDto {
 export const IngredientType = () => IngredientDto;
 export const AllergensType = () => AllergensDto;
 export const NutritionType = () => NutritionDto;
+export const RecipeStepType = () => RecipeStepDto;

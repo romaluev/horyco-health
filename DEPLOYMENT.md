@@ -103,6 +103,9 @@ Set in Coolify → Application → **Environment Variables**.
 | `PLATFORM_ADMIN_PHONE`    | Platform owner phone for staff login (synced on every boot)                 |
 | `PLATFORM_ADMIN_PASSWORD` | Platform owner password (synced on every boot — must match what you type)   |
 | `PLATFORM_ADMIN_NAME`     | Platform owner display name (optional)                                      |
+| `SEED_MENU`               | `true` — idempotent bowl menu + modifier groups seed on API boot (default `false`) |
+| `MENU_SEED_BUSINESS_ID`   | Target business UUID (default `c12704d8-0e0d-4226-94b9-e84d43cb76dc`)     |
+| `MENU_SEED_PRICE`         | Placeholder dish price in UZS for seeded bowls (default `55000`)             |
 
 
 **Removed (multi-tenant):** `CHANNEL_ID`, `COOK_GROUP_ID`, `COURIER_GROUP_ID`, `ADMIN_GROUP_ID` — bind groups per business via `/bind` in Telegram.
@@ -137,6 +140,15 @@ Optional cold-start env (also used on **every app restart** to sync the platform
 If staff login returns 401 but the phone looks correct, the hash in DB reflects `PLATFORM_ADMIN_PASSWORD` from the **last restart**, not necessarily what you type in the browser. Fix: set env to the intended password (no quotes/spaces) and restart, or use `/platform/setup` only when `needsSetup=true`.
 
 Do **not** change `TOKEN_ENC_KEY` without re-pasting bot tokens — existing `bot_token_enc` values become undecryptable.
+
+### Bowl menu boot seed
+
+Set `SEED_MENU=true` on **one** API replica (same rule as migrations — single writer). On each boot the service:
+
+1. Ensures modifier groups **Размер порции**, **Вес порции**, **Тип мяса** exist for the business.
+2. Inserts 9 bowl dishes (ingredients with `amountText`/`section`, КБЖU, numbered **Приготовление**, **P.S.** tip, photos) if no active row with the same `name_ru` exists.
+
+Configure `MENU_SEED_BUSINESS_ID` and `MENU_SEED_PRICE` in Coolify env. Turn off (`SEED_MENU=false`) after first successful seed to avoid log noise.
 
 ## Migrations
 

@@ -1,5 +1,5 @@
 import { Entity, Column, Index, DeleteDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Category, Ingredient, Allergens, Nutrition } from '@eatfit/shared';
+import { Category, Ingredient, Allergens, Nutrition, RecipeStep } from '@eatfit/shared';
 import { BaseEntity } from '../../common/database/base.entity';
 import { Money } from '../../common/money/money';
 import { moneyTransformer } from '../../common/money/money.transformer';
@@ -81,6 +81,17 @@ export class MenuItem extends BaseEntity {
   // КБЖУ для 2-й порции (вес/цена и КБЖУ у порций разные; состав общий).
   @Column({ type: 'jsonb', nullable: true })
   nutrition2!: Nutrition | null;
+
+  // Пошаговое приготовление (нумерованный список).
+  @Column({ type: 'jsonb', nullable: true })
+  instructions!: RecipeStep[] | null;
+
+  // P.S. / совет шефа в конце карточки.
+  @Column({ type: 'text', nullable: true })
+  tipRu!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  tipUz!: string | null;
 
   @Column({ type: 'boolean', default: true })
   isActive!: boolean;

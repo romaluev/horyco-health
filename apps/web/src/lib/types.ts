@@ -6,6 +6,7 @@ import {
   Nutrition,
   OrderStatus,
   PaymentMethod,
+  RecipeStep,
   Role,
 } from '@eatfit/shared';
 
@@ -48,6 +49,9 @@ export interface MenuItemDto {
   allergens: Allergens | null;
   nutrition: Nutrition | null;
   nutrition2: Nutrition | null;
+  instructions: RecipeStep[] | null;
+  tipRu: string | null;
+  tipUz: string | null;
   hasRequiredModifiers?: boolean;
   createdAt: string;
 }
