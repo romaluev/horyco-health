@@ -3,10 +3,10 @@
   "items": [
     {
       "category": "main",
-      "nameRu": "ГРЕЧЕСКАЯ ТАРЕЛКА С ФРИКАДЕЛЬКАМИ И ФЕТОЙ",
-      "nameUz": "ГРЕЧЕСКАЯ ТАРЕЛКА С ФРИКАДЕЛЬКАМИ И ФЕТОЙ",
-      "descriptionRu": "Сытный средиземноморский боул с мясными фрикадельками, хумусом, фетой, йогуртом и свежими овощами.",
-      "descriptionUz": "Сытный средиземноморский боул с мясными фрикадельками, хумусом, фетой, йогуртом и свежими овощами.",
+      "nameRu": "Греческая тарелка с фрикадельками и фетой",
+      "nameUz": "Yunoncha dasturxon: frikadel va feta bilan",
+      "descriptionRu": "Сытная средиземноморская тарелка: нежные фрикадельки, хумус, фета, йогурт и свежие овощи.",
+      "descriptionUz": "To'yimli o'rta yer dengizi taomi: yumshoq frikadellar, xummus, feta, yogurt va yangi sabzavotlar.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -87,6 +87,20 @@
           "section": null
         },
         {
+          "nameRu": "Чеснок",
+          "nameUz": "Чеснок",
+          "grams": null,
+          "amountText": "1 зубчик",
+          "section": null
+        },
+        {
+          "nameRu": "Мята свежая",
+          "nameUz": "Мята свежая",
+          "grams": null,
+          "amountText": "4–5 листочков, опционально",
+          "section": null
+        },
+        {
           "nameRu": "Перец чёрный, зира, соль",
           "nameUz": "Перец чёрный, зира, соль",
           "grams": null,
@@ -94,10 +108,10 @@
           "section": null
         },
         {
-          "nameRu": "Оливковое",
-          "nameUz": "Оливковое",
+          "nameRu": "Оливковое масло",
+          "nameUz": "Оливковое масло",
           "grams": 5,
-          "amountText": "масло 1 ч. л. (5 г)",
+          "amountText": "1 ч. л. (5 г)",
           "section": null
         },
         {
@@ -122,10 +136,10 @@
           "section": null
         },
         {
-          "nameRu": "Йогурт",
-          "nameUz": "Йогурт",
+          "nameRu": "Йогурт густой натуральный",
+          "nameUz": "Йогурт густой натуральный",
           "grams": 60,
-          "amountText": "густой натуральный 2 ст. л. (60 г)",
+          "amountText": "2 ст. л. (60 г)",
           "section": null
         },
         {
@@ -154,6 +168,13 @@
           "nameUz": "Оливки каламата",
           "grams": 30,
           "amountText": "30 г",
+          "section": null
+        },
+        {
+          "nameRu": "Лимон",
+          "nameUz": "Лимон",
+          "grams": null,
+          "amountText": "1 долька",
           "section": null
         }
       ],
@@ -185,17 +206,17 @@
         "mayContainRu": "глютен, кунжут, орехи, соя",
         "mayContainUz": "глютен, кунжут, орехи, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
+      "tipRu": "Подавайте охлаждённой — лимон и сумах раскрывают вкус.",
+      "tipUz": "Sovuq holda torting — limon va sumoq ta'mni ochadi.",
       "photoFile": "01-grecheskaya-tarelka-s-frikadelkami-i-fetoy.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "БОУЛ С ИНДЕЙКОЙ И КИНОА",
-      "nameUz": "БОУЛ С ИНДЕЙКОЙ И КИНОА",
-      "descriptionRu": "Лёгкий белковый боул с обжаренной индейкой, киноа, шпинатом и морковью.",
-      "descriptionUz": "Лёгкий белковый боул с обжаренной индейкой, киноа, шпинатом и морковью.",
+      "nameRu": "Индейка с киноа и шпинатом",
+      "nameUz": "Kinoali va ismaloqli kurka go'shti",
+      "descriptionRu": "Лёгкий белковый обед: сочная индейка, киноа, морковь и свежий шпинат с лимоном.",
+      "descriptionUz": "Yengil oqsilga boy tushlik: shirali kurka go'shti, kinoa, sabzi va limonli yangi ismaloq.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -309,6 +330,13 @@
           "grams": null,
           "amountText": "по вкусу",
           "section": null
+        },
+        {
+          "nameRu": "Сушёный базилик",
+          "nameUz": "Сушёный базилик",
+          "grams": null,
+          "amountText": "щепотка",
+          "section": null
         }
       ],
       "instructions": [
@@ -339,17 +367,17 @@
         "mayContainRu": "сельдерей, горчица, соя",
         "mayContainUz": "сельдерей, горчица, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "02-boul-s-indeykoy-i-kinoa.jpg",
+      "tipRu": "Полейте лимонным соком перед подачей.",
+      "tipUz": "Tortishdan oldin limon sharbati sepib chiqing.",
+      "photoFile": "02-indeyka-s-kinoa-i-shpinatom.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "БОУЛ С ЙОГУРТОМ, ЯБЛОКОМ И КОРИЦЕЙ",
-      "nameUz": "БОУЛ С ЙОГУРТОМ, ЯБЛОКОМ И КОРИЦЕЙ",
-      "descriptionRu": "Холодный йогуртовый завтрак с яблоком, гранолой, чиа и корицей.",
-      "descriptionUz": "Холодный йогуртовый завтрак с яблоком, гранолой, чиа и корицей.",
+      "nameRu": "Йогурт с яблоком, корицей и гранолой",
+      "nameUz": "Yogurt, olma, dolchin va granola",
+      "descriptionRu": "Холодный завтрак: натуральный йогурт, хрустящая гранола, яблоко, семена чиа и корица.",
+      "descriptionUz": "Sovuq nonushta: tabiiy yogurt, xushbo'y granola, olma, chia urug'lari va dolchin.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -479,17 +507,17 @@
         "mayContainRu": "орехи, глютен, соя",
         "mayContainUz": "орехи, глютен, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "03-boul-s-yogurtom-yablokom-i-koritsey.jpg",
+      "tipRu": "Не разогревать — подавать сразу из холодильника.",
+      "tipUz": "Qizdirilmaydi — muzlatgichdan darhol tortiladi.",
+      "photoFile": "03-yogurt-s-yablokom-koritsey-i-granoloy.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "БОУЛ С ЙОГУРТОМ, БАНАНОМ И ГРАНОЛОЙ",
-      "nameUz": "БОУЛ С ЙОГУРТОМ, БАНАНОМ И ГРАНОЛОЙ",
-      "descriptionRu": "Йогуртовый боул с бананом, клубникой, гранолой и семенами чиа.",
-      "descriptionUz": "Йогуртовый боул с бананом, клубникой, гранолой и семенами чиа.",
+      "nameRu": "Йогурт с бананом, клубникой и гранолой",
+      "nameUz": "Yogurt, banan, qulupnay va granola",
+      "descriptionRu": "Свежий завтрак: йогурт, банан, клубника, гранола без сахара и семена чиа.",
+      "descriptionUz": "Yangi nonushta: yogurt, banan, qulupnay, shakarsiz granola va chia urug'lari.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -619,17 +647,17 @@
         "mayContainRu": "орехи, глютен, соя",
         "mayContainUz": "орехи, глютен, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "04-boul-s-yogurtom-bananom-i-granoloy.jpg",
+      "tipRu": "Добавляйте гранолу непосредственно перед едой, чтобы сохранить хруст.",
+      "tipUz": "Granolani yeyishdan oldin qo'shing — xirilligini saqlang.",
+      "photoFile": "04-yogurt-s-bananom-klubnikoy-i-granoloy.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "БОУЛ С ТЕФТЕЛЯМИ, КИНОА И ХУМУСОМ",
-      "nameUz": "БОУЛ С ТЕФТЕЛЯМИ, КИНОА И ХУМУСОМ",
-      "descriptionRu": "Белковый боул с куриными тефтелями, киноа-табуле, хумусом, фетой и оливками.",
-      "descriptionUz": "Белковый боул с куриными тефтелями, киноа-табуле, хумусом, фетой и оливками.",
+      "nameRu": "Тефтели с киноа и хумусом",
+      "nameUz": "Kinoali va xummusli teftellar",
+      "descriptionRu": "Сытный обед: куриные тефтели, киноа-табуле, хумус, фета и оливки.",
+      "descriptionUz": "To'yimli tushlik: tovuq teftellari, kinoa-tabbule, xummus, feta va zaytun.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -710,20 +738,6 @@
           "section": null
         },
         {
-          "nameRu": "Чеснок",
-          "nameUz": "Чеснок",
-          "grams": 5,
-          "amountText": "1 зубчик (5 г)",
-          "section": null
-        },
-        {
-          "nameRu": "Яйцо",
-          "nameUz": "Яйцо",
-          "grams": 30,
-          "amountText": "0,5 шт. (30 г)",
-          "section": null
-        },
-        {
           "nameRu": "Вяленые томаты",
           "nameUz": "Вяленые томаты",
           "grams": 10,
@@ -731,10 +745,10 @@
           "section": null
         },
         {
-          "nameRu": "Овсяная",
-          "nameUz": "Овсяная",
+          "nameRu": "Овсяная мука / панировочные сухари",
+          "nameUz": "Овсяная мука / панировочные сухари",
           "grams": 10,
-          "amountText": "мука / панировочные сухари 1 ст. л. (10 г)",
+          "amountText": "1 ст. л. (10 г)",
           "section": null
         },
         {
@@ -787,24 +801,24 @@
           "section": null
         },
         {
-          "nameRu": "Зелёный",
-          "nameUz": "Зелёный",
+          "nameRu": "Зелёный лук / петрушка",
+          "nameUz": "Зелёный лук / петрушка",
           "grams": 5,
-          "amountText": "лук / петрушка 1 ст. л. (5 г)",
+          "amountText": "1 ст. л. (5 г)",
           "section": null
         },
         {
-          "nameRu": "Оливковое",
-          "nameUz": "Оливковое",
+          "nameRu": "Оливковое масло",
+          "nameUz": "Оливковое масло",
           "grams": 5,
-          "amountText": "масло 1 ч. л. (5 г)",
+          "amountText": "1 ч. л. (5 г)",
           "section": null
         },
         {
-          "nameRu": "Лимонный",
-          "nameUz": "Лимонный",
+          "nameRu": "Лимонный сок",
+          "nameUz": "Лимонный сок",
           "grams": 5,
-          "amountText": "сок 1 ч. л. (5 г)",
+          "amountText": "1 ч. л. (5 г)",
           "section": null
         },
         {
@@ -843,17 +857,17 @@
         "mayContainRu": null,
         "mayContainUz": null
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "05-boul-s-teftelyami-kinoa-i-humusom.jpg",
+      "tipRu": "Разогревайте только тефтели — овощи и хумус добавляйте после.",
+      "tipUz": "Faqat teftellarni qizdiring — sabzavot va xummus keyin qo'shiladi.",
+      "photoFile": "05-tefteli-s-kinoa-i-humusom.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "ТУНЕЦ-БОУЛ С ХРУСТЯЩЕЙ КАРТОШКОЙ",
-      "nameUz": "ТУНЕЦ-БОУЛ С ХРУСТЯЩЕЙ КАРТОШКОЙ",
-      "descriptionRu": "Боул с тунцом, яйцом, хрустящим картофелем, зелёной фасолью и свежими овощами.",
-      "descriptionUz": "Боул с тунцом, яйцом, хрустящим картофелем, зелёной фасолью и свежими овощами.",
+      "nameRu": "Тунец с хрустящим картофелем",
+      "nameUz": "Tun baliq va xirillagan kartoshka",
+      "descriptionRu": "Лёгкий обед: тунец, яйцо, запечённый картофель, зелёная фасоль и свежие овощи.",
+      "descriptionUz": "Yengil tushlik: tun baliq, tuxum, pishirilgan kartoshka, yashil loviya va yangi sabzavotlar.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -927,10 +941,17 @@
           "section": null
         },
         {
-          "nameRu": "Оливковое",
-          "nameUz": "Оливковое",
+          "nameRu": "Оливковое масло",
+          "nameUz": "Оливковое масло",
           "grams": 5,
-          "amountText": "масло 1 ч. л. (5 г)",
+          "amountText": "1 ч. л. (5 г)",
+          "section": null
+        },
+        {
+          "nameRu": "Паприка копчёная",
+          "nameUz": "Паприка копчёная",
+          "grams": null,
+          "amountText": "0,5 ч. л.",
           "section": null
         },
         {
@@ -976,17 +997,17 @@
           "section": null
         },
         {
-          "nameRu": "Лук",
-          "nameUz": "Лук",
+          "nameRu": "Лук зелёный или петрушка",
+          "nameUz": "Лук зелёный или петрушка",
           "grams": 5,
-          "amountText": "зелёный или петрушка 1 ст. л. (5 г)",
+          "amountText": "1 ст. л. (5 г)",
           "section": null
         },
         {
-          "nameRu": "Лимонный",
-          "nameUz": "Лимонный",
+          "nameRu": "Лимонный сок",
+          "nameUz": "Лимонный сок",
           "grams": 5,
-          "amountText": "сок 1 ч. л. (5 г)",
+          "amountText": "1 ч. л. (5 г)",
           "section": null
         },
         {
@@ -994,6 +1015,13 @@
           "nameUz": "Соль",
           "grams": null,
           "amountText": "по вкусу",
+          "section": null
+        },
+        {
+          "nameRu": "Чёрный перец",
+          "nameUz": "Чёрный перец",
+          "grams": null,
+          "amountText": "щепотка",
           "section": null
         }
       ],
@@ -1029,17 +1057,17 @@
         "mayContainRu": "глютен, горчица, соя, кунжут",
         "mayContainUz": "глютен, горчица, соя, кунжут"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "06-tunets-boul-s-hrustyaschey-kartoshkoy.jpg",
+      "tipRu": "Картофель можно разогреть отдельно — салат оставьте свежим.",
+      "tipUz": "Kartoshkani alohida qizdirish mumkin — salatni yangi qoldiring.",
+      "photoFile": "06-tunets-s-hrustyaschim-kartofelem.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "ГОВЯДИНА С БРОККОЛИ В СОУСЕ ТЕРИЯКИ",
-      "nameUz": "ГОВЯДИНА С БРОККОЛИ В СОУСЕ ТЕРИЯКИ",
-      "descriptionRu": "Боул с тонко нарезанной говядиной, брокколи, рисом и соево- медовым соусом терияки.",
-      "descriptionUz": "Боул с тонко нарезанной говядиной, брокколи, рисом и соево- медовым соусом терияки.",
+      "nameRu": "Говядина с брокколи в соусе терияки",
+      "nameUz": "Teriyaki sousidagi mol go'shti va brokkoli",
+      "descriptionRu": "Горячее блюдо: тонко нарезанная говядина, брокколи, рис и соево-медовый соус терияки.",
+      "descriptionUz": "Issiq taom: mayda to'g'ralgan mol go'shti, brokkoli, guruch va soya-asal teriyaki sousi.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -1134,38 +1162,31 @@
           "section": null
         },
         {
-          "nameRu": "Чеснок",
-          "nameUz": "Чеснок",
+          "nameRu": "Имбирь свежий натёртый",
+          "nameUz": "Имбирь свежий натёртый",
           "grams": 5,
-          "amountText": "1 зубчик (5 г)",
+          "amountText": "1 ч. л. (5 г)",
           "section": null
         },
         {
-          "nameRu": "Имбирь",
-          "nameUz": "Имбирь",
+          "nameRu": "Масло кунжутное или оливковое",
+          "nameUz": "Масло кунжутное или оливковое",
           "grams": 5,
-          "amountText": "свежий натёртый 1 ч. л. (5 г)",
+          "amountText": "1 ч. л. (5 г)",
           "section": null
         },
         {
-          "nameRu": "Масло",
-          "nameUz": "Масло",
+          "nameRu": "Семена кунжута",
+          "nameUz": "Семена кунжута",
           "grams": 5,
-          "amountText": "кунжутное или оливковое 1 ч. л. (5 г)",
+          "amountText": "1 ч. л. (5 г)",
           "section": null
         },
         {
-          "nameRu": "Семена",
-          "nameUz": "Семена",
-          "grams": 5,
-          "amountText": "кунжута 1 ч. л. (5 г)",
-          "section": null
-        },
-        {
-          "nameRu": "Соевый",
-          "nameUz": "Соевый",
+          "nameRu": "Соевый соус",
+          "nameUz": "Соевый соус",
           "grams": null,
-          "amountText": "соус 1 ст. л. (15 мл)",
+          "amountText": "1 ст. л. (15 мл)",
           "section": null
         },
         {
@@ -1176,10 +1197,10 @@
           "section": null
         },
         {
-          "nameRu": "Рисовый",
-          "nameUz": "Рисовый",
+          "nameRu": "Рисовый уксус или сок лайма",
+          "nameUz": "Рисовый уксус или сок лайма",
           "grams": null,
-          "amountText": "уксус или сок лайма 1 ч. л. (5 мл)",
+          "amountText": "1 ч. л. (5 мл)",
           "section": null
         }
       ],
@@ -1219,17 +1240,17 @@
         "mayContainRu": "горчица, сульфиты",
         "mayContainUz": "горчица, сульфиты"
       },
-      "tipRu": null,
-      "tipUz": null,
+      "tipRu": "Посыпьте кунжутом и подавайте сразу после разогрева.",
+      "tipUz": "Kunjut sepib, qizdirgandan so'ng darhol torting.",
       "photoFile": "07-govyadina-s-brokkoli-v-souse-teriyaki.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "ГРЕЧНЕВЫЙ БОУЛ С ФРИКАДЕЛЬКАМИ, ГРИБАМИ И МОРКОВЬЮ",
-      "nameUz": "ГРЕЧНЕВЫЙ БОУЛ С ФРИКАДЕЛЬКАМИ, ГРИБАМИ И МОРКОВЬЮ",
-      "descriptionRu": "Горячий гречневый боул с куриными фрикадельками, шампиньонами, морковью и сметанно-горчичным соусом.",
-      "descriptionUz": "Горячий гречневый боул с куриными фрикадельками, шампиньонами, морковью и сметанно-горчичным соусом.",
+      "nameRu": "Гречка с фрикадельками, грибами и морковью",
+      "nameUz": "Grechka, frikadel, qo'ziqorin va sabzi",
+      "descriptionRu": "Домашний обед: куриные фрикадельки, гречка, шампиньоны с морковью и сметанно-горчичный соус.",
+      "descriptionUz": "Uy taomi: tovuq frikadellari, grechka, champignon va sabzi, smetana-xantal sousi bilan.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -1416,17 +1437,17 @@
         "mayContainRu": "яйцо, соя, орехи",
         "mayContainUz": "яйцо, соя, орехи"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "08-grechnevyy-boul-s-frikadelkami-gribami-i-morkovyu.jpg",
+      "tipRu": "Соус лучше добавить после разогрева основных компонентов.",
+      "tipUz": "Sousni asosiy qismlarni qizdirgandan keyin qo'shing.",
+      "photoFile": "08-grechka-s-frikadelkami-gribami-i-morkovyu.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "ЯИЧНЫЙ ПРОТЕИНОВЫЙ БОУЛ С ИНДЕЙКОЙ, КАРТОФЕЛЕМ И ЗЕЛЕНЬЮ",
-      "nameUz": "ЯИЧНЫЙ ПРОТЕИНОВЫЙ БОУЛ С ИНДЕЙКОЙ, КАРТОФЕЛЕМ И ЗЕЛЕНЬЮ",
-      "descriptionRu": "Белковый боул с яйцами, индейкой, запечённым картофелем, огурцом, шпинатом и сметанным соусом.",
-      "descriptionUz": "Белковый боул с яйцами, индейкой, запечённым картофелем, огурцом, шпинатом и сметанным соусом.",
+      "nameRu": "Белковая тарелка: индейка, яйцо и картофель",
+      "nameUz": "Oqsilli taom: kurka, tuxum va kartoshka",
+      "descriptionRu": "Сытный завтрак: яйца, индейка, запечённый картофель, огурец, шпинат и сметанный соус.",
+      "descriptionUz": "To'yimli nonushta: tuxum, kurka go'shti, pishirilgan kartoshka, bodring, ismaloq va smetana sousi.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -1613,17 +1634,17 @@
         "mayContainRu": "соя, глютен",
         "mayContainUz": "соя, глютен"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "09-yaichnyy-proteinovyy-boul-s-indeykoy-kartofelem-i-zelenyu.jpg",
+      "tipRu": "Яйцо и свежие овощи добавляйте после разогрева горячих компонентов.",
+      "tipUz": "Issiq qismlarni qizdirgandan keyin tuxum va yangi sabzavot qo'shing.",
+      "photoFile": "09-belkovaya-tarelka-indeyka-yaytso-i-kartofel.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "ОВСЯНЫЙ БОУЛ С ЯБЛОКОМ, КОРИЦЕЙ И ЗЕРНЁНЫМ ТВОРОГОМ",
-      "nameUz": "ОВСЯНЫЙ БОУЛ С ЯБЛОКОМ, КОРИЦЕЙ И ЗЕРНЁНЫМ ТВОРОГОМ",
-      "descriptionRu": "Тёплая овсяная основа с зернёным творогом, свежим и прогретым яблоком, мёдом и грецкими орехами.",
-      "descriptionUz": "Тёплая овсяная основа с зернёным творогом, свежим и прогретым яблоком, мёдом и грецкими орехами.",
+      "nameRu": "Овсянка с яблоком, корицей и зернёным творогом",
+      "nameUz": "Suli yormasi, olma, dolchin va donli tvorog",
+      "descriptionRu": "Тёплый завтрак: овсяная каша, зернёный творог, яблоко с корицей, мёд и грецкие орехи.",
+      "descriptionUz": "Issiq nonushta: suli bo'tqasi, donli tvorog, dolchinli olma, asal va yong'oq.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -1785,17 +1806,17 @@
         "mayContainRu": "соя, кунжут",
         "mayContainUz": "соя, кунжут"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "10-ovsyanyy-boul-s-yablokom-koritsey-i-zernenym-tvorogom.jpg",
+      "tipRu": "Орехи и свежее яблоко — в конце, чтобы сохранить текстуру.",
+      "tipUz": "Yong'oq va yangi olmani oxirida qo'shing — tuzilishini saqlang.",
+      "photoFile": "10-ovsyanka-s-yablokom-koritsey-i-zernenym-tvorogom.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "ОМЛЕТ-БОУЛ С КУРИЦЕЙ, БРОККОЛИ И СЫРОМ",
-      "nameUz": "ОМЛЕТ-БОУЛ С КУРИЦЕЙ, БРОККОЛИ И СЫРОМ",
-      "descriptionRu": "Низкоуглеводный белковый боул с омлетом, курицей, брокколи и сыром.",
-      "descriptionUz": "Низкоуглеводный белковый боул с омлетом, курицей, брокколи и сыром.",
+      "nameRu": "Омлет с курицей, брокколи и сыром",
+      "nameUz": "Tovuq, brokkoli va pishloqli omlet",
+      "descriptionRu": "Высокобелковый завтрак: нежный омлет, курица, брокколи на пару и сыр.",
+      "descriptionUz": "Yuqori oqsilli nonushta: yumshoq omlet, tovuq, bug'da brokkoli va pishloq.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -1964,17 +1985,17 @@
         "mayContainRu": "глютен, соя, горчица",
         "mayContainUz": "глютен, соя, горчица"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "11-omlet-boul-s-kuritsey-brokkoli-i-syrom.jpg",
+      "tipRu": "Разогревайте 1,5–2 минуты — не пересушивайте омлет.",
+      "tipUz": "1,5–2 daqiqa qizdiring — omletni quruq qilmang.",
+      "photoFile": "11-omlet-s-kuritsey-brokkoli-i-syrom.jpg",
       "tags": []
     },
     {
-      "category": "main",
-      "nameRu": "ТВОРОЖНЫЙ БОУЛ «ВИШНЁВЫЙ ЧИЗКЕЙК»",
-      "nameUz": "ТВОРОЖНЫЙ БОУЛ «ВИШНЁВЫЙ ЧИЗКЕЙК»",
-      "descriptionRu": "Холодный творожный десерт с греческим йогуртом, вишнёвым соусом и хрустящей крошкой.",
-      "descriptionUz": "Холодный творожный десерт с греческим йогуртом, вишнёвым соусом и хрустящей крошкой.",
+      "category": "dessert",
+      "nameRu": "Творожный десерт «Вишнёвый чизкейк»",
+      "nameUz": "Tvorogli desert «Olchali chizkeyk»",
+      "descriptionRu": "Нежный десерт: творог с йогуртом, вишнёвый соус и хрустящая крошка из рисовых хлебцев.",
+      "descriptionUz": "Yumshoq desert: yogurtli tvorog, olcha sousi va guruch nonidan xirillagan qirindi.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -2122,17 +2143,17 @@
         "mayContainRu": null,
         "mayContainUz": null
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "12-tvorozhnyy-boul-vishnevyy-chizkeyk.jpg",
+      "tipRu": "Подавайте охлаждённым — крошку добавляйте в последний момент.",
+      "tipUz": "Sovuq torting — qirindini oxirgi lahzada qo'shing.",
+      "photoFile": "12-tvorozhnyy-desert-vishnevyy-chizkeyk.jpg",
       "tags": []
     },
     {
       "category": "main",
       "nameRu": "Говяжий фарш с брокколи",
-      "nameUz": "Говяжий фарш с брокколи",
-      "descriptionRu": "Нежирный говяжий фарш с брокколи и цветной капустой. Сбалансированное блюдо с высоким содержанием белка.",
-      "descriptionUz": "Нежирный говяжий фарш с брокколи и цветной капустой. Сбалансированное блюдо с высоким содержанием белка.",
+      "nameUz": "Mol go'shti va brokkoli",
+      "descriptionRu": "Сбалансированный обед: нежирный говяжий фарш, брокколи, цветная капуста и рис с овощами.",
+      "descriptionUz": "Muvozanatli tushlik: yog'siz mol go'shti, brokkoli, rangli karam va sabzavotli guruch.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -2251,17 +2272,17 @@
         "mayContainRu": "сельдерей, горчица, соя",
         "mayContainUz": "сельдерей, горчица, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
+      "tipRu": "Разогревайте до горячего состояния и подавайте сразу.",
+      "tipUz": "To'liq qizdirib, darhol torting.",
       "photoFile": "13-govyazhiy-farsh-s-brokkoli.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "Куриные котлеты",
-      "nameUz": "Куриные котлеты",
-      "descriptionRu": "Сочные куриные котлеты с гарниром из гречки и макарон. Сытное и сбалансированное блюдо на каждый день.",
-      "descriptionUz": "Сочные куриные котлеты с гарниром из гречки и макарон. Сытное и сбалансированное блюдо на каждый день.",
+      "nameRu": "Куриные котлеты с гречкой и макаронами",
+      "nameUz": "Tovuq kotletlari, grechka va makaron",
+      "descriptionRu": "Домашний обед: сочные куриные котлеты, гречка, макароны и свежие овощи.",
+      "descriptionUz": "Uy taomi: shirali tovuq kotletlari, grechka, makaron va yangi sabzavotlar.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -2384,17 +2405,17 @@
         "mayContainRu": "сельдерей, горчица, соя",
         "mayContainUz": "сельдерей, горчица, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "14-kurinye-kotlety.jpg",
+      "tipRu": "Котлеты лучше разогреть на сковороде или в микроволновке 2–3 минуты.",
+      "tipUz": "Kotletlarni skovorodada yoki mikroto'lqinda 2–3 daqiqa qizdiring.",
+      "photoFile": "14-kurinye-kotlety-s-grechkoy-i-makaronami.jpg",
       "tags": []
     },
     {
       "category": "main",
       "nameRu": "Куриный конверт с сыром",
-      "nameUz": "Куриный конверт с сыром",
-      "descriptionRu": "Нежный куриный конверт с сырной начинкой. Высокое содержание белка и насыщенный вкус.",
-      "descriptionUz": "Нежный куриный конверт с сырной начинкой. Высокое содержание белка и насыщенный вкус.",
+      "nameUz": "Pishloqli tovuq konverti",
+      "descriptionRu": "Высокобелковое блюдо: куриный конверт с пармезаном, гречка, макароны и овощи.",
+      "descriptionUz": "Yuqori oqsilli taom: parmezanli tovuq konverti, grechka, makaron va sabzavotlar.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -2524,17 +2545,17 @@
         "mayContainRu": "сельдерей, горчица, соя",
         "mayContainUz": "сельдерей, горчица, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
+      "tipRu": "Разогревайте до горячего — сыр внутри должен быть мягким.",
+      "tipUz": "Issiq qizdiring — ichidagi pishloq yumshoq bo'lsin.",
       "photoFile": "15-kurinyy-konvert-s-syrom.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "Куриный шашлык",
-      "nameUz": "Куриный шашлык",
+      "nameRu": "Куриный шашлык с рисом и картофелем",
+      "nameUz": "Kurka shashligi, guruch va kartoshka",
       "descriptionRu": "Сочный шашлык из куриной грудки с рисом и запечённым картофелем.",
-      "descriptionUz": "Сочный шашлык из куриной грудки с рисом и запечённым картофелем.",
+      "descriptionUz": "Kurka ko'kragi shashligi, guruch va pishirilgan kartoshka bilan.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -2650,17 +2671,17 @@
         "mayContainRu": "сельдерей, горчица, соя",
         "mayContainUz": "сельдерей, горчица, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "16-kurinyy-shashlyk.jpg",
+      "tipRu": "Картофель можно слегка подрумянить при разогреве.",
+      "tipUz": "Qizdirganda kartoshkani biroz qizarib qo'yish mumkin.",
+      "photoFile": "16-kurinyy-shashlyk-s-risom-i-kartofelem.jpg",
       "tags": []
     },
     {
       "category": "main",
       "nameRu": "Курица по-азиатски",
-      "nameUz": "Курица по-азиатски",
-      "descriptionRu": "Куриная грудка с рисом, фасолью и овощами в азиатском стиле. Высокобелковое сбалансированное блюдо.",
-      "descriptionUz": "Куриная грудка с рисом, фасолью и овощами в азиатском стиле. Высокобелковое сбалансированное блюдо.",
+      "nameUz": "Osiyo uslubidagi tovuq",
+      "descriptionRu": "Высокобелковый обед: курица с рисом, фасолью и овощами в азиатском стиле.",
+      "descriptionUz": "Yuqori oqsilli tushlik: guruch, loviya va sabzavotlar bilan osiyo uslubidagi tovuq.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -2797,17 +2818,17 @@
         "mayContainRu": "сельдерей, горчица, соя",
         "mayContainUz": "сельдерей, горчица, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
+      "tipRu": "Салат добавляйте после разогрева горячих компонентов.",
+      "tipUz": "Issiq qismlarni qizdirgandan keyin salat qo'shing.",
       "photoFile": "17-kuritsa-po-aziatski.jpg",
       "tags": []
     },
     {
       "category": "main",
       "nameRu": "Курица с ананасом",
-      "nameUz": "Курица с ананасом",
-      "descriptionRu": "Куриное бедро с ананасом, рисом и овощами гриль. Сбалансированное блюдо с ярким сладко-кислым вкусом.",
-      "descriptionUz": "Куриное бедро с ананасом, рисом и овощами гриль. Сбалансированное блюдо с ярким сладко-кислым вкусом.",
+      "nameUz": "Ananasli tovuq",
+      "descriptionRu": "Сбалансированное блюдо: куриное бедро, рис, овощи гриль и карамелизированный ананас.",
+      "descriptionUz": "Muvozanatli taom: tovuq soni, guruch, grilda sabzavotlar va karamel ananas.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -2930,17 +2951,17 @@
         "mayContainRu": "сельдерей, горчица, соя",
         "mayContainUz": "сельдерей, горчица, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
+      "tipRu": "Ананас лучше слегка обжарить перед подачей для яркого вкуса.",
+      "tipUz": "Ananasni tortishdan oldin biroz qovuring — ta'm yanada ochiladi.",
       "photoFile": "18-kuritsa-s-ananasom.jpg",
       "tags": []
     },
     {
       "category": "main",
       "nameRu": "Курица в духовке с овощами",
-      "nameUz": "Курица в духовке с овощами",
-      "descriptionRu": "Запечённое куриное бедро с овощами и гречкой. Сбалансированное блюдо для ежедневного питания.",
-      "descriptionUz": "Запечённое куриное бедро с овощами и гречкой. Сбалансированное блюдо для ежедневного питания.",
+      "nameUz": "Pishirilgan tovuq va sabzavotlar",
+      "descriptionRu": "Сытный обед: запечённое куриное бедро с овощами и гречкой.",
+      "descriptionUz": "To'yimli tushlik: pishirilgan tovuq soni, sabzavotlar va grechka.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -3056,17 +3077,17 @@
         "mayContainRu": "сельдерей, горчица, соя",
         "mayContainUz": "сельдерей, горчица, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
+      "tipRu": "Разогревайте в микроволновке 2–3 минуты до горячего.",
+      "tipUz": "Mikroto'lqinda 2–3 daqiqa issiq qilib qizdiring.",
       "photoFile": "19-kuritsa-v-duhovke-s-ovoschami.jpg",
       "tags": []
     },
     {
       "category": "main",
       "nameRu": "Протеиновые голубцы",
-      "nameUz": "Протеиновые голубцы",
-      "descriptionRu": "Голубцы с нежирным говяжьим фаршем, рисом и фасолью. Сытное блюдо с высоким содержанием белка.",
-      "descriptionUz": "Голубцы с нежирным говяжьим фаршем, рисом и фасолью. Сытное блюдо с высоким содержанием белка.",
+      "nameUz": "Oqsilli golubtsalar",
+      "descriptionRu": "Сытное блюдо: голубцы с говяжьим фаршем, рисом, фасолью и макаронами.",
+      "descriptionUz": "To'yimli taom: mol go'shtli golubtsalar, guruch, loviya va makaron.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -3189,17 +3210,17 @@
         "mayContainRu": "сельдерей, горчица, соя",
         "mayContainUz": "сельдерей, горчица, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
+      "tipRu": "Тушите при разогреве на слабом огне, чтобы голубцы не пересохли.",
+      "tipUz": "Qizdirganda past olovda qaynatib, golubtsalarni quruq qilmang.",
       "photoFile": "20-proteinovye-golubtsy.jpg",
       "tags": []
     },
     {
       "category": "main",
       "nameRu": "Тушеная говядина",
-      "nameUz": "Тушеная говядина",
-      "descriptionRu": "Нежная тушеная говядина с рисом и овощами. Сбалансированное блюдо с высоким содержанием белка.",
-      "descriptionUz": "Нежная тушеная говядина с рисом и овощами. Сбалансированное блюдо с высоким содержанием белка.",
+      "nameUz": "Qovurilgan mol go'shti",
+      "descriptionRu": "Нежная тушёная говядина с рисом, брокколи и помидорами.",
+      "descriptionUz": "Yumshoq qovurilgan mol go'shti, guruch, brokkoli va pomidorlar bilan.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -3326,17 +3347,17 @@
         "mayContainRu": "сельдерей, горчица, соя",
         "mayContainUz": "сельдерей, горчица, соя"
       },
-      "tipRu": null,
-      "tipUz": null,
+      "tipRu": "Подавайте горячим — соус должен быть густым и ароматным.",
+      "tipUz": "Issiq torting — sous qalin va xushbo'y bo'lsin.",
       "photoFile": "21-tushenaya-govyadina.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "BBQ Курица с картошкой",
-      "nameUz": "BBQ Курица с картошкой",
-      "descriptionRu": "Жареный картофель с BBQ-курицей и булгуром. Сытное блюдо с дымным BBQ-вкусом.",
-      "descriptionUz": "Жареный картофель с BBQ-курицей и булгуром. Сытное блюдо с дымным BBQ-вкусом.",
+      "nameRu": "BBQ-курица с картофелем и булгуром",
+      "nameUz": "BBQ tovuq, kartoshka va bulgur",
+      "descriptionRu": "Сытное блюдо: куриное бедро в BBQ-специях, запечённый картофель, булгур и овощи.",
+      "descriptionUz": "To'yimli taom: BBQ ziravorli tovuq soni, pishirilgan kartoshka, bulgur va sabzavotlar.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -3498,17 +3519,17 @@
         "mayContainRu": "арахис, древесные орехи, соя, кунжут, сульфиты, люпин, глютен, пшеница",
         "mayContainUz": "арахис, древесные орехи, соя, кунжут, сульфиты, люпин, глютен, пшеница"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "22-bbq-kuritsa-s-kartoshkoy.jpg",
+      "tipRu": "Картофель разогревайте отдельно для сохранения корочки.",
+      "tipUz": "Kartoshkani qobig'ini saqlash uchun alohida qizdiring.",
+      "photoFile": null,
       "tags": []
     },
     {
       "category": "main",
       "nameRu": "Курица карри с рисом басмати",
-      "nameUz": "Курица карри с рисом басмати",
-      "descriptionRu": "Мягкое куриное филе и овощи с кокосом и цитрусом. Подаётся с рисом басмати.",
-      "descriptionUz": "Мягкое куриное филе и овощи с кокосом и цитрусом. Подаётся с рисом басмати.",
+      "nameUz": "Kurka karri va basmati guruchi",
+      "descriptionRu": "Ароматное карри: куриное филе, овощи, кокосовые сливки и рис басмати.",
+      "descriptionUz": "Xushbo'y karri: kurka file, sabzavotlar, kokos suti va basmati guruchi.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -3684,17 +3705,17 @@
         "mayContainRu": "арахис, орехи, соя, кунжут, сульфиты, люпин, глютен, пшеница",
         "mayContainUz": "арахис, орехи, соя, кунжут, сульфиты, люпин, глютен, пшеница"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "23-kuritsa-karri-s-risom-basmati.jpg",
+      "tipRu": "Подавайте с свежим лаймом — кислотность балансирует кокос.",
+      "tipUz": "Yangi laym bilan torting — nordonlik kokosni muvozanatlaydi.",
+      "photoFile": null,
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "Говяжий фарш с макаронами песто",
-      "nameUz": "Говяжий фарш с макаронами песто",
-      "descriptionRu": "Пенне аль денте с домашним песто из базилика, вялеными томатами и говяжьим фаршем.",
-      "descriptionUz": "Пенне аль денте с домашним песто из базилика, вялеными томатами и говяжьим фаршем.",
+      "nameRu": "Пенне с говяжьим фаршем и песто",
+      "nameUz": "Mol go'shtli va pestoli penne",
+      "descriptionRu": "Сытная паста: пенне аль денте, домашний песто, говяжий фарш, горошек и вяленые томаты.",
+      "descriptionUz": "To'yimli pasta: penne, uy pestosi, mol go'shti, no'xat va quritilgan pomidor.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -3838,17 +3859,17 @@
         "mayContainRu": "яйцо, молоко, кунжут, арахис, орехи",
         "mayContainUz": "яйцо, молоко, кунжут, арахис, орехи"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "24-govyazhiy-farsh-s-makaronami-pesto.jpg",
+      "tipRu": "Перемешайте пасту с соусом сразу после разогрева.",
+      "tipUz": "Qizdirgandan so'ng pastani sous bilan darhol aralashtiring.",
+      "photoFile": null,
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "Лазания из говядины",
-      "nameUz": "Лазания из говядины",
-      "descriptionRu": "Классическая лазанья с болоньезе из говядины и фасоли, покрытая нежным бешамелем.",
-      "descriptionUz": "Классическая лазанья с болоньезе из говядины и фасоли, покрытая нежным бешамелем.",
+      "nameRu": "Лазанья с говяжьей болоньезе",
+      "nameUz": "Mol go'shtli lazanya",
+      "descriptionRu": "Классическая лазанья: болоньезе из говядины, фасоль, нежный бешамель.",
+      "descriptionUz": "Klassik lazanya: mol go'shtli bolonez, loviya va yumshoq beşamel.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -4031,17 +4052,17 @@
         "mayContainRu": "люпин, молоко, яйцо, кунжут, сульфиты, арахис, орехи",
         "mayContainUz": "люпин, молоко, яйцо, кунжут, сульфиты, арахис, орехи"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "25-lazaniya-iz-govyadiny.jpg",
+      "tipRu": "Дайте постоять 2–3 минуты после разогрева — слои стабилизируются.",
+      "tipUz": "Qizdirgandan keyin 2–3 daqiqa turing — qatlamlar mustahkamlanadi.",
+      "photoFile": null,
       "tags": []
     },
     {
       "category": "main",
       "nameRu": "Спагетти в томатном соусе",
-      "nameUz": "Спагетти в томатном соусе",
-      "descriptionRu": "Домашняя Наполитана с болоньезе из говядины. Просто и очень вкусно.",
-      "descriptionUz": "Домашняя Наполитана с болоньезе из говядины. Просто и очень вкусно.",
+      "nameUz": "Pomidor sousidagi spagetti",
+      "descriptionRu": "Домашняя паста: спагетти аль денте с болоньезе из говядины и свежим базиликом.",
+      "descriptionUz": "Uy pastasi: mol go'shtli bolonez va yangi bazilik bilan spagetti.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -4178,17 +4199,17 @@
         "mayContainRu": "яйцо, молоко, кунжут, сульфиты, арахис, орехи",
         "mayContainUz": "яйцо, молоко, кунжут, сульфиты, арахис, орехи"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "26-spagetti-v-tomatnom-souse.jpg",
+      "tipRu": "Базилик добавляйте после разогрева.",
+      "tipUz": "Bazilikni qizdirgandan keyin qo'shing.",
+      "photoFile": null,
       "tags": []
     },
     {
       "category": "main",
       "nameRu": "Тайская курица с лапшой",
-      "nameUz": "Тайская курица с лапшой",
-      "descriptionRu": "Курица с лапшой в стиле ми горенг. Яркий микс овощей с кекап манис и самбал оелек.",
-      "descriptionUz": "Курица с лапшой в стиле ми горенг. Яркий микс овощей с кекап манис и самбал оелек.",
+      "nameUz": "Tay lazzasi va tovuq",
+      "descriptionRu": "Курица с лапшой в стиле ми горенг: овощи, кекап манис и самбал оелек.",
+      "descriptionUz": "Mi goreng uslubida tovuq va lag'mon: sabzavotlar, kekap manis va sambal oelek.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -4343,17 +4364,17 @@
         "mayContainRu": "люпин, молоко, арахис, орехи",
         "mayContainUz": "люпин, молоко, арахис, орехи"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "27-tayskaya-kuritsa-s-lapshoy.jpg",
+      "tipRu": "Перемешайте перед подачей — соус должен покрыть лапшу равномерно.",
+      "tipUz": "Tortishdan oldin aralashtiring — sous lag'monni tekis qoplasin.",
+      "photoFile": null,
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "Говядина терияки",
-      "nameUz": "Говядина терияки",
-      "descriptionRu": "Говядина с домашним соусом терияки из тёмного соя, имбиря, чеснока и кунжута. Подаётся с рисом басмати.",
-      "descriptionUz": "Говядина с домашним соусом терияки из тёмного соя, имбиря, чеснока и кунжута. Подаётся с рисом басмати.",
+      "nameRu": "Говядина терияки с рисом басмати",
+      "nameUz": "Teriyaki mol go'shti va basmati guruchi",
+      "descriptionRu": "Говядина в домашнем соусе терияки с рисом басмати и азиатскими овощами.",
+      "descriptionUz": "Uy teriyaki sousidagi mol go'shti, basmati guruchi va osiyo sabzavotlari.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -4529,17 +4550,17 @@
         "mayContainRu": "люпин, молоко, сульфиты, арахис, орехи",
         "mayContainUz": "люпин, молоко, сульфиты, арахис, орехи"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "28-govyadina-teriyaki.jpg",
+      "tipRu": "Посыпьте кунжутом и зелёным луком перед подачей.",
+      "tipUz": "Tortishdan oldin kunjut va yashil piyoz sepib chiqing.",
+      "photoFile": null,
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "BBQ Black Bean Casserole",
-      "nameUz": "BBQ Black Bean Casserole",
-      "descriptionRu": "Жареный картофель с BBQ-фасолью, нежным сейтаном, томатами и кускусом из жемчужной крупы.",
-      "descriptionUz": "Жареный картофель с BBQ-фасолью, нежным сейтаном, томатами и кускусом из жемчужной крупы.",
+      "nameRu": "Кассероль с чёрной фасолью и BBQ-сейтаном",
+      "nameUz": "Qora loviya va BBQ-seytan kasseroli",
+      "descriptionRu": "Веганское блюдо: запечённый картофель, BBQ-сейтан, чёрная фасоль, томаты и кускус.",
+      "descriptionUz": "Vegan taom: pishirilgan kartoshka, BBQ-seytan, qora loviya, pomidor va kuskus.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -4708,17 +4729,17 @@
         "mayContainRu": "арахис, древесные орехи, соя, кунжут, сульфиты, люпин, глютен, пшеница",
         "mayContainUz": "арахис, древесные орехи, соя, кунжут, сульфиты, люпин, глютен, пшеница"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "29-bbq-black-bean-casserole.jpg",
+      "tipRu": "Подавайте горячим — дымный BBQ-вкус раскрывается после разогрева.",
+      "tipUz": "Issiq torting — tutunli BBQ ta'mi qizdirgandan keyin ochiladi.",
+      "photoFile": "29-kasserol-s-chernoy-fasolyu-i-bbq-seytanom.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "Jungle Curry",
-      "nameUz": "Jungle Curry",
-      "descriptionRu": "Мягкое карри из тофу и овощей с имбирём, кокосом и цитрусом. Подаётся с рисом басмати.",
-      "descriptionUz": "Мягкое карри из тофу и овощей с имбирём, кокосом и цитрусом. Подаётся с рисом басмати.",
+      "nameRu": "Карри с тофу и овощами",
+      "nameUz": "Tofu va sabzavotli karri",
+      "descriptionRu": "Нежное карри: тофу, овощи, кокосовые сливки, имбирь и рис жасмин.",
+      "descriptionUz": "Yumshoq karri: tofu, sabzavotlar, kokos suti, zanjabil va jasmin guruchi.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -4874,13 +4895,6 @@
           "grams": 4,
           "amountText": "4 г",
           "section": "Специи И Добавки"
-        },
-        {
-          "nameRu": "Лимонный сок (0.2%) ~1 мл —",
-          "nameUz": "Лимонный сок (0.2%) ~1 мл —",
-          "grams": null,
-          "amountText": "Оливковое масло, перец чили, соль по вкусу —",
-          "section": "Специи И Добавки"
         }
       ],
       "instructions": [
@@ -4915,17 +4929,17 @@
         "mayContainRu": "арахис, древесные орехи, соя, кунжут, сульфиты, люпин, глютен, пшеница",
         "mayContainUz": "арахис, древесные орехи, соя, кунжут, сульфиты, люпин, глютен, пшеница"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "30-jungle-curry.jpg",
+      "tipRu": "Добавьте лайм по вкусу — цитрус освежает соус.",
+      "tipUz": "Laym qo'shing — nordonlik sousni yangilaydi.",
+      "photoFile": "30-karri-s-tofu-i-ovoschami.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "The Sunkissed Protein Pesto",
-      "nameUz": "The Sunkissed Protein Pesto",
-      "descriptionRu": "Пенне аль денте с домашним веганским песто из базилика и кедровых орехов. Высокобелковое блюдо с растительным фаршем и вялеными томатами.",
-      "descriptionUz": "Пенне аль денте с домашним веганским песто из базилика и кедровых орехов. Высокобелковое блюдо с растительным фаршем и вялеными томатами.",
+      "nameRu": "Пенне с веганским песто",
+      "nameUz": "Vegan pestoli penne",
+      "descriptionRu": "Паста пенне с домашним веганским песто, растительным фаршем и вялеными томатами.",
+      "descriptionUz": "Uy vegan pestosi, o'simlik go'shti va quritilgan pomidor bilan penne.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -5067,13 +5081,6 @@
           "grams": 3,
           "amountText": "3 г",
           "section": "Специи"
-        },
-        {
-          "nameRu": "Кленовый сироп, копчёная паприка, порошок уксуса, жидкий дым, соль",
-          "nameUz": "Кленовый сироп, копчёная паприка, порошок уксуса, жидкий дым, соль",
-          "grams": null,
-          "amountText": "по вкусу —",
-          "section": "Специи"
         }
       ],
       "instructions": [
@@ -5104,17 +5111,17 @@
         "mayContainRu": "яйцо, люпин, молоко, кунжут, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, фисташки, грецкий орех",
         "mayContainUz": "яйцо, люпин, молоко, кунжут, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, фисташки, грецкий орех"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "31-the-sunkissed-protein-pesto.jpg",
+      "tipRu": "Песто лучше не перегревать — добавьте в конце разогрева.",
+      "tipUz": "Pestoni ortiqcha qizdirmang — qizdirish oxirida qo'shing.",
+      "photoFile": "31-penne-s-veganskim-pesto.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "Lasagna Is A Feeling",
-      "nameUz": "Lasagna Is A Feeling",
-      "descriptionRu": "Классическая лазанья с болоньезе из бороллоти, масляной и чёрной фасоли, покрытая нежным веганским бешамелем.",
-      "descriptionUz": "Классическая лазанья с болоньезе из бороллоти, масляной и чёрной фасоли, покрытая нежным веганским бешамелем.",
+      "nameRu": "Постная лазанья с фасолью",
+      "nameUz": "Post loviyali lazanya",
+      "descriptionRu": "Веганская лазанья: болоньезе из фасоли и овощей, соевый бешамель.",
+      "descriptionUz": "Vegan lazanya: loviya va sabzavotli bolonez, soya beşameli.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -5263,13 +5270,6 @@
           "grams": null,
           "amountText": "5 мл",
           "section": "Паста И Специи"
-        },
-        {
-          "nameRu": "Базилик, кокосовый сахар, пищевые дрожжи, соль, перец, розмарин, тимьян, мускатный орех, лавровый лист",
-          "nameUz": "Базилик, кокосовый сахар, пищевые дрожжи, соль, перец, розмарин, тимьян, мускатный орех, лавровый лист",
-          "grams": null,
-          "amountText": "по вкусу —",
-          "section": "Паста И Специи"
         }
       ],
       "instructions": [
@@ -5304,17 +5304,17 @@
         "mayContainRu": "люпин, молоко, яйцо, кунжут, сульфиты, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, кедровый орех, фисташки, грецкий орех",
         "mayContainUz": "люпин, молоко, яйцо, кунжут, сульфиты, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, кедровый орех, фисташки, грецкий орех"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "32-lasagna-is-a-feeling.jpg",
+      "tipRu": "Дайте постоять 2–3 минуты после разогрева.",
+      "tipUz": "Qizdirgandan keyin 2–3 daqiqa turing.",
+      "photoFile": "32-postnaya-lazanya-s-fasolyu.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "Spaghetti Veganese",
-      "nameUz": "Spaghetti Veganese",
-      "descriptionRu": "Домашняя Наполитана — секретный соус Soulara — с болоньезе из текстурированного растительного белка. Просто и очень вкусно.",
-      "descriptionUz": "Домашняя Наполитана — секретный соус Soulara — с болоньезе из текстурированного растительного белка. Просто и очень вкусно.",
+      "nameRu": "Спагетти с растительным болоньезе",
+      "nameUz": "O'simlik bolonezli spagetti",
+      "descriptionRu": "Классическая паста: спагетти с томатным соусом и растительным фаршем.",
+      "descriptionUz": "Klassik pasta: pomidor sousi va o'simlik go'shti bilan spagetti.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -5465,17 +5465,17 @@
         "mayContainRu": "яйцо, пшеница, глютен, люпин, молоко, соя, кунжут, сульфиты, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, кедровый орех, фисташки, грецкий орех",
         "mayContainUz": "яйцо, пшеница, глютен, люпин, молоко, соя, кунжут, сульфиты, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, кедровый орех, фисташки, грецкий орех"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "33-spaghetti-veganese.jpg",
+      "tipRu": "Свежий базилик — в конце, перед подачей.",
+      "tipUz": "Yangi bazilikni tortishdan oldin oxirida qo'shing.",
+      "photoFile": "33-spagetti-s-rastitelnym-boloneze.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "Mushroom Bourguignon & Garlic Mash",
-      "nameUz": "Mushroom Bourguignon & Garlic Mash",
-      "descriptionRu": "Кнопочные грибы, тушёные в красном вине с розмарином. Подаются на нежном пюре с чёрным чесноком — веганский взгляд на французскую классику.",
-      "descriptionUz": "Кнопочные грибы, тушёные в красном вине с розмарином. Подаются на нежном пюре с чёрным чесноком — веганский взгляд на французскую классику.",
+      "nameRu": "Бургиньон из шампиньонов с чесночным пюре",
+      "nameUz": "Shampinyon burginyon va sarimsoq pyuresi",
+      "descriptionRu": "Веганская классика: шампиньоны в красном вине с розмарином и пюре с чёрным чесноком.",
+      "descriptionUz": "Vegan klassika: qizil vinoda shampinyon, rozmarin va qora sarimsoq pyuresi.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -5651,17 +5651,17 @@
         "mayContainRu": "пшеница, глютен, люпин, молоко, соя, кунжут, сульфиты, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, кедровый орех, фисташки, грецкий орех",
         "mayContainUz": "пшеница, глютен, люпин, молоко, соя, кунжут, сульфиты, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, кедровый орех, фисташки, грецкий орех"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "34-mushroom-bourguignon-garlic-mash.jpg",
+      "tipRu": "Пюре и грибы разогревайте вместе, но не кипятите.",
+      "tipUz": "Pyure va qo'ziqorni birga qizdiring, lekin qaynatmang.",
+      "photoFile": "34-burginon-iz-shampinonov-s-chesnochnym-pyure.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "Balinese Mie Goreng",
-      "nameUz": "Balinese Mie Goreng",
-      "descriptionRu": "Растительный ми горенг по мотивам улочек Семиньяка. Яркий микс овощей, кекап манис и самбал оелек с лапшой и растительным белком.",
-      "descriptionUz": "Растительный ми горенг по мотивам улочек Семиньяка. Яркий микс овощей, кекап манис и самбал оелек с лапшой и растительным белком.",
+      "nameRu": "Балийская лапша ми-горенг",
+      "nameUz": "Bali uslubidagi mi goreng",
+      "descriptionRu": "Острая лапша: овощи, растительный белок, кекап манис и самбал оелек.",
+      "descriptionUz": "Achchiq lag'mon: sabzavotlar, o'simlik oqsili, kekap manis va sambal oelek.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -5824,13 +5824,6 @@
           "grams": 6,
           "amountText": "6 г",
           "section": "Специи"
-        },
-        {
-          "nameRu": "Кленовый сироп, дрожжевой экстракт, масло оливковое помас, порошок уксуса, соль, белый перец, чёрный перец",
-          "nameUz": "Кленовый сироп, дрожжевой экстракт, масло оливковое помас, порошок уксуса, соль, белый перец, чёрный перец",
-          "grams": null,
-          "amountText": "по вкусу —",
-          "section": "Специи"
         }
       ],
       "instructions": [
@@ -5865,17 +5858,17 @@
         "mayContainRu": "люпин, молоко, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, кедровый орех, фисташки, грецкий орех",
         "mayContainUz": "люпин, молоко, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, кедровый орех, фисташки, грецкий орех"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "35-balinese-mie-goreng.jpg",
+      "tipRu": "Прожарьте на сильном огне при разогреве — так вкус ярче.",
+      "tipUz": "Qizdirganda kuchli olovda qovuring — ta'm yanada ochiladi.",
+      "photoFile": "35-baliyskaya-lapsha-mi-goreng.jpg",
       "tags": []
     },
     {
       "category": "main",
-      "nameRu": "Terrific Teriyaki Bowl",
-      "nameUz": "Terrific Teriyaki Bowl",
-      "descriptionRu": "Растительный фарш с домашним соусом терияки из тёмного соя, имбиря, чеснока, кунжута и мирин. Подаётся с рисом басмати и азиатской зеленью.",
-      "descriptionUz": "Растительный фарш с домашним соусом терияки из тёмного соя, имбиря, чеснока, кунжута и мирин. Подаётся с рисом басмати и азиатской зеленью.",
+      "nameRu": "Терияки с растительным фаршем и рисом",
+      "nameUz": "O'simlik go'shtli teriyaki va guruch",
+      "descriptionRu": "Растительный фарш в соусе терияки с рисом басмати и азиатской зеленью.",
+      "descriptionUz": "Teriyaki sousidagi o'simlik go'shti, basmati guruchi va osiyo ko'katlari.",
       "price": 50000,
       "isActive": true,
       "days": [
@@ -6038,13 +6031,6 @@
           "grams": 6,
           "amountText": "6 г",
           "section": "Специи"
-        },
-        {
-          "nameRu": "Кокосовый сахар, масло оливковое помас, порошок уксуса, перец чили, соль",
-          "nameUz": "Кокосовый сахар, масло оливковое помас, порошок уксуса, перец чили, соль",
-          "grams": null,
-          "amountText": "по вкусу —",
-          "section": "Специи"
         }
       ],
       "instructions": [
@@ -6079,9 +6065,9 @@
         "mayContainRu": "люпин, молоко, сульфиты, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, кедровый орех, фисташки, грецкий орех",
         "mayContainUz": "люпин, молоко, сульфиты, арахис, миндаль, бразильский орех, кешью, фундук, макадамия, пекан, кедровый орех, фисташки, грецкий орех"
       },
-      "tipRu": null,
-      "tipUz": null,
-      "photoFile": "36-terrific-teriyaki-bowl.jpg",
+      "tipRu": "Кунжут и зелёный лук — финальный штрих перед подачей.",
+      "tipUz": "Kunjut va yashil piyoz — tortishdan oldin oxirgi bezak.",
+      "photoFile": "36-teriyaki-s-rastitelnym-farshem-i-risom.jpg",
       "tags": []
     }
   ]

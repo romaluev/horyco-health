@@ -26,12 +26,14 @@ PostgreSQL via TypeORM migrations. Each business has its own Telegram bot (per-t
 
 ### Menu seed (Eat&fit tech cards)
 
-Bulk-import dishes from the EATFIT PDF технологические карты:
+Bulk-import dishes from the EATFIT PDF технологические карты. Parsed nutrition/ingredients come from the PDF; **customer-facing copy** (names, descriptions, tips in RU + UZ) is curated in `apps/api/scripts/seed/eatfit-menu/overrides.json`. Photos are extracted from embedded food images in the PDF (not page crops); cards without a photo in the PDF are imported without `photoFile`.
 
 ```bash
 # Requires: pip3 install pypdf Pillow pymupdf
-# Parse PDF → apps/api/scripts/seed/eatfit-menu/menu.json + photos/
+# Parse PDF → menu.json + photos/ (applies overrides.json)
 npm run menu:parse -- ~/Downloads/EATFIT_all_techcards_combined_full_nutrients.pdf
+
+# Edit overrides.json if you need to adjust titles/descriptions before import
 
 # Import seed into Postgres (uses DATABASE_URL from .env; idempotent)
 npm run menu:import

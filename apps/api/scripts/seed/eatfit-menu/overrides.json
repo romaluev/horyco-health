@@ -1,0 +1,291 @@
+{
+  "ГРЕЧЕСКАЯ ТАРЕЛКА С ФРИКАДЕЛЬКАМИ И ФЕТОЙ": {
+    "nameRu": "Греческая тарелка с фрикадельками и фетой",
+    "nameUz": "Yunoncha dasturxon: frikadel va feta bilan",
+    "descriptionRu": "Сытная средиземноморская тарелка: нежные фрикадельки, хумус, фета, йогурт и свежие овощи.",
+    "descriptionUz": "To'yimli o'rta yer dengizi taomi: yumshoq frikadellar, xummus, feta, yogurt va yangi sabzavotlar.",
+    "tipRu": "Подавайте охлаждённой — лимон и сумах раскрывают вкус.",
+    "tipUz": "Sovuq holda torting — limon va sumoq ta'mni ochadi."
+  },
+  "БОУЛ С ИНДЕЙКОЙ И КИНОА": {
+    "nameRu": "Индейка с киноа и шпинатом",
+    "nameUz": "Kinoali va ismaloqli kurka go'shti",
+    "descriptionRu": "Лёгкий белковый обед: сочная индейка, киноа, морковь и свежий шпинат с лимоном.",
+    "descriptionUz": "Yengil oqsilga boy tushlik: shirali kurka go'shti, kinoa, sabzi va limonli yangi ismaloq.",
+    "tipRu": "Полейте лимонным соком перед подачей.",
+    "tipUz": "Tortishdan oldin limon sharbati sepib chiqing."
+  },
+  "БОУЛ С ЙОГУРТОМ, ЯБЛОКОМ И КОРИЦЕЙ": {
+    "nameRu": "Йогурт с яблоком, корицей и гранолой",
+    "nameUz": "Yogurt, olma, dolchin va granola",
+    "descriptionRu": "Холодный завтрак: натуральный йогурт, хрустящая гранола, яблоко, семена чиа и корица.",
+    "descriptionUz": "Sovuq nonushta: tabiiy yogurt, xushbo'y granola, olma, chia urug'lari va dolchin.",
+    "tipRu": "Не разогревать — подавать сразу из холодильника.",
+    "tipUz": "Qizdirilmaydi — muzlatgichdan darhol tortiladi."
+  },
+  "БОУЛ С ЙОГУРТОМ, БАНАНОМ И ГРАНОЛОЙ": {
+    "nameRu": "Йогурт с бананом, клубникой и гранолой",
+    "nameUz": "Yogurt, banan, qulupnay va granola",
+    "descriptionRu": "Свежий завтрак: йогурт, банан, клубника, гранола без сахара и семена чиа.",
+    "descriptionUz": "Yangi nonushta: yogurt, banan, qulupnay, shakarsiz granola va chia urug'lari.",
+    "tipRu": "Добавляйте гранолу непосредственно перед едой, чтобы сохранить хруст.",
+    "tipUz": "Granolani yeyishdan oldin qo'shing — xirilligini saqlang."
+  },
+  "БОУЛ С ТЕФТЕЛЯМИ, КИНОА И ХУМУСОМ": {
+    "nameRu": "Тефтели с киноа и хумусом",
+    "nameUz": "Kinoali va xummusli teftellar",
+    "descriptionRu": "Сытный обед: куриные тефтели, киноа-табуле, хумус, фета и оливки.",
+    "descriptionUz": "To'yimli tushlik: tovuq teftellari, kinoa-tabbule, xummus, feta va zaytun.",
+    "tipRu": "Разогревайте только тефтели — овощи и хумус добавляйте после.",
+    "tipUz": "Faqat teftellarni qizdiring — sabzavot va xummus keyin qo'shiladi."
+  },
+  "ТУНЕЦ-БОУЛ С ХРУСТЯЩЕЙ КАРТОШКОЙ": {
+    "nameRu": "Тунец с хрустящим картофелем",
+    "nameUz": "Tun baliq va xirillagan kartoshka",
+    "descriptionRu": "Лёгкий обед: тунец, яйцо, запечённый картофель, зелёная фасоль и свежие овощи.",
+    "descriptionUz": "Yengil tushlik: tun baliq, tuxum, pishirilgan kartoshka, yashil loviya va yangi sabzavotlar.",
+    "tipRu": "Картофель можно разогреть отдельно — салат оставьте свежим.",
+    "tipUz": "Kartoshkani alohida qizdirish mumkin — salatni yangi qoldiring."
+  },
+  "ГОВЯДИНА С БРОККОЛИ В СОУСЕ ТЕРИЯКИ": {
+    "nameRu": "Говядина с брокколи в соусе терияки",
+    "nameUz": "Teriyaki sousidagi mol go'shti va brokkoli",
+    "descriptionRu": "Горячее блюдо: тонко нарезанная говядина, брокколи, рис и соево-медовый соус терияки.",
+    "descriptionUz": "Issiq taom: mayda to'g'ralgan mol go'shti, brokkoli, guruch va soya-asal teriyaki sousi.",
+    "tipRu": "Посыпьте кунжутом и подавайте сразу после разогрева.",
+    "tipUz": "Kunjut sepib, qizdirgandan so'ng darhol torting."
+  },
+  "ГРЕЧНЕВЫЙ БОУЛ С ФРИКАДЕЛЬКАМИ, ГРИБАМИ И МОРКОВЬЮ": {
+    "nameRu": "Гречка с фрикадельками, грибами и морковью",
+    "nameUz": "Grechka, frikadel, qo'ziqorin va sabzi",
+    "descriptionRu": "Домашний обед: куриные фрикадельки, гречка, шампиньоны с морковью и сметанно-горчичный соус.",
+    "descriptionUz": "Uy taomi: tovuq frikadellari, grechka, champignon va sabzi, smetana-xantal sousi bilan.",
+    "tipRu": "Соус лучше добавить после разогрева основных компонентов.",
+    "tipUz": "Sousni asosiy qismlarni qizdirgandan keyin qo'shing."
+  },
+  "ЯИЧНЫЙ ПРОТЕИНОВЫЙ БОУЛ С ИНДЕЙКОЙ, КАРТОФЕЛЕМ И ЗЕЛЕНЬЮ": {
+    "nameRu": "Белковая тарелка: индейка, яйцо и картофель",
+    "nameUz": "Oqsilli taom: kurka, tuxum va kartoshka",
+    "descriptionRu": "Сытный завтрак: яйца, индейка, запечённый картофель, огурец, шпинат и сметанный соус.",
+    "descriptionUz": "To'yimli nonushta: tuxum, kurka go'shti, pishirilgan kartoshka, bodring, ismaloq va smetana sousi.",
+    "tipRu": "Яйцо и свежие овощи добавляйте после разогрева горячих компонентов.",
+    "tipUz": "Issiq qismlarni qizdirgandan keyin tuxum va yangi sabzavot qo'shing."
+  },
+  "ОВСЯНЫЙ БОУЛ С ЯБЛОКОМ, КОРИЦЕЙ И ЗЕРНЁНЫМ ТВОРОГОМ": {
+    "nameRu": "Овсянка с яблоком, корицей и зернёным творогом",
+    "nameUz": "Suli yormasi, olma, dolchin va donli tvorog",
+    "descriptionRu": "Тёплый завтрак: овсяная каша, зернёный творог, яблоко с корицей, мёд и грецкие орехи.",
+    "descriptionUz": "Issiq nonushta: suli bo'tqasi, donli tvorog, dolchinli olma, asal va yong'oq.",
+    "tipRu": "Орехи и свежее яблоко — в конце, чтобы сохранить текстуру.",
+    "tipUz": "Yong'oq va yangi olmani oxirida qo'shing — tuzilishini saqlang."
+  },
+  "ОМЛЕТ-БОУЛ С КУРИЦЕЙ, БРОККОЛИ И СЫРОМ": {
+    "nameRu": "Омлет с курицей, брокколи и сыром",
+    "nameUz": "Tovuq, brokkoli va pishloqli omlet",
+    "descriptionRu": "Высокобелковый завтрак: нежный омлет, курица, брокколи на пару и сыр.",
+    "descriptionUz": "Yuqori oqsilli nonushta: yumshoq omlet, tovuq, bug'da brokkoli va pishloq.",
+    "tipRu": "Разогревайте 1,5–2 минуты — не пересушивайте омлет.",
+    "tipUz": "1,5–2 daqiqa qizdiring — omletni quruq qilmang."
+  },
+  "ТВОРОЖНЫЙ БОУЛ «ВИШНЁВЫЙ ЧИЗКЕЙК»": {
+    "nameRu": "Творожный десерт «Вишнёвый чизкейк»",
+    "nameUz": "Tvorogli desert «Olchali chizkeyk»",
+    "descriptionRu": "Нежный десерт: творог с йогуртом, вишнёвый соус и хрустящая крошка из рисовых хлебцев.",
+    "descriptionUz": "Yumshoq desert: yogurtli tvorog, olcha sousi va guruch nonidan xirillagan qirindi.",
+    "tipRu": "Подавайте охлаждённым — крошку добавляйте в последний момент.",
+    "tipUz": "Sovuq torting — qirindini oxirgi lahzada qo'shing.",
+    "category": "dessert"
+  },
+  "Говяжий фарш с брокколи": {
+    "nameRu": "Говяжий фарш с брокколи",
+    "nameUz": "Mol go'shti va brokkoli",
+    "descriptionRu": "Сбалансированный обед: нежирный говяжий фарш, брокколи, цветная капуста и рис с овощами.",
+    "descriptionUz": "Muvozanatli tushlik: yog'siz mol go'shti, brokkoli, rangli karam va sabzavotli guruch.",
+    "tipRu": "Разогревайте до горячего состояния и подавайте сразу.",
+    "tipUz": "To'liq qizdirib, darhol torting."
+  },
+  "Куриные котлеты": {
+    "nameRu": "Куриные котлеты с гречкой и макаронами",
+    "nameUz": "Tovuq kotletlari, grechka va makaron",
+    "descriptionRu": "Домашний обед: сочные куриные котлеты, гречка, макароны и свежие овощи.",
+    "descriptionUz": "Uy taomi: shirali tovuq kotletlari, grechka, makaron va yangi sabzavotlar.",
+    "tipRu": "Котлеты лучше разогреть на сковороде или в микроволновке 2–3 минуты.",
+    "tipUz": "Kotletlarni skovorodada yoki mikroto'lqinda 2–3 daqiqa qizdiring."
+  },
+  "Куриный конверт с сыром": {
+    "nameRu": "Куриный конверт с сыром",
+    "nameUz": "Pishloqli tovuq konverti",
+    "descriptionRu": "Высокобелковое блюдо: куриный конверт с пармезаном, гречка, макароны и овощи.",
+    "descriptionUz": "Yuqori oqsilli taom: parmezanli tovuq konverti, grechka, makaron va sabzavotlar.",
+    "tipRu": "Разогревайте до горячего — сыр внутри должен быть мягким.",
+    "tipUz": "Issiq qizdiring — ichidagi pishloq yumshoq bo'lsin."
+  },
+  "Куриный шашлык": {
+    "nameRu": "Куриный шашлык с рисом и картофелем",
+    "nameUz": "Kurka shashligi, guruch va kartoshka",
+    "descriptionRu": "Сочный шашлык из куриной грудки с рисом и запечённым картофелем.",
+    "descriptionUz": "Kurka ko'kragi shashligi, guruch va pishirilgan kartoshka bilan.",
+    "tipRu": "Картофель можно слегка подрумянить при разогреве.",
+    "tipUz": "Qizdirganda kartoshkani biroz qizarib qo'yish mumkin."
+  },
+  "Курица по-азиатски": {
+    "nameRu": "Курица по-азиатски",
+    "nameUz": "Osiyo uslubidagi tovuq",
+    "descriptionRu": "Высокобелковый обед: курица с рисом, фасолью и овощами в азиатском стиле.",
+    "descriptionUz": "Yuqori oqsilli tushlik: guruch, loviya va sabzavotlar bilan osiyo uslubidagi tovuq.",
+    "tipRu": "Салат добавляйте после разогрева горячих компонентов.",
+    "tipUz": "Issiq qismlarni qizdirgandan keyin salat qo'shing."
+  },
+  "Курица с ананасом": {
+    "nameRu": "Курица с ананасом",
+    "nameUz": "Ananasli tovuq",
+    "descriptionRu": "Сбалансированное блюдо: куриное бедро, рис, овощи гриль и карамелизированный ананас.",
+    "descriptionUz": "Muvozanatli taom: tovuq soni, guruch, grilda sabzavotlar va karamel ananas.",
+    "tipRu": "Ананас лучше слегка обжарить перед подачей для яркого вкуса.",
+    "tipUz": "Ananasni tortishdan oldin biroz qovuring — ta'm yanada ochiladi."
+  },
+  "Курица в духовке с овощами": {
+    "nameRu": "Курица в духовке с овощами",
+    "nameUz": "Pishirilgan tovuq va sabzavotlar",
+    "descriptionRu": "Сытный обед: запечённое куриное бедро с овощами и гречкой.",
+    "descriptionUz": "To'yimli tushlik: pishirilgan tovuq soni, sabzavotlar va grechka.",
+    "tipRu": "Разогревайте в микроволновке 2–3 минуты до горячего.",
+    "tipUz": "Mikroto'lqinda 2–3 daqiqa issiq qilib qizdiring."
+  },
+  "Протеиновые голубцы": {
+    "nameRu": "Протеиновые голубцы",
+    "nameUz": "Oqsilli golubtsalar",
+    "descriptionRu": "Сытное блюдо: голубцы с говяжьим фаршем, рисом, фасолью и макаронами.",
+    "descriptionUz": "To'yimli taom: mol go'shtli golubtsalar, guruch, loviya va makaron.",
+    "tipRu": "Тушите при разогреве на слабом огне, чтобы голубцы не пересохли.",
+    "tipUz": "Qizdirganda past olovda qaynatib, golubtsalarni quruq qilmang."
+  },
+  "Тушеная говядина": {
+    "nameRu": "Тушеная говядина",
+    "nameUz": "Qovurilgan mol go'shti",
+    "descriptionRu": "Нежная тушёная говядина с рисом, брокколи и помидорами.",
+    "descriptionUz": "Yumshoq qovurilgan mol go'shti, guruch, brokkoli va pomidorlar bilan.",
+    "tipRu": "Подавайте горячим — соус должен быть густым и ароматным.",
+    "tipUz": "Issiq torting — sous qalin va xushbo'y bo'lsin."
+  },
+  "BBQ Курица с картошкой": {
+    "nameRu": "BBQ-курица с картофелем и булгуром",
+    "nameUz": "BBQ tovuq, kartoshka va bulgur",
+    "descriptionRu": "Сытное блюдо: куриное бедро в BBQ-специях, запечённый картофель, булгур и овощи.",
+    "descriptionUz": "To'yimli taom: BBQ ziravorli tovuq soni, pishirilgan kartoshka, bulgur va sabzavotlar.",
+    "tipRu": "Картофель разогревайте отдельно для сохранения корочки.",
+    "tipUz": "Kartoshkani qobig'ini saqlash uchun alohida qizdiring."
+  },
+  "Курица карри с рисом басмати": {
+    "nameRu": "Курица карри с рисом басмати",
+    "nameUz": "Kurka karri va basmati guruchi",
+    "descriptionRu": "Ароматное карри: куриное филе, овощи, кокосовые сливки и рис басмати.",
+    "descriptionUz": "Xushbo'y karri: kurka file, sabzavotlar, kokos suti va basmati guruchi.",
+    "tipRu": "Подавайте с свежим лаймом — кислотность балансирует кокос.",
+    "tipUz": "Yangi laym bilan torting — nordonlik kokosni muvozanatlaydi."
+  },
+  "Говяжий фарш с макаронами песто": {
+    "nameRu": "Пенне с говяжьим фаршем и песто",
+    "nameUz": "Mol go'shtli va pestoli penne",
+    "descriptionRu": "Сытная паста: пенне аль денте, домашний песто, говяжий фарш, горошек и вяленые томаты.",
+    "descriptionUz": "To'yimli pasta: penne, uy pestosi, mol go'shti, no'xat va quritilgan pomidor.",
+    "tipRu": "Перемешайте пасту с соусом сразу после разогрева.",
+    "tipUz": "Qizdirgandan so'ng pastani sous bilan darhol aralashtiring."
+  },
+  "Лазания из говядины": {
+    "nameRu": "Лазанья с говяжьей болоньезе",
+    "nameUz": "Mol go'shtli lazanya",
+    "descriptionRu": "Классическая лазанья: болоньезе из говядины, фасоль, нежный бешамель.",
+    "descriptionUz": "Klassik lazanya: mol go'shtli bolonez, loviya va yumshoq beşamel.",
+    "tipRu": "Дайте постоять 2–3 минуты после разогрева — слои стабилизируются.",
+    "tipUz": "Qizdirgandan keyin 2–3 daqiqa turing — qatlamlar mustahkamlanadi."
+  },
+  "Спагетти в томатном соусе": {
+    "nameRu": "Спагетти в томатном соусе",
+    "nameUz": "Pomidor sousidagi spagetti",
+    "descriptionRu": "Домашняя паста: спагетти аль денте с болоньезе из говядины и свежим базиликом.",
+    "descriptionUz": "Uy pastasi: mol go'shtli bolonez va yangi bazilik bilan spagetti.",
+    "tipRu": "Базилик добавляйте после разогрева.",
+    "tipUz": "Bazilikni qizdirgandan keyin qo'shing."
+  },
+  "Тайская курица с лапшой": {
+    "nameRu": "Тайская курица с лапшой",
+    "nameUz": "Tay lazzasi va tovuq",
+    "descriptionRu": "Курица с лапшой в стиле ми горенг: овощи, кекап манис и самбал оелек.",
+    "descriptionUz": "Mi goreng uslubida tovuq va lag'mon: sabzavotlar, kekap manis va sambal oelek.",
+    "tipRu": "Перемешайте перед подачей — соус должен покрыть лапшу равномерно.",
+    "tipUz": "Tortishdan oldin aralashtiring — sous lag'monni tekis qoplasin."
+  },
+  "Говядина терияки": {
+    "nameRu": "Говядина терияки с рисом басмати",
+    "nameUz": "Teriyaki mol go'shti va basmati guruchi",
+    "descriptionRu": "Говядина в домашнем соусе терияки с рисом басмати и азиатскими овощами.",
+    "descriptionUz": "Uy teriyaki sousidagi mol go'shti, basmati guruchi va osiyo sabzavotlari.",
+    "tipRu": "Посыпьте кунжутом и зелёным луком перед подачей.",
+    "tipUz": "Tortishdan oldin kunjut va yashil piyoz sepib chiqing."
+  },
+  "BBQ Black Bean Casserole": {
+    "nameRu": "Кассероль с чёрной фасолью и BBQ-сейтаном",
+    "nameUz": "Qora loviya va BBQ-seytan kasseroli",
+    "descriptionRu": "Веганское блюдо: запечённый картофель, BBQ-сейтан, чёрная фасоль, томаты и кускус.",
+    "descriptionUz": "Vegan taom: pishirilgan kartoshka, BBQ-seytan, qora loviya, pomidor va kuskus.",
+    "tipRu": "Подавайте горячим — дымный BBQ-вкус раскрывается после разогрева.",
+    "tipUz": "Issiq torting — tutunli BBQ ta'mi qizdirgandan keyin ochiladi."
+  },
+  "Jungle Curry": {
+    "nameRu": "Карри с тофу и овощами",
+    "nameUz": "Tofu va sabzavotli karri",
+    "descriptionRu": "Нежное карри: тофу, овощи, кокосовые сливки, имбирь и рис жасмин.",
+    "descriptionUz": "Yumshoq karri: tofu, sabzavotlar, kokos suti, zanjabil va jasmin guruchi.",
+    "tipRu": "Добавьте лайм по вкусу — цитрус освежает соус.",
+    "tipUz": "Laym qo'shing — nordonlik sousni yangilaydi."
+  },
+  "The Sunkissed Protein Pesto": {
+    "nameRu": "Пенне с веганским песто",
+    "nameUz": "Vegan pestoli penne",
+    "descriptionRu": "Паста пенне с домашним веганским песто, растительным фаршем и вялеными томатами.",
+    "descriptionUz": "Uy vegan pestosi, o'simlik go'shti va quritilgan pomidor bilan penne.",
+    "tipRu": "Песто лучше не перегревать — добавьте в конце разогрева.",
+    "tipUz": "Pestoni ortiqcha qizdirmang — qizdirish oxirida qo'shing."
+  },
+  "Lasagna Is A Feeling": {
+    "nameRu": "Постная лазанья с фасолью",
+    "nameUz": "Post loviyali lazanya",
+    "descriptionRu": "Веганская лазанья: болоньезе из фасоли и овощей, соевый бешамель.",
+    "descriptionUz": "Vegan lazanya: loviya va sabzavotli bolonez, soya beşameli.",
+    "tipRu": "Дайте постоять 2–3 минуты после разогрева.",
+    "tipUz": "Qizdirgandan keyin 2–3 daqiqa turing."
+  },
+  "Spaghetti Veganese": {
+    "nameRu": "Спагетти с растительным болоньезе",
+    "nameUz": "O'simlik bolonezli spagetti",
+    "descriptionRu": "Классическая паста: спагетти с томатным соусом и растительным фаршем.",
+    "descriptionUz": "Klassik pasta: pomidor sousi va o'simlik go'shti bilan spagetti.",
+    "tipRu": "Свежий базилик — в конце, перед подачей.",
+    "tipUz": "Yangi bazilikni tortishdan oldin oxirida qo'shing."
+  },
+  "Mushroom Bourguignon & Garlic Mash": {
+    "nameRu": "Бургиньон из шампиньонов с чесночным пюре",
+    "nameUz": "Shampinyon burginyon va sarimsoq pyuresi",
+    "descriptionRu": "Веганская классика: шампиньоны в красном вине с розмарином и пюре с чёрным чесноком.",
+    "descriptionUz": "Vegan klassika: qizil vinoda shampinyon, rozmarin va qora sarimsoq pyuresi.",
+    "tipRu": "Пюре и грибы разогревайте вместе, но не кипятите.",
+    "tipUz": "Pyure va qo'ziqorni birga qizdiring, lekin qaynatmang."
+  },
+  "Balinese Mie Goreng": {
+    "nameRu": "Балийская лапша ми-горенг",
+    "nameUz": "Bali uslubidagi mi goreng",
+    "descriptionRu": "Острая лапша: овощи, растительный белок, кекап манис и самбал оелек.",
+    "descriptionUz": "Achchiq lag'mon: sabzavotlar, o'simlik oqsili, kekap manis va sambal oelek.",
+    "tipRu": "Прожарьте на сильном огне при разогреве — так вкус ярче.",
+    "tipUz": "Qizdirganda kuchli olovda qovuring — ta'm yanada ochiladi."
+  },
+  "Terrific Teriyaki Bowl": {
+    "nameRu": "Терияки с растительным фаршем и рисом",
+    "nameUz": "O'simlik go'shtli teriyaki va guruch",
+    "descriptionRu": "Растительный фарш в соусе терияки с рисом басмати и азиатской зеленью.",
+    "descriptionUz": "Teriyaki sousidagi o'simlik go'shti, basmati guruchi va osiyo ko'katlari.",
+    "tipRu": "Кунжут и зелёный лук — финальный штрих перед подачей.",
+    "tipUz": "Kunjut va yashil piyoz — tortishdan oldin oxirgi bezak."
+  }
+}

@@ -39,6 +39,8 @@ function ok(msg) {
 function auditSeedItem(item) {
   const issues = [];
   if (!item.nameRu?.trim()) issues.push('empty nameRu');
+  if (item.nameRu && /боул|bowl/i.test(item.nameRu)) issues.push('name contains bowl/boul');
+  if (!item.nameUz?.trim() || item.nameUz === item.nameRu) issues.push('nameUz missing or copied from RU');
   if (!item.photoFile) issues.push('no photoFile');
   else if (!existsSync(join(PHOTOS_DIR, item.photoFile))) issues.push(`photo missing: ${item.photoFile}`);
   if (!item.descriptionRu?.trim()) issues.push('no description');
@@ -82,12 +84,20 @@ async function main() {
   }
 
   const jsonIssues = [];
+  const photoWarnings = [];
   const names = new Set();
   for (const item of items) {
     if (names.has(item.nameRu)) jsonIssues.push({ name: item.nameRu, issues: ['duplicate name'] });
     names.add(item.nameRu);
     const issues = auditSeedItem(item);
-    if (issues.length) jsonIssues.push({ name: item.nameRu, issues });
+    const noPhoto = issues.filter((i) => i === 'no photoFile');
+    const rest = issues.filter((i) => i !== 'no photoFile');
+    if (noPhoto.length) photoWarnings.push(item.nameRu);
+    if (rest.length) jsonIssues.push({ name: item.nameRu, issues: rest });
+  }
+
+  if (photoWarnings.length) {
+    warn(`${photoWarnings.length} dish(es) without photo: ${photoWarnings.join('; ')}`);
   }
 
   if (jsonIssues.length) {
@@ -149,7 +159,7 @@ async function main() {
       const row = dbItems.rows.find((r) => r.name_ru === item.nameRu);
       if (!row) continue;
       const issues = [];
-      if (!row.has_photo) issues.push('no photo in DB');
+      if (item.photoFile && !row.has_photo) issues.push('no photo in DB');
       if (!row.description_ru) issues.push('no description in DB');
       if (!row.weight_grams) issues.push('no weight in DB');
       if (!row.nutrition) issues.push('no nutrition in DB');

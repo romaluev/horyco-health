@@ -8,7 +8,6 @@ Usage:
 
 from __future__ import annotations
 
-import io
 import json
 import os
 import re
@@ -17,10 +16,14 @@ from pathlib import Path
 
 try:
     import pypdf
-    from PIL import Image
 except ImportError as exc:
     print("Missing deps: pip3 install pypdf Pillow pymupdf", file=sys.stderr)
     raise SystemExit(1) from exc
+
+try:
+    import fitz
+except ImportError:
+    fitz = None
 
 DEFAULT_PDF = Path.home() / "Downloads" / "EATFIT_all_techcards_combined_full_nutrients.pdf"
 BUSINESS_ID = "c12704d8-0e0d-4226-94b9-e84d43cb76dc"
@@ -230,7 +233,9 @@ def is_amount_line(line: str) -> bool:
     s = line.strip()
     if not s or s == "—":
         return False
-    if "по вкусу" in s.lower():
+    if re.fullmatch(r"по вкусу", s, re.I):
+        return True
+    if re.fullmatch(r"щепотка(?:,\s*опционально)?", s, re.I):
         return True
     if re.match(r"^~?[\d.,]+\s*(?:г|мл)\b", s):
         return True
@@ -302,6 +307,37 @@ def append_ingredient(
     })
 
 
+INLINE_AMOUNT_TAIL = re.compile(
+    r"(?P<amount>"
+    r"\d+(?:[.,]\d+)?\s*г"
+    r"|\d+(?:[.,]\d+)?\s*мл"
+    r"|\d+\s*зубчик"
+    r"|\d+\s*долька"
+    r"|\d+(?:[.,]\d+)?\s*ч\.\s*л\.\s*(?:\([^)]+\))?"
+    r"|\d+(?:[.,]\d+)?\s*ст\.\s*л\.\s*(?:\([^)]+\))?"
+    r"|\d+–\d+\s*листочков,\s*опционально"
+    r"|щепотка(?:,\s*опционально)?"
+    r"|по вкусу"
+    r")\s*$",
+    re.I,
+)
+
+
+def split_name_amount(line: str) -> tuple[str, str] | None:
+    """Split bowl-style 'name amount' keeping multi-word ingredient names."""
+    s = line.strip()
+    if not s or is_amount_line(s):
+        return None
+    m = INLINE_AMOUNT_TAIL.search(s)
+    if not m:
+        return None
+    name = s[: m.start("amount")].strip()
+    amount = m.group("amount").strip()
+    if not looks_like_ingredient_name(name):
+        return None
+    return name, amount
+
+
 def parse_ingredients(text: str) -> list[dict]:
     section = re.search(
         r"(?:1\.\s*Состав и граммовка|1\.\s*СОСТАВ И ГРАММОВКА)(.+?)(?:2\.\s*(?:Технологический|ТЕХНОЛОГИЧЕСКИЙ)|3\.\s*(?:Пищевая|ПИЩЕВАЯ)|$)",
@@ -348,14 +384,11 @@ def parse_ingredients(text: str) -> list[dict]:
             i += 1
             continue
 
-        # Bowl inline: name + amount on same line
-        m_inline = re.match(
-            r"^(.+?)\s+(\d+(?:[.,]\d+)?\s*г|\d+(?:[.,]\d+)?\s*мл|.+?\([^)]+\)|по вкусу|щепотка.+)$",
-            raw_ln,
-        )
-        if m_inline and looks_like_ingredient_name(m_inline.group(1)):
+        # Bowl inline: name + amount on same line (amount anchored at end)
+        split = split_name_amount(raw_ln)
+        if split:
             name_buf = []
-            append_ingredient(result, seen, m_inline.group(1), m_inline.group(2), current_section)
+            append_ingredient(result, seen, split[0], split[1], current_section)
             i += 1
             continue
 
@@ -479,54 +512,81 @@ def parse_allergens(text: str) -> dict | None:
     }
 
 
-def extract_photo(reader: pypdf.PdfReader, page_idx: int, out_path: Path, pdf_path: Path) -> bool:
-    """Render and crop the dish photo region — embedded XObjects repeat on every page."""
+def page_embedded_xrefs(doc, page_idx: int) -> list[int]:
+    """Xrefs of images actually displayed on a PDF page."""
+    if fitz is None:
+        return []
     try:
-        import fitz  # pymupdf
-    except ImportError:
-        fitz = None
+        page = doc[page_idx]
+        infos = page.get_image_info(xrefs=True)
+        return [int(i["xref"]) for i in infos if i.get("xref")]
+    except Exception:
+        return []
 
-    if fitz is not None:
-        try:
-            doc = fitz.open(str(pdf_path))
-            page = doc[page_idx]
-            rect = fitz.Rect(
-                page.rect.width * 0.55,
-                page.rect.height * 0.08,
-                page.rect.width * 0.95,
-                page.rect.height * 0.45,
-            )
-            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2), clip=rect)
-            out_path.parent.mkdir(parents=True, exist_ok=True)
-            pix.save(str(out_path))
-            doc.close()
-            return True
-        except Exception:
-            pass
 
-    # Fallback: largest non-template embedded image (often identical across pages).
-    page = reader.pages[page_idx]
-    best = None
-    best_score = 0
-    for _name, img in page.images.items():
-        try:
-            pil = Image.open(io.BytesIO(img.data))
-        except Exception:
-            continue
-        w, h = pil.size
-        if w < 200 or h < 200 or (w == 794 and h == 794):
-            continue
-        score = w * h + len(img.data)
-        if score > best_score:
-            best_score = score
-            best = pil
-    if not best:
+def xref_to_jpeg(doc, xref: int, out_path: Path) -> bool:
+    if fitz is None:
         return False
-    if best.mode not in ("RGB", "L"):
-        best = best.convert("RGB")
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    best.save(out_path, format="JPEG", quality=85)
-    return True
+    try:
+        pix = fitz.Pixmap(doc, xref)
+        if pix.n >= 5:
+            pix = fitz.Pixmap(fitz.csRGB, pix)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        pix.save(str(out_path), jpg_quality=90)
+        return True
+    except Exception:
+        return False
+
+
+def find_photo_page(doc, start_page: int, end_page: int) -> int | None:
+    """First page in [start, end) that shows an embedded dish photo."""
+    for page_idx in range(start_page, min(end_page, len(doc))):
+        if page_embedded_xrefs(doc, page_idx):
+            return page_idx
+    return None
+
+
+def extract_photo(
+    reader: pypdf.PdfReader,
+    page_idx: int,
+    out_path: Path,
+    pdf_path: Path,
+    end_page: int | None = None,
+) -> bool:
+    """Save the embedded food photo shown on the dish page (not a page crop)."""
+    if fitz is None:
+        return False
+
+    try:
+        doc = fitz.open(str(pdf_path))
+        scan_end = end_page if end_page is not None else page_idx + 1
+        photo_page = find_photo_page(doc, page_idx, scan_end)
+        if photo_page is None:
+            doc.close()
+            return False
+
+        xrefs = page_embedded_xrefs(doc, photo_page)
+        if not xrefs:
+            doc.close()
+            return False
+
+        best_xref = xrefs[0]
+        best_area = 0
+        for xref in xrefs:
+            try:
+                pix = fitz.Pixmap(doc, xref)
+                area = pix.width * pix.height
+                if area > best_area:
+                    best_area = area
+                    best_xref = xref
+            except Exception:
+                continue
+
+        ok = xref_to_jpeg(doc, best_xref, out_path)
+        doc.close()
+        return ok
+    except Exception:
+        return False
 
 
 def is_valid_tc_title(title: str) -> bool:
@@ -585,6 +645,7 @@ def segment_dishes(reader: pypdf.PdfReader) -> list[dict]:
             "name": title,
             "text": text,
             "photo_page": start,
+            "photo_end_page": end,
         })
 
     # Packaged section: split full text by TC markers (cards span page boundaries)
@@ -607,41 +668,87 @@ def segment_dishes(reader: pypdf.PdfReader) -> list[dict]:
         end_pos = markers[idx + 1].start() if idx + 1 < len(markers) else len(combined)
         text = clean_text(combined[start_pos:end_pos])
         photo_page = 26
+        photo_end_page = len(reader.pages)
         for page_i, start_off, end_off in page_offsets:
             if start_off <= m.start() < end_off:
                 photo_page = page_i
                 break
+        if idx + 1 < len(markers):
+            next_start = markers[idx + 1].start()
+            for page_i, start_off, end_off in page_offsets:
+                if start_off <= next_start < end_off:
+                    photo_end_page = page_i
+                    break
         segments.append({
             "kind": "packaged",
             "name": title,
             "text": text,
             "photo_page": photo_page,
+            "photo_end_page": photo_end_page,
         })
 
     return segments
 
 
-def parse_dish(segment: dict, index: int, photos_dir: Path, reader: pypdf.PdfReader, pdf_path: Path) -> dict:
+def load_overrides(out_dir: Path) -> dict:
+    path = out_dir / "overrides.json"
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def normalize_title_fallback(name: str) -> str:
+    """Title-case fallback when overrides.json has no entry."""
+    s = re.sub(r"\s+", " ", name).strip()
+    if not s:
+        return s
+    if s == s.upper() and re.search(r"[А-ЯЁA-Z]", s):
+        words = s.split()
+        out = []
+        for w in words:
+            if len(w) <= 4 and w.isupper() and w.isalpha():
+                out.append(w)
+            else:
+                out.append(w[:1].upper() + w[1:].lower() if len(w) > 1 else w.upper())
+        return " ".join(out)
+    return s[:1].upper() + s[1:] if s else s
+
+
+def apply_overrides(item: dict, raw_name: str, overrides: dict) -> dict:
+    o = overrides.get(raw_name, {})
+    item["nameRu"] = o.get("nameRu") or normalize_title_fallback(raw_name)
+    item["nameUz"] = o.get("nameUz") or item["nameRu"]
+    if o.get("descriptionRu"):
+        item["descriptionRu"] = o["descriptionRu"]
+    if o.get("descriptionUz"):
+        item["descriptionUz"] = o["descriptionUz"]
+    elif o.get("descriptionRu"):
+        item["descriptionUz"] = o["descriptionRu"]
+    if o.get("tipRu"):
+        item["tipRu"] = o["tipRu"]
+    if o.get("tipUz"):
+        item["tipUz"] = o["tipUz"]
+    elif o.get("tipRu"):
+        item["tipUz"] = o["tipRu"]
+    if o.get("category"):
+        item["category"] = o["category"]
+    return item
+
+
+def parse_dish(
+    segment: dict,
+    index: int,
+    photos_dir: Path,
+    reader: pypdf.PdfReader,
+    pdf_path: Path,
+    overrides: dict,
+) -> dict:
     text = segment["text"]
-    name = segment["name"]
-    slug = slugify(name)
-    photo_file = f"{index:02d}-{slug}.jpg"
-    photo_path = photos_dir / photo_file
-    has_photo = extract_photo(reader, segment["photo_page"], photo_path, pdf_path)
-    if not has_photo:
-        photo_file = None
-
-    nutrition = parse_summary_nutrition(text)
-    nutrition_detail = parse_nutrition_table(text)
-    if nutrition_detail and nutrition:
-        for k in ("calories", "protein", "fat", "carbs"):
-            if nutrition.get(k) is not None:
-                nutrition_detail["perPortion"][k] = nutrition[k]
-
-    return {
+    raw_name = segment["name"]
+    item = {
         "category": "main",
-        "nameRu": name,
-        "nameUz": name,
+        "nameRu": raw_name,
+        "nameUz": raw_name,
         "descriptionRu": parse_description(text),
         "descriptionUz": parse_description(text),
         "price": PLACEHOLDER_PRICE,
@@ -651,18 +758,42 @@ def parse_dish(segment: dict, index: int, photos_dir: Path, reader: pypdf.PdfRea
         "price2": None,
         "weightGrams2": None,
         "orderDeadline": None,
-        "nutrition": nutrition,
+        "nutrition": parse_summary_nutrition(text),
         "nutrition2": None,
-        "nutritionDetail": nutrition_detail,
+        "nutritionDetail": parse_nutrition_table(text),
         "storageHandling": parse_storage(text),
         "ingredients": parse_ingredients(text) or None,
         "instructions": parse_instructions(text) or None,
         "allergens": parse_allergens(text),
         "tipRu": None,
         "tipUz": None,
-        "photoFile": photo_file,
+        "photoFile": None,
         "tags": [],
     }
+
+    nutrition = item["nutrition"]
+    nutrition_detail = item["nutritionDetail"]
+    if nutrition_detail and nutrition:
+        for k in ("calories", "protein", "fat", "carbs"):
+            if nutrition.get(k) is not None:
+                nutrition_detail["perPortion"][k] = nutrition[k]
+
+    apply_overrides(item, raw_name, overrides)
+
+    slug = slugify(item["nameRu"])
+    photo_file = f"{index:02d}-{slug}.jpg"
+    photo_path = photos_dir / photo_file
+    has_photo = extract_photo(
+        reader,
+        segment["photo_page"],
+        photo_path,
+        pdf_path,
+        end_page=segment.get("photo_end_page"),
+    )
+    if has_photo:
+        item["photoFile"] = photo_file
+
+    return item
 
 
 def main() -> None:
@@ -676,12 +807,15 @@ def main() -> None:
 
     reader = pypdf.PdfReader(str(pdf_path))
     segments = segment_dishes(reader)
+    overrides = load_overrides(out_dir)
     print(f"Found {len(segments)} dish segments")
+    if overrides:
+        print(f"Loaded {len(overrides)} copy overrides")
 
     photos_dir.mkdir(parents=True, exist_ok=True)
     items = []
     for i, seg in enumerate(segments, start=1):
-        item = parse_dish(seg, i, photos_dir, reader, pdf_path)
+        item = parse_dish(seg, i, photos_dir, reader, pdf_path, overrides)
         items.append(item)
         photo_status = item["photoFile"] or "no photo"
         print(f"  [{i:02d}] {item['nameRu']} ({photo_status})")
