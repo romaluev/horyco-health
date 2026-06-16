@@ -10,3 +10,8 @@ export function formatMoney(v: string | number): string {
 export function pick(lang: Language, ru?: string | null, uz?: string | null): string {
   return (lang === Language.Uz ? uz : ru) || ru || uz || '';
 }
+
+/** Единый источник URL фото блюда (отдаётся API через GET /menu/:id/photo). */
+export function menuPhotoUrl(id: string): string {
+  return `/api/menu/${id}/photo`;
+}

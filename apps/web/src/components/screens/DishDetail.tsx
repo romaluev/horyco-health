@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ArrowLeft, ChevronDown, Clock } from 'lucide-react';
 import { Language, PricingMode, UnitKind, type ExtendedNutrition, type Ingredient } from '@eatfit/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useMenuItem, useCart, useDeleteCartLine } from '@/lib/queries';
@@ -8,9 +9,10 @@ import { useUpsertCartLine } from '@/lib/offers-queries';
 import { useUiStore } from '@/store/ui.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/lib/i18n';
-import { formatMoney, pick } from '@/lib/format';
+import { formatMoney, menuPhotoUrl, pick } from '@/lib/format';
 import { baseDisplayPrice, sumModifierDeltas, unitAmountOptions } from '@/lib/pricing';
 import { Stepper } from '@/components/Stepper';
+import { DetailSkeleton, PriceTag } from '@/components/consumer';
 import { ModifierPicker, type ModifierGroupDto } from '@/components/backoffice/ModifierPicker';
 import { api } from '@/lib/api';
 import type { CartItemDto } from '@/lib/types';
@@ -70,11 +72,11 @@ function Accordion({ title, children }: { title: string; children: ReactNode }) 
   const [open, setOpen] = useState(true);
   return (
     <div className={`dd-acc${open ? ' open' : ''}`}>
-      <button className="dd-acc-head" onClick={() => setOpen((v) => !v)}>
+      <button type="button" className="dd-acc-head" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         <span>{title}</span>
-        <span className="dd-acc-sign">{open ? '−' : '+'}</span>
+        <ChevronDown className="dd-acc-sign" size={18} aria-hidden />
       </button>
-      {open && <div className="dd-acc-body">{children}</div>}
+      {open ? <div className="dd-acc-body">{children}</div> : null}
     </div>
   );
 }
@@ -125,6 +127,16 @@ export function DishDetail() {
   const [unitAmount, setUnitAmount] = useState<number | undefined>(undefined);
   const [modifierIds, setModifierIds] = useState<string[]>([]);
   const [prefilled, setPrefilled] = useState(false);
+  const [headScrolled, setHeadScrolled] = useState(false);
+  const ddRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ddRef.current;
+    if (!el) return;
+    const onScroll = () => setHeadScrolled(el.scrollTop > 8);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [id]);
 
   useEffect(() => {
     setPortion(1);
@@ -195,21 +207,22 @@ export function DishDetail() {
   };
 
   const header = (
-    <div className="dd-head">
-      <button className="dd-back" onClick={close}>
-        ← {t('detail_back')}
+    <div className={`dd-head${headScrolled ? ' scrolled' : ''}`}>
+      <button type="button" className="dd-back" onClick={close} aria-label={t('detail_back')}>
+        <ArrowLeft size={20} strokeWidth={2.25} />
       </button>
       <div className="dd-logo">
         EAT<span>&</span>FIT
       </div>
+      <div className="dd-head-spacer" aria-hidden />
     </div>
   );
 
   if (isLoading || !item) {
     return (
-      <div className="dd">
+      <div className="dd" ref={ddRef}>
         {header}
-        <div className="center">{t('loading')}</div>
+        <DetailSkeleton />
       </div>
     );
   }
@@ -260,15 +273,17 @@ export function DishDetail() {
       : `${amount} ${t('unit_gram')}`;
 
   return (
-    <div className="dd">
+    <div className="dd" ref={ddRef}>
       {header}
 
-      {item.hasPhoto ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="dd-img" src={`/api/menu/${item.id}/photo`} alt={primaryName} />
-      ) : (
-        <div className="dd-img dd-img-empty">{t('detail_photo_soon')}</div>
-      )}
+      <div className="dd-hero-wrap">
+        {item.hasPhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className="dd-img" src={menuPhotoUrl(item.id)} alt={primaryName} />
+        ) : (
+          <div className="dd-img dd-img-empty">{t('detail_photo_soon')}</div>
+        )}
+      </div>
 
       <div className="dd-name-block">
         <div className="dd-name">{primaryName}</div>
@@ -282,7 +297,7 @@ export function DishDetail() {
         {isPerUnit && amountOpts.length > 0 && (
           <div className="dd-portions">
             <div className="dd-portions-title">{t('amount_choose')}</div>
-            <div className="seg" style={{ flexWrap: 'wrap' }}>
+            <div className="seg wrap">
               {amountOpts.map((amt) => (
                 <button
                   key={amt}
@@ -317,9 +332,7 @@ export function DishDetail() {
 
         <div className="dd-price-row">
           <div>
-            <div className="dd-price">
-              {formatMoney(String(displayPrice))} {t('currency')}
-            </div>
+            <PriceTag amount={displayPrice} className="dd-price" />
             {curWeight != null && (
               <div className="dd-weight">
                 {curWeight} {t('unit_gram')}
@@ -328,7 +341,8 @@ export function DishDetail() {
           </div>
           {item.orderDeadline && (
             <div className="dd-deadline">
-              ⏰ {t('detail_deadline')} {item.orderDeadline} {t('detail_deadline_suffix')}
+              <Clock size={14} aria-hidden />
+              {t('detail_deadline')} {item.orderDeadline} {t('detail_deadline_suffix')}
             </div>
           )}
         </div>
@@ -336,11 +350,9 @@ export function DishDetail() {
         {ingredientGroups.length > 0 && (
           <Accordion title={t('detail_composition')}>
             {ingredientGroups.map((group, gi) => (
-              <div key={gi} style={{ marginBottom: group.section ? 12 : 0 }}>
+              <div key={gi} className={group.section ? 'dd-ing-group' : undefined}>
                 {group.section && (
-                  <div className="dish-desc" style={{ marginBottom: 6, fontWeight: 600 }}>
-                    {group.section}
-                  </div>
+                  <div className="dish-desc dd-ing-section">{group.section}</div>
                 )}
                 <table className="dd-table">
                   <thead>
@@ -447,7 +459,7 @@ export function DishDetail() {
               </div>
             )}
             {reheatText && (
-              <div className="dd-tip" style={{ marginTop: storageText ? 8 : 0 }}>
+              <div className={`dd-tip${storageText ? ' u-mt-2' : ''}`}>
                 <strong>{t('detail_reheat')}:</strong> {reheatText}
               </div>
             )}
@@ -472,7 +484,16 @@ export function DishDetail() {
       </div>
 
       <div className="dd-bottom">
-        <Stepper qty={qty} busy={busy} addLabel={t('add')} onChange={change} />
+        <Stepper
+          qty={qty}
+          busy={busy}
+          addLabel={t('add')}
+          addPrice={`${formatMoney(String(displayPrice))} ${t('currency')}`}
+          onChange={change}
+        />
+        {qty > 0 ? (
+          <PriceTag amount={Number(displayPrice) * qty} className="dd-bottom-total" />
+        ) : null}
       </div>
     </div>
   );

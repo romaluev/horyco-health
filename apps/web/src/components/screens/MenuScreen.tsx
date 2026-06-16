@@ -1,26 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Search, UtensilsCrossed, X } from 'lucide-react';
 import { Category, Language, PricingMode } from '@eatfit/shared';
 import { useMenu, useMenuCombos, useCart, useAddToCart, useSetQuantity } from '@/lib/queries';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
 import { useT, type I18nKey } from '@/lib/i18n';
-import { formatMoney, pick } from '@/lib/format';
+import { formatMoney, menuPhotoUrl, pick } from '@/lib/format';
+import { haptic } from '@/lib/telegram';
 import { Stepper } from '@/components/Stepper';
+import {
+  Button,
+  EmptyState,
+  MenuSkeleton,
+  PriceTag,
+  SectionHeader,
+  BottomSheet,
+} from '@/components/consumer';
 import { MenuItemDto } from '@/lib/types';
 
-const CATS: { cat: Category; key: I18nKey }[] = [
-  { cat: Category.Main, key: 'cat_main' },
-  { cat: Category.Drink, key: 'cat_drink' },
-  { cat: Category.Dessert, key: 'cat_dessert' },
+const CATS: { cat: Category; key: I18nKey; sectionId: string }[] = [
+  { cat: Category.Main, key: 'cat_main', sectionId: 'section-main' },
+  { cat: Category.Drink, key: 'cat_drink', sectionId: 'section-drink' },
+  { cat: Category.Dessert, key: 'cat_dessert', sectionId: 'section-dessert' },
 ];
+
+type Chip = { id: string; key: I18nKey };
 
 export function MenuScreen() {
   const t = useT();
   const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
   const openDetail = useUiStore((s) => s.openDetail);
   const openCombo = useUiStore((s) => s.openCombo);
+  const setTab = useUiStore((s) => s.setTab);
   const { data: menu, isLoading } = useMenu();
   const { data: combos } = useMenuCombos();
   const { data: cart } = useCart();
@@ -28,25 +41,77 @@ export function MenuScreen() {
   const setQty = useSetQuantity();
   const busy = add.isPending || setQty.isPending;
   const [q, setQ] = useState('');
-  // Блюдо, для которого открыта модалка выбора порции (только у блюд со 2-й порцией).
+  const [activeChip, setActiveChip] = useState('section-combo');
   const [chooseFor, setChooseFor] = useState<MenuItemDto | null>(null);
-  // Выбранная порция в списке по блюду (1 — обычная, 2 — вторая); степпер правит именно её.
   const [selPortion, setSelPortion] = useState<Record<string, number>>({});
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const scrollingRef = useRef(false);
 
-  if (isLoading) return <div className="center">{t('loading')}</div>;
-  if (!menu?.length) return <div className="center">{t('menu_empty')}</div>;
-
+  const activeCombos = useMemo(() => (combos ?? []).filter((c) => c.isActive), [combos]);
   const needle = q.trim().toLowerCase();
-  const filtered = needle
-    ? menu.filter((i) =>
-        `${i.nameRu} ${i.nameUz}`.toLowerCase().includes(needle),
-      )
-    : menu;
 
-  const activeCombos = (combos ?? []).filter((c) => c.isActive);
-  const filteredCombos = needle
-    ? activeCombos.filter((c) => `${c.nameRu} ${c.nameUz}`.toLowerCase().includes(needle))
-    : activeCombos;
+  const filtered = useMemo(() => {
+    if (!menu?.length) return [];
+    if (!needle) return menu;
+    return menu.filter((i) => `${i.nameRu} ${i.nameUz}`.toLowerCase().includes(needle));
+  }, [menu, needle]);
+
+  const filteredCombos = useMemo(() => {
+    if (!needle) return activeCombos;
+    return activeCombos.filter((c) => `${c.nameRu} ${c.nameUz}`.toLowerCase().includes(needle));
+  }, [activeCombos, needle]);
+
+  const chips: Chip[] = useMemo(() => {
+    const list: Chip[] = [];
+    if (filteredCombos.length) list.push({ id: 'section-combo', key: 'cat_specials' });
+    for (const { sectionId, key } of CATS) {
+      if (filtered.some((i) => i.category === CATS.find((c) => c.sectionId === sectionId)?.cat)) {
+        list.push({ id: sectionId, key });
+      }
+    }
+    return list;
+  }, [filtered, filteredCombos.length]);
+
+  useEffect(() => {
+    if (!chips.length) return;
+    if (!chips.some((c) => c.id === activeChip)) {
+      setActiveChip(chips[0].id);
+    }
+  }, [chips, activeChip]);
+
+  useEffect(() => {
+    const ids = chips.map((c) => c.id);
+    if (!ids.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (scrollingRef.current) return;
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]?.target.id) {
+          setActiveChip(visible[0].target.id);
+        }
+      },
+      { rootMargin: '-120px 0px -55% 0px', threshold: 0.1 },
+    );
+
+    for (const id of ids) {
+      const el = sectionRefs.current[id];
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, [chips, filtered.length, filteredCombos.length]);
+
+  const scrollToSection = (id: string) => {
+    haptic('selection');
+    setActiveChip(id);
+    scrollingRef.current = true;
+    sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => {
+      scrollingRef.current = false;
+    }, 600);
+  };
 
   const portionOf = (id: string) => selPortion[id] ?? 1;
 
@@ -55,8 +120,6 @@ export function MenuScreen() {
     item.hasRequiredModifiers === true ||
     item.hasModifierGroups === true;
 
-  // Количество ПРОСТОЙ строки блюда (без модификаторов) выбранной порции — степпер
-  // в списке управляет именно ею; строки с модификаторами/комбо считаются отдельно.
   const qtyOf = (id: string) =>
     cart?.items.find(
       (i) =>
@@ -66,28 +129,27 @@ export function MenuScreen() {
         i.modifiers.length === 0,
     )?.quantity ?? 0;
 
-  const change = (item: MenuItemDto, q: number) => {
+  const change = (item: MenuItemDto, nextQty: number) => {
     if (needsDetail(item)) {
       openDetail(item.id);
       return;
     }
     const portion = portionOf(item.id);
-    if (q <= 0) {
+    if (nextQty <= 0) {
       setQty.mutate({ menuItemId: item.id, quantity: 0, portion });
       return;
     }
     if (qtyOf(item.id) === 0) {
-      // Добавление с нуля: у блюда со 2-й порцией спрашиваем какую; иначе — обычную.
       if (item.price2 != null) setChooseFor(item);
       else add.mutate({ menuItemId: item.id, portion: 1 });
       return;
     }
-    setQty.mutate({ menuItemId: item.id, quantity: q, portion });
+    setQty.mutate({ menuItemId: item.id, quantity: nextQty, portion });
   };
 
-  // Выбор порции из модалки: запоминаем её для степпера и добавляем 1 шт в корзину.
   const pickPortion = (portion: number) => {
     if (!chooseFor) return;
+    haptic('light');
     const id = chooseFor.id;
     setSelPortion((m) => ({ ...m, [id]: portion }));
     add.mutate({ menuItemId: id, portion });
@@ -97,129 +159,210 @@ export function MenuScreen() {
   const portionLabel = (p: number, w: number | null, price: string) =>
     `${w != null ? `${w} ${t('unit_gram')}` : `${t('portion')} ${p}`} · ${formatMoney(price)} ${t('currency')}`;
 
+  const cartCount = cart?.items.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+  const cartTotal = cart?.total;
+
+  const setSectionRef = useCallback(
+    (id: string) => (el: HTMLElement | null) => {
+      sectionRefs.current[id] = el;
+    },
+    [],
+  );
+
+  if (isLoading) return <MenuSkeleton />;
+
+  if (!menu?.length) {
+    return (
+      <EmptyState icon={UtensilsCrossed} title={t('menu_empty')} />
+    );
+  }
+
+  const renderDish = (item: MenuItemDto) => {
+    const name = pick(lang, item.nameRu, item.nameUz);
+    const desc = pick(lang, item.descriptionRu, item.descriptionUz);
+    return (
+      <article className="menu-card" key={item.id}>
+        {item.hasPhoto ? (
+          <div
+            className="menu-card-media-wrap"
+            onClick={() => openDetail(item.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && openDetail(item.id)}
+            aria-label={name}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="menu-card-media" src={menuPhotoUrl(item.id)} alt={name} loading="lazy" />
+            <div className="menu-card-media-gradient" aria-hidden />
+          </div>
+        ) : null}
+        <div className="menu-card-body">
+          <div
+            className="menu-card-name"
+            onClick={() => openDetail(item.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && openDetail(item.id)}
+          >
+            {name}
+          </div>
+          {desc ? <div className="menu-card-desc">{desc}</div> : null}
+          <div className="menu-card-footer">
+            <PriceTag amount={item.price} className="menu-card-price" />
+            <Stepper
+              qty={qtyOf(item.id)}
+              busy={busy}
+              addLabel={t('add')}
+              onChange={(next) => change(item, next)}
+            />
+          </div>
+          {needsDetail(item) ? (
+            <button type="button" className="dish-more" onClick={() => openDetail(item.id)}>
+              {t('detail_open')} →
+            </button>
+          ) : null}
+        </div>
+      </article>
+    );
+  };
+
   return (
     <div>
-      <h2>{t('nav_menu')}</h2>
-      <input
-        className="input"
-        placeholder={t('search_ph')}
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        style={{ marginBottom: 12 }}
-      />
-      {needle && !filtered.length && !filteredCombos.length && (
-        <div className="center">{t('nothing_found')}</div>
-      )}
+      <SectionHeader title={t('nav_menu')}>
+        <div className="search-wrap">
+          <Search className="search-icon" size={18} aria-hidden />
+          <input
+            className="input search-input"
+            placeholder={t('search_ph')}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            aria-label={t('search_ph')}
+          />
+          {q ? (
+            <button
+              type="button"
+              className="search-clear"
+              aria-label={t('clear_search')}
+              onClick={() => setQ('')}
+            >
+              <X size={18} />
+            </button>
+          ) : null}
+        </div>
+        {chips.length > 1 && !needle ? (
+          <div className="cat-chips" role="tablist" aria-label={t('nav_menu')}>
+            {chips.map(({ id, key }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={activeChip === id}
+                className={`cat-chip${activeChip === id ? ' active' : ''}`}
+                onClick={() => scrollToSection(id)}
+              >
+                {t(key)}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </SectionHeader>
 
-      {filteredCombos.length > 0 && (
-        <div>
-          <div className="cat-title">{t('cat_combo')}</div>
+      {needle && !filtered.length && !filteredCombos.length ? (
+        <EmptyState icon={Search} title={t('nothing_found')} subtitle={t('search_ph')} />
+      ) : null}
+
+      {filteredCombos.length > 0 ? (
+        <section
+          id="section-combo"
+          className="menu-section"
+          ref={setSectionRef('section-combo')}
+        >
+          <div className="cat-title">{t('cat_specials')}</div>
           {filteredCombos.map((c) => (
-            <div className="card" key={c.id}>
-              <div className="dish">
-                {c.photoUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
+            <article className="menu-card" key={c.id}>
+              {c.photoUrl ? (
+                <div
+                  className="menu-card-media-wrap"
+                  onClick={() => openCombo(c.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && openCombo(c.id)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    className="dish-photo dish-tap"
+                    className="menu-card-media"
                     src={c.photoUrl}
                     alt={pick(lang, c.nameRu, c.nameUz)}
-                    onClick={() => openCombo(c.id)}
+                    loading="lazy"
                   />
-                )}
-                <div className="dish-body">
-                  <div className="dish-name dish-tap" onClick={() => openCombo(c.id)}>
-                    {pick(lang, c.nameRu, c.nameUz)}
+                  <span className="menu-card-badge">{t('cat_combo')}</span>
+                  <div className="menu-card-media-gradient" aria-hidden />
+                </div>
+              ) : null}
+              <div className="menu-card-body">
+                <div className="menu-card-name" onClick={() => openCombo(c.id)} role="presentation">
+                  {pick(lang, c.nameRu, c.nameUz)}
+                </div>
+                {pick(lang, c.descriptionRu, c.descriptionUz) ? (
+                  <div className="menu-card-desc">
+                    {pick(lang, c.descriptionRu, c.descriptionUz)}
                   </div>
-                  {pick(lang, c.descriptionRu, c.descriptionUz) && (
-                    <div className="dish-desc">
-                      {pick(lang, c.descriptionRu, c.descriptionUz)}
-                    </div>
-                  )}
-                  <div className="row">
-                    <span className="dish-price">
-                      {formatMoney(c.price)} {t('currency')}
-                      {c.originalPrice && (
-                        <span
-                          className="muted"
-                          style={{ textDecoration: 'line-through', marginLeft: 6 }}
-                        >
-                          {formatMoney(c.originalPrice)}
-                        </span>
-                      )}
-                    </span>
-                    <button className="btn btn-primary" onClick={() => openCombo(c.id)}>
-                      {t('detail_open')} →
-                    </button>
-                  </div>
+                ) : null}
+                <div className="menu-card-footer">
+                  <PriceTag amount={c.price} original={c.originalPrice} className="menu-card-price" />
+                  <Button variant="primary" size="pill" onClick={() => openCombo(c.id)}>
+                    {t('detail_open')}
+                  </Button>
                 </div>
               </div>
-            </div>
+            </article>
           ))}
-        </div>
-      )}
+        </section>
+      ) : null}
 
-      {CATS.map(({ cat, key }) => {
+      {CATS.map(({ cat, key, sectionId }) => {
         const items = filtered.filter((i) => i.category === cat);
         if (!items.length) return null;
         return (
-          <div key={cat}>
+          <section id={sectionId} className="menu-section" key={cat} ref={setSectionRef(sectionId)}>
             <div className="cat-title">{t(key)}</div>
-            {items.map((item) => (
-              <div className="card" key={item.id}>
-                <div className="dish">
-                  {item.hasPhoto && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      className="dish-photo dish-tap"
-                      src={`/api/menu/${item.id}/photo`}
-                      alt={pick(lang, item.nameRu, item.nameUz)}
-                      onClick={() => openDetail(item.id)}
-                    />
-                  )}
-                  <div className="dish-body">
-                    <div className="dish-name dish-tap" onClick={() => openDetail(item.id)}>
-                      {pick(lang, item.nameRu, item.nameUz)}
-                    </div>
-                    {pick(lang, item.descriptionRu, item.descriptionUz) && (
-                      <div className="dish-desc">{pick(lang, item.descriptionRu, item.descriptionUz)}</div>
-                    )}
-                    <div className="row">
-                      <span className="dish-price">
-                        {formatMoney(item.price)} {t('currency')}
-                      </span>
-                      <Stepper
-                        qty={qtyOf(item.id)}
-                        busy={busy}
-                        addLabel={t('add')}
-                        onChange={(q) => change(item, q)}
-                      />
-                    </div>
-                    <button className="dish-more" onClick={() => openDetail(item.id)}>
-                      {t('detail_open')} →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+            {items.map(renderDish)}
+          </section>
         );
       })}
 
-      {chooseFor && (
-        <div className="modal-overlay" onClick={() => setChooseFor(null)}>
-          <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-title">{t('portion_choose')}</div>
-            <div className="modal-portions">
-              <button className="btn" disabled={busy} onClick={() => pickPortion(1)}>
-                {portionLabel(1, chooseFor.weightGrams, chooseFor.price)}
-              </button>
-              <button className="btn" disabled={busy} onClick={() => pickPortion(2)}>
-                {portionLabel(2, chooseFor.weightGrams2, chooseFor.price2 as string)}
-              </button>
-            </div>
+      {cartCount > 0 && cartTotal ? (
+        <button
+          type="button"
+          className="floating-cart"
+          onClick={() => {
+            haptic('medium');
+            setTab('cart');
+          }}
+        >
+          <span>
+            {t('view_cart')} · <span className="floating-cart-count">{cartCount}</span>
+          </span>
+          <PriceTag amount={cartTotal} />
+        </button>
+      ) : null}
+
+      <BottomSheet
+        open={chooseFor != null}
+        onOpenChange={(open) => !open && setChooseFor(null)}
+        title={t('portion_choose')}
+      >
+        {chooseFor ? (
+          <div className="modal-portions">
+            <Button busy={busy} onClick={() => pickPortion(1)}>
+              {portionLabel(1, chooseFor.weightGrams, chooseFor.price)}
+            </Button>
+            <Button busy={busy} onClick={() => pickPortion(2)}>
+              {portionLabel(2, chooseFor.weightGrams2, chooseFor.price2 as string)}
+            </Button>
           </div>
-        </div>
-      )}
+        ) : null}
+      </BottomSheet>
     </div>
   );
 }

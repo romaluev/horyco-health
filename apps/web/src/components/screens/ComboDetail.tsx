@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Language } from '@eatfit/shared';
 import { api } from '@/lib/api';
@@ -12,6 +13,7 @@ import { useT } from '@/lib/i18n';
 import { formatMoney, pick } from '@/lib/format';
 import { sumModifierDeltas } from '@/lib/pricing';
 import { Stepper } from '@/components/Stepper';
+import { DetailSkeleton, PriceTag } from '@/components/consumer';
 import { ModifierPicker, type ModifierGroupDto } from '@/components/backoffice/ModifierPicker';
 import {
   SlotPicker,
@@ -48,6 +50,8 @@ export function ComboDetail() {
   const [slotSelections, setSlotSelections] = useState<Record<string, string>>({});
   const [modifierIds, setModifierIds] = useState<string[]>([]);
   const [prefilled, setPrefilled] = useState(false);
+  const [headScrolled, setHeadScrolled] = useState(false);
+  const ddRef = useRef<HTMLDivElement>(null);
 
   const { data: modifierGroups } = useQuery({
     queryKey: ['combo', comboId, 'modifier-groups'],
@@ -61,6 +65,14 @@ export function ComboDetail() {
     setModifierIds([]);
     setPrefilled(false);
   }, [combo?.id]);
+
+  useEffect(() => {
+    const el = ddRef.current;
+    if (!el) return;
+    const onScroll = () => setHeadScrolled(el.scrollTop > 8);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [comboId]);
 
   useEffect(() => {
     if (!editComboLineId || !cart || !combo || prefilled) return;
@@ -125,28 +137,8 @@ export function ComboDetail() {
 
   if (!comboId) return null;
 
-  const header = (
-    <div className="dd-head">
-      <button className="dd-back" onClick={closeCombo}>
-        ← {t('detail_back')}
-      </button>
-      <div className="dd-logo">
-        EAT<span>&</span>FIT
-      </div>
-    </div>
-  );
-
-  if (isLoading || !combo) {
-    return (
-      <div className="dd">
-        {header}
-        <div className="center">{t('loading')}</div>
-      </div>
-    );
-  }
-
   const change = (q: number) => {
-    // Уменьшение до нуля — удаляем строку по lineId (POST quantity:0 нарушает @Min(1)).
+    if (!combo) return;
     if (q <= 0) {
       const targetId = editComboLineId ?? line?.lineId;
       if (targetId) deleteLine.mutate(targetId);
@@ -162,56 +154,76 @@ export function ComboDetail() {
     });
   };
 
+  const header = (
+    <div className={`dd-head${headScrolled ? ' scrolled' : ''}`}>
+      <button type="button" className="dd-back" onClick={closeCombo} aria-label={t('detail_back')}>
+        <ArrowLeft size={20} strokeWidth={2.25} />
+      </button>
+      <div className="dd-logo">
+        EAT<span>&</span>FIT
+      </div>
+      <div className="dd-head-spacer" aria-hidden />
+    </div>
+  );
+
+  if (isLoading || !combo) {
+    return (
+      <div className="dd" ref={ddRef}>
+        {header}
+        <DetailSkeleton />
+      </div>
+    );
+  }
+
   const primaryName = pick(lang, combo.nameRu, combo.nameUz);
   const desc = pick(lang, combo.descriptionRu, combo.descriptionUz);
 
   return (
-    <div className="dd">
+    <div className="dd" ref={ddRef}>
       {header}
 
-      {combo.photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="dd-img" src={combo.photoUrl} alt={primaryName} />
-      ) : (
-        <div className="dd-img dd-img-empty">{t('detail_photo_soon')}</div>
-      )}
+      <div className="dd-hero-wrap">
+        {combo.photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className="dd-img" src={combo.photoUrl} alt={primaryName} />
+        ) : (
+          <div className="dd-img dd-img-empty">{t('detail_photo_soon')}</div>
+        )}
+      </div>
 
       <div className="dd-name-block">
         <div className="dd-name">{primaryName}</div>
-        {desc && <div className="dd-desc">{desc}</div>}
+        {desc ? <div className="dd-desc">{desc}</div> : null}
       </div>
 
       <div className="dd-body">
-        <SlotPicker
-          slots={combo.slots}
-          selections={resolvedSelections}
-          onChange={setSlotSelections}
-        />
+        <SlotPicker slots={combo.slots} selections={resolvedSelections} onChange={setSlotSelections} />
 
-        {modifierGroups && modifierGroups.length > 0 && (
-          <ModifierPicker
-            groups={modifierGroups}
-            selectedIds={modifierIds}
-            onChange={setModifierIds}
-          />
-        )}
+        {modifierGroups && modifierGroups.length > 0 ? (
+          <ModifierPicker groups={modifierGroups} selectedIds={modifierIds} onChange={setModifierIds} />
+        ) : null}
 
         <div className="dd-price-row">
           <div>
-            <div className="dd-price">
-              {formatMoney(String(displayPrice))} {t('currency')}
-            </div>
-            {combo.originalPrice && (
-              <div className="dd-weight" style={{ textDecoration: 'line-through' }}>
-                {formatMoney(combo.originalPrice)} {t('currency')}
-              </div>
-            )}
+            <PriceTag amount={displayPrice} className="dd-price" />
+            {combo.originalPrice ? (
+              <PriceTag amount={combo.originalPrice} className="dd-weight u-strike" />
+            ) : null}
           </div>
         </div>
       </div>
 
       <div className="dd-bottom">
-        <Stepper qty={qty} busy={busy} addLabel={t('add')} onChange={change} />
+        <Stepper
+          qty={qty}
+          busy={busy}
+          addLabel={t('add')}
+          addPrice={`${formatMoney(String(displayPrice))} ${t('currency')}`}
+          onChange={change}
+        />
+        {qty > 0 ? (
+          <PriceTag amount={displayPrice * qty} className="dd-bottom-total" />
+        ) : null}
       </div>
     </div>
   );

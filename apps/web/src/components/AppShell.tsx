@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getStartParam } from '@/lib/telegram';
 import { api } from '@/lib/api';
+import { useCart } from '@/lib/queries';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
 import { useT } from '@/lib/i18n';
@@ -24,6 +25,9 @@ export function AppShell() {
   const openDetail = useUiStore((s) => s.openDetail);
   const openCombo = useUiStore((s) => s.openCombo);
   const openOfferDetails = useUiStore((s) => s.openOfferDetails);
+  const { data: cart } = useCart();
+  const cartCount = cart?.items.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+  const showFloatingCart = tab === 'menu' && cartCount > 0;
   const [offerError, setOfferError] = useState(false);
 
   useEffect(() => {
@@ -56,7 +60,7 @@ export function AppShell() {
   if (!client) return null;
 
   return (
-    <div className="app">
+    <div className={`app${showFloatingCart ? ' has-floating-cart' : ''}`}>
       <div className="screen">
         {offerError && (
           <div className="err" role="alert" style={{ marginBottom: 12 }}>

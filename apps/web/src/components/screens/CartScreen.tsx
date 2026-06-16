@@ -1,15 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Language, PaymentMethod } from '@eatfit/shared';
+import { Banknote, Flame, ShoppingBag, Wallet } from 'lucide-react';
+import { Language, ErrorCode, PaymentMethod } from '@eatfit/shared';
 import { useCart, usePatchCartLine, useCheckout } from '@/lib/queries';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
 import { useT } from '@/lib/i18n';
-import { formatMoney, pick } from '@/lib/format';
+import { formatMoney, menuPhotoUrl, pick } from '@/lib/format';
+import { haptic } from '@/lib/telegram';
 import { Stepper } from '@/components/Stepper';
 import { RegistrationForm } from '@/components/RegistrationForm';
 import { hasDeliveryLocation } from '@/components/DeliveryLocationFields';
+import { Button, Card, Chip, EmptyState, ListSkeleton, PriceTag, Thumb } from '@/components/consumer';
 import { ApiError } from '@/lib/api';
 
 export function CartScreen() {
@@ -26,36 +29,59 @@ export function CartScreen() {
   const openCombo = useUiStore((s) => s.openCombo);
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.Balance);
 
-  if (isLoading) return <div className="center">{t('loading')}</div>;
-  if (!cart?.items.length) return <div className="center">{t('cart_empty')}</div>;
+  if (isLoading) return <ListSkeleton count={3} />;
+
+  if (!cart?.items.length) {
+    return (
+      <EmptyState
+        icon={ShoppingBag}
+        title={t('cart_empty')}
+        subtitle={t('browse_menu')}
+        action={
+          <Button variant="primary" onClick={() => setTab('menu')}>
+            {t('browse_menu')}
+          </Button>
+        }
+      />
+    );
+  }
 
   if (needsRegistration) {
     return (
       <div>
-        <h2>{t('checkout')}</h2>
-        <p className="muted" style={{ marginBottom: 16 }}>
-          {t('register_hint')}
-        </p>
+        <h2 className="screen-title">{t('checkout')}</h2>
+        <p className="muted u-mb-4">{t('register_hint')}</p>
         <RegistrationForm />
       </div>
     );
   }
 
   const total = Number(cart.total);
+  const balanceOk = balance >= total;
 
-  const pay = (paymentMethod: PaymentMethod) => {
+  const pay = () => {
     setError(null);
+    haptic('medium');
     checkout.mutate(
       { paymentMethod, comment: comment.trim() || undefined },
       {
         onSuccess: () => {
+          haptic('success');
           setComment('');
           setTab('orders');
         },
         onError: (e) => {
-          const code = (e as ApiError).status;
-          setError(code === 409 ? t('insufficient') : t('error_generic'));
+          haptic('error');
+          const err = e as ApiError;
+          if (err.code === ErrorCode.InsufficientBalance) {
+            setError(t('insufficient'));
+          } else if (err.message) {
+            setError(err.message);
+          } else {
+            setError(t('error_generic'));
+          }
         },
       },
     );
@@ -63,72 +89,79 @@ export function CartScreen() {
 
   return (
     <div>
-      <h2>{t('nav_cart')}</h2>
-      {cart.items.map((it) => (
-        <div className="card" key={it.lineId ?? `${it.menuItemId}:${it.portion}`}>
-          <div className="row">
-            <div>
-              <div className="dish-name">
-                {pick(lang, it.nameRu, it.nameUz)}
-                {it.weightGrams != null && (
-                  <span className="muted">
-                    {' '}
-                    · {it.weightGrams} {t('unit_gram')}
-                  </span>
-                )}
-              </div>
-              {it.modifiers?.map((m) => (
-                <div className="dish-desc" key={m.id}>
-                  ＋ {pick(lang, m.nameRu, m.nameUz)}
-                </div>
-              ))}
-              {it.comboSlots?.map((s, i) => (
-                <div className="dish-desc" key={i}>
-                  ▸ {pick(lang, s.itemNameRu, s.itemNameUz)}
-                </div>
-              ))}
-              <div className="dish-desc">
-                {formatMoney(it.lineTotal)} {t('currency')}
-              </div>
-              <button
-                type="button"
-                className="dish-more"
-                onClick={() => {
-                  if (it.kind === 'dish' && it.menuItemId) {
-                    openDetail(it.menuItemId, { editLineId: it.lineId });
-                  } else if (it.kind === 'combo' && it.comboId) {
-                    openCombo(it.comboId, { editLineId: it.lineId });
-                  }
-                }}
-              >
-                {t('cart_edit_line')} →
-              </button>
-            </div>
-            <Stepper
-              qty={it.quantity}
-              addLabel={t('add')}
-              busy={patchLine.isPending}
-              onChange={(q) => patchLine.mutate({ lineId: it.lineId, quantity: q })}
-            />
-          </div>
-        </div>
-      ))}
+      <h2 className="screen-title">{t('nav_cart')}</h2>
 
-      <div className="card">
-        <div className="row">
-          <strong>{t('total')}</strong>
-          <strong>
-            {formatMoney(cart.total)} {t('currency')}
-          </strong>
+      {cart.items.map((it) => {
+        const name = pick(lang, it.nameRu, it.nameUz);
+        const thumbSrc = it.kind === 'dish' && it.menuItemId ? menuPhotoUrl(it.menuItemId) : undefined;
+        return (
+          <Card key={it.lineId ?? `${it.menuItemId}:${it.portion}`}>
+            <div className="cart-line">
+              <Thumb src={thumbSrc} alt={name} variant="cart" />
+              <div className="cart-line-body">
+                <div className="dish-name">
+                  {name}
+                  {it.weightGrams != null ? (
+                    <span className="muted">
+                      {' '}
+                      · {it.weightGrams} {t('unit_gram')}
+                    </span>
+                  ) : null}
+                </div>
+                {it.modifiers?.map((m) => (
+                  <Chip key={m.id}>+ {pick(lang, m.nameRu, m.nameUz)}</Chip>
+                ))}
+                {it.comboSlots?.map((s, i) => (
+                  <Chip key={i}>{pick(lang, s.itemNameRu, s.itemNameUz)}</Chip>
+                ))}
+                <PriceTag amount={it.lineTotal} className="dish-desc" />
+                <button
+                  type="button"
+                  className="dish-more"
+                  onClick={() => {
+                    if (it.kind === 'dish' && it.menuItemId) {
+                      openDetail(it.menuItemId, { editLineId: it.lineId });
+                    } else if (it.kind === 'combo' && it.comboId) {
+                      openCombo(it.comboId, { editLineId: it.lineId });
+                    }
+                  }}
+                >
+                  {t('cart_edit_line')} →
+                </button>
+                <div className="cart-line-footer">
+                  <Stepper
+                    qty={it.quantity}
+                    addLabel={t('add')}
+                    busy={patchLine.isPending}
+                    onChange={(q) => patchLine.mutate({ lineId: it.lineId, quantity: q })}
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+        );
+      })}
+
+      <div className="cart-summary">
+        <div className="cart-summary-row">
+          <span className="muted">{t('total')}</span>
+          <PriceTag amount={cart.total} />
         </div>
-        {cart.totalCalories != null && (
-          <div className="row" style={{ marginTop: 6 }}>
-            <span className="muted">🔥 {t('total_calories')}</span>
-            <span className="muted">
+        {cart.totalCalories != null ? (
+          <div className="cart-summary-row">
+            <span className="muted u-inline-icon">
+              <Flame size={14} aria-hidden />
+              {t('total_calories')}
+            </span>
+            <span className="muted tabular-nums">
               {formatMoney(cart.totalCalories)} {t('unit_kcal')}
             </span>
           </div>
-        )}
+        ) : null}
+        <div className="cart-summary-total tabular-nums">
+          <span>{t('total')}</span>
+          <PriceTag amount={cart.total} />
+        </div>
       </div>
 
       <div className="field">
@@ -141,22 +174,61 @@ export function CartScreen() {
         />
       </div>
 
-      {error && <div className="err" role="alert" style={{ marginBottom: 12 }}>{error}</div>}
-
-      <div className="seg" style={{ marginBottom: 10 }}>
+      <div className="cat-title flush">{t('payment_method')}</div>
+      <div className="payment-cards">
         <button
-          className="btn btn-primary"
-          disabled={checkout.isPending || balance < total}
-          onClick={() => pay(PaymentMethod.Balance)}
+          type="button"
+          className={`payment-card${paymentMethod === PaymentMethod.Balance ? ' selected' : ''}`}
+          disabled={!balanceOk}
+          onClick={() => {
+            haptic('selection');
+            setPaymentMethod(PaymentMethod.Balance);
+          }}
         >
-          {t('pay_balance')}
+          <span className="payment-card-icon" aria-hidden>
+            <Wallet size={20} />
+          </span>
+          <span className="payment-card-body">
+            <span className="payment-card-title">{t('pay_balance')}</span>
+            <span className="payment-card-sub tabular-nums">
+              {formatMoney(client?.balance ?? '0')} {t('currency')}
+              {!balanceOk ? ` · ${t('insufficient')}` : ''}
+            </span>
+          </span>
         </button>
         <button
-          className="btn btn-primary"
-          disabled={checkout.isPending}
-          onClick={() => pay(PaymentMethod.OnDelivery)}
+          type="button"
+          className={`payment-card${paymentMethod === PaymentMethod.OnDelivery ? ' selected' : ''}`}
+          onClick={() => {
+            haptic('selection');
+            setPaymentMethod(PaymentMethod.OnDelivery);
+          }}
         >
-          {t('pay_cash')}
+          <span className="payment-card-icon" aria-hidden>
+            <Banknote size={20} />
+          </span>
+          <span className="payment-card-body">
+            <span className="payment-card-title">{t('pay_cash')}</span>
+            <span className="payment-card-sub">{t('pay_method_on_delivery')}</span>
+          </span>
+        </button>
+      </div>
+
+      {error ? (
+        <div className="err u-mb-3" role="alert">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="checkout-footer">
+        <button
+          type="button"
+          className="checkout-btn"
+          disabled={checkout.isPending || (paymentMethod === PaymentMethod.Balance && !balanceOk)}
+          onClick={pay}
+        >
+          <span>{t('checkout')}</span>
+          <PriceTag amount={cart.total} />
         </button>
       </div>
     </div>

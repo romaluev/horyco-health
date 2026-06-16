@@ -11,6 +11,11 @@ export interface TelegramWebApp {
   expand(): void;
   openTelegramLink(url: string): void;
   onEvent(event: string, cb: () => void): void;
+  HapticFeedback?: {
+    impactOccurred(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void;
+    notificationOccurred(type: 'error' | 'success' | 'warning'): void;
+    selectionChanged(): void;
+  };
 }
 
 declare global {
@@ -102,4 +107,36 @@ export function applyTheme(): void {
 
 export function openTelegram(url: string): void {
   getWebApp()?.openTelegramLink(url);
+}
+
+export type HapticKind = 'light' | 'medium' | 'selection' | 'success' | 'error' | 'warning';
+
+/** Telegram haptic feedback (no-op outside Mini App). */
+export function haptic(kind: HapticKind = 'light'): void {
+  const hf = getWebApp()?.HapticFeedback;
+  if (!hf) return;
+  switch (kind) {
+    case 'light':
+      hf.impactOccurred('light');
+      break;
+    case 'medium':
+      hf.impactOccurred('medium');
+      break;
+    case 'selection':
+      hf.selectionChanged();
+      break;
+    case 'success':
+      hf.notificationOccurred('success');
+      break;
+    case 'error':
+      hf.notificationOccurred('error');
+      break;
+    case 'warning':
+      hf.notificationOccurred('warning');
+      break;
+    default: {
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
+  }
 }

@@ -29,13 +29,11 @@ export function OfferCompositionScreen() {
         <span className="dd-logo">
           Hory<span>co</span>
         </span>
-        <span style={{ width: 48 }} aria-hidden />
+        <span className="dd-head-spacer" aria-hidden />
       </div>
 
       <div className="dd-body">
-        <h2 className="dd-name" style={{ fontSize: 22, marginBottom: 8 }}>
-          {t('offer_composition_title')}
-        </h2>
+        <h2 className="dd-name offer-comp-title">{t('offer_composition_title')}</h2>
         {description && <p className="dish-desc">{description}</p>}
 
         {isLoading && <p className="muted center">{t('loading')}</p>}
@@ -54,7 +52,6 @@ export function OfferCompositionScreen() {
               key={`${line.kind}-${line.menuItemId ?? line.comboId}-${idx}`}
               type="button"
               className="card dish-tap"
-              style={{ width: '100%', textAlign: 'left', border: 'none' }}
               onClick={() => {
                 if (line.kind === 'combo' && line.comboId) openCombo(line.comboId);
                 else if (line.menuItemId) openDetail(line.menuItemId);
@@ -79,7 +76,7 @@ export function OfferCompositionScreen() {
         })}
 
         {data && data.lines.length > 0 && (
-          <div className="dd-price-row" style={{ marginTop: 16 }}>
+          <div className="dd-price-row u-mt-4">
             <span>{t('total')}</span>
             <strong className="dd-price tabular-nums">
               {formatMoney(data.estimatedTotal)} {t('currency')}

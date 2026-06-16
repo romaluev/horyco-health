@@ -1,49 +1,82 @@
 'use client';
 
+import { ClipboardList, Package } from 'lucide-react';
 import { Language } from '@eatfit/shared';
 import { useOrders } from '@/lib/queries';
 import { useAuthStore } from '@/store/auth.store';
-import { useT, useStatusText } from '@/lib/i18n';
-import { formatMoney, pick } from '@/lib/format';
+import { useUiStore } from '@/store/ui.store';
+import { useT } from '@/lib/i18n';
+import { formatMoney, menuPhotoUrl, pick } from '@/lib/format';
+import {
+  Button,
+  Card,
+  EmptyState,
+  ListSkeleton,
+  PriceTag,
+  StatusPill,
+  Thumb,
+} from '@/components/consumer';
 
 export function OrdersScreen() {
   const t = useT();
-  const st = useStatusText();
   const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
+  const setTab = useUiStore((s) => s.setTab);
   const { data: orders, isLoading } = useOrders();
 
-  if (isLoading) return <div className="center">{t('loading')}</div>;
-  if (!orders?.length) return <div className="center">{t('no_orders')}</div>;
+  if (isLoading) return <ListSkeleton count={4} />;
+
+  if (!orders?.length) {
+    return (
+      <EmptyState
+        icon={ClipboardList}
+        title={t('no_orders')}
+        subtitle={t('browse_menu')}
+        action={
+          <Button variant="primary" onClick={() => setTab('menu')}>
+            {t('browse_menu')}
+          </Button>
+        }
+      />
+    );
+  }
 
   return (
     <div>
-      <h2>{t('nav_orders')}</h2>
+      <h2 className="screen-title">{t('nav_orders')}</h2>
       {orders.map((o) => (
-        <div className="card" key={o.id}>
-          <div className="row">
-            <strong>
+        <Card key={o.id} className="order-card">
+          <div className="order-card-head">
+            <span className="order-number">
               {t('order')} #{o.number}
-            </strong>
-            <span className="muted">{st(o.status)}</span>
+            </span>
+            <StatusPill status={o.status} />
           </div>
-          <div className="dish-desc" style={{ marginTop: 6 }}>
-            {o.items.map((it) => {
+          <div className="order-items-preview">
+            {o.items.map((it, idx) => {
+              const name = pick(lang, it.nameRu, it.nameUz);
               const mods = it.modifiers?.length ? ` (+${it.modifiers.length})` : '';
-              return `${pick(lang, it.nameRu, it.nameUz)}${mods} ×${it.quantity}`;
-            }).join(', ')}
+              const thumbSrc = it.kind === 'dish' && it.menuItemId ? menuPhotoUrl(it.menuItemId) : undefined;
+              return (
+                <div className="order-item-row" key={`${it.menuItemId ?? it.comboId}-${idx}`}>
+                  <Thumb src={thumbSrc} alt={name} variant="order" icon={Package} />
+                  <span>
+                    {name}
+                    {mods} ×{it.quantity}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          <div className="row" style={{ marginTop: 6 }}>
+          <div className="order-card-foot">
             <span className="muted">{new Date(o.createdAt).toLocaleString()}</span>
-            <strong>
-              {formatMoney(o.total)} {t('currency')}
-            </strong>
+            <PriceTag amount={o.total} className="order-total" />
           </div>
-          {o.totalCalories != null && (
-            <div className="dish-desc" style={{ marginTop: 4 }}>
-              🔥 {t('total_calories')}: {formatMoney(o.totalCalories)} {t('unit_kcal')}
+          {o.totalCalories != null ? (
+            <div className="dish-desc tabular-nums u-mt-2">
+              {t('total_calories')}: {formatMoney(o.totalCalories)} {t('unit_kcal')}
             </div>
-          )}
-        </div>
+          ) : null}
+        </Card>
       ))}
     </div>
   );
