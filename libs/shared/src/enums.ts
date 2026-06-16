@@ -23,6 +23,18 @@ export enum Category {
   Dessert = 'dessert',
 }
 
+/** Режим ценообразования блюда: фиксированная цена или за единицу (вес/штуки). */
+export enum PricingMode {
+  Fixed = 'fixed',
+  PerUnit = 'per_unit',
+}
+
+/** Единица измерения для per_unit: граммы или штуки. */
+export enum UnitKind {
+  Gram = 'gram',
+  Piece = 'piece',
+}
+
 export enum Language {
   Ru = 'ru',
   Uz = 'uz',

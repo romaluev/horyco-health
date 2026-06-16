@@ -1,5 +1,5 @@
 import { Entity, Column, Index, DeleteDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Category, Ingredient, Allergens, Nutrition, RecipeStep } from '@eatfit/shared';
+import { Category, Ingredient, Allergens, Nutrition, PricingMode, RecipeStep, UnitKind } from '@eatfit/shared';
 import { BaseEntity } from '../../common/database/base.entity';
 import { Money } from '../../common/money/money';
 import { moneyTransformer } from '../../common/money/money.transformer';
@@ -32,6 +32,31 @@ export class MenuItem extends BaseEntity {
 
   @Column({ type: 'numeric', precision: 12, scale: 2, transformer: moneyTransformer })
   price!: Money;
+
+  /** fixed — price/price2; per_unit — pricePerStep × (unitAmount / unitStep). */
+  @Column({ type: 'enum', enum: PricingMode, default: PricingMode.Fixed })
+  pricingMode!: PricingMode;
+
+  /** Единица для per_unit: граммы или штуки. */
+  @Column({ type: 'enum', enum: UnitKind, nullable: true })
+  unitKind!: UnitKind | null;
+
+  @Column({ type: 'int', nullable: true })
+  unitStep!: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  unitMin!: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  unitMax!: number | null;
+
+  /** Цена за один шаг (unitStep единиц). */
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true, transformer: moneyTransformer })
+  pricePerStep!: Money | null;
+
+  /** Значение по умолчанию при добавлении в корзину. */
+  @Column({ type: 'int', nullable: true })
+  unitDefault!: number | null;
 
   // Фото: Telegram file_id (предпочтительно) или внешний URL; отдаётся через прокси-эндпоинт.
   @Column({ type: 'varchar', nullable: true })

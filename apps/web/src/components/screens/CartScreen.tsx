@@ -22,6 +22,8 @@ export function CartScreen() {
   const patchLine = usePatchCartLine();
   const checkout = useCheckout();
   const setTab = useUiStore((s) => s.setTab);
+  const openDetail = useUiStore((s) => s.openDetail);
+  const openCombo = useUiStore((s) => s.openCombo);
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -88,6 +90,19 @@ export function CartScreen() {
               <div className="dish-desc">
                 {formatMoney(it.lineTotal)} {t('currency')}
               </div>
+              <button
+                type="button"
+                className="dish-more"
+                onClick={() => {
+                  if (it.kind === 'dish' && it.menuItemId) {
+                    openDetail(it.menuItemId, { editLineId: it.lineId });
+                  } else if (it.kind === 'combo' && it.comboId) {
+                    openCombo(it.comboId, { editLineId: it.lineId });
+                  }
+                }}
+              >
+                {t('cart_edit_line')} →
+              </button>
             </div>
             <Stepper
               qty={it.quantity}

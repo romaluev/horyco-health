@@ -1,4 +1,4 @@
-import { Allergens, Category, Ingredient, Nutrition, RecipeStep } from '@eatfit/shared';
+import { Allergens, Category, Ingredient, Nutrition, PricingMode, RecipeStep, UnitKind } from '@eatfit/shared';
 import { MenuItem } from '../entities/menu-item.entity';
 
 /**
@@ -13,6 +13,13 @@ export class MenuItemResponseDto {
   descriptionRu: string | null;
   descriptionUz: string | null;
   price: string;
+  pricingMode: PricingMode;
+  unitKind: UnitKind | null;
+  unitStep: number | null;
+  unitMin: number | null;
+  unitMax: number | null;
+  pricePerStep: string | null;
+  unitDefault: number | null;
   hasPhoto: boolean;
   isActive: boolean;
   days: number[];
@@ -29,9 +36,13 @@ export class MenuItemResponseDto {
   tipRu: string | null;
   tipUz: string | null;
   hasRequiredModifiers: boolean;
+  hasModifierGroups: boolean;
   createdAt: Date;
 
-  constructor(item: MenuItem, opts?: { hasRequiredModifiers?: boolean }) {
+  constructor(
+    item: MenuItem,
+    opts?: { hasRequiredModifiers?: boolean; hasModifierGroups?: boolean },
+  ) {
     this.id = item.id;
     this.category = item.category;
     this.nameRu = item.nameRu;
@@ -39,6 +50,13 @@ export class MenuItemResponseDto {
     this.descriptionRu = item.descriptionRu;
     this.descriptionUz = item.descriptionUz;
     this.price = item.price.toString();
+    this.pricingMode = item.pricingMode;
+    this.unitKind = item.unitKind ?? null;
+    this.unitStep = item.unitStep ?? null;
+    this.unitMin = item.unitMin ?? null;
+    this.unitMax = item.unitMax ?? null;
+    this.pricePerStep = item.pricePerStep ? item.pricePerStep.toString() : null;
+    this.unitDefault = item.unitDefault ?? null;
     this.hasPhoto = Boolean(item.photoFileId || item.photoUrl || item.photoMime);
     this.isActive = item.isActive;
     this.days = item.days ?? [];
@@ -54,6 +72,7 @@ export class MenuItemResponseDto {
     this.tipRu = item.tipRu ?? null;
     this.tipUz = item.tipUz ?? null;
     this.hasRequiredModifiers = opts?.hasRequiredModifiers ?? false;
+    this.hasModifierGroups = opts?.hasModifierGroups ?? false;
     this.createdAt = item.createdAt;
   }
 }

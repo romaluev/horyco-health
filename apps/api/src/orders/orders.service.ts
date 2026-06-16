@@ -12,6 +12,8 @@ import { ClientRepository } from '../clients/clients.repository';
 import { BalanceService } from '../clients/balance/balance.service';
 import { BusinessesRepository } from '../businesses/businesses.repository';
 import { BusinessCustomersRepository } from '../businesses/business-customers.repository';
+import { OffersRepository } from '../offers/offers.repository';
+import { OfferRecipientStatus } from '../offers/entities/offer.entity';
 import { CART_STORE, CartLine, ICartStore } from './cart/cart-store';
 import { OrderRepository } from './orders.repository';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -39,6 +41,7 @@ export class OrdersService {
     private readonly businesses: BusinessesRepository,
     private readonly businessCustomers: BusinessCustomersRepository,
     private readonly linePricing: LinePricingService,
+    private readonly offersRepo: OffersRepository,
     @Inject(CART_STORE) private readonly cart: ICartStore,
   ) {}
 
@@ -120,6 +123,43 @@ export class OrdersService {
 
     const { items, total } = await this.linePricing.buildOrderItems(businessId, lines);
 
+    let offerId = opts.offerId ?? null;
+    let offerRecipientId: string | null = null;
+    if (!offerId && !opts.lines) {
+      offerRecipientId = this.cart.getMeta(cartKey).sourceOfferRecipientId;
+      if (offerRecipientId) {
+        const recipient = await this.offersRepo.findRecipientById(businessId, offerRecipientId);
+        if (!recipient || recipient.clientId !== clientId) {
+          throw new ConflictError('Предложение недоступно');
+        }
+        if (recipient.status === OfferRecipientStatus.Expired) {
+          throw new ConflictError('Предложение истекло');
+        }
+        if (
+          recipient.status !== OfferRecipientStatus.Sent &&
+          recipient.status !== OfferRecipientStatus.Opened
+        ) {
+          if (recipient.status === OfferRecipientStatus.Ordered && recipient.orderId) {
+            throw new ConflictError('Предложение уже оформлено');
+          }
+          throw new ConflictError('Предложение недоступно');
+        }
+        const offer = recipient.offer;
+        if (offer.expiresAt && offer.expiresAt < new Date()) {
+          throw new ConflictError('Предложение истекло');
+        }
+        const claimed = await this.offersRepo.claimRecipientForOrder(businessId, offerRecipientId);
+        if (!claimed) {
+          const current = await this.offersRepo.findRecipientById(businessId, offerRecipientId);
+          if (current?.status === OfferRecipientStatus.Ordered) {
+            throw new ConflictError('Предложение уже оформлено');
+          }
+          throw new ConflictError('Предложение недоступно');
+        }
+        offerId = offer.id;
+      }
+    }
+
     if (dto.paymentMethod === PaymentMethod.Balance) {
       const wallet = await this.businessCustomers.findForUpdateOrCreate(businessId, clientId);
       if (!wallet.balance.gte(total)) {
@@ -140,11 +180,15 @@ export class OrdersService {
       deliveryLng: String(deliveryLng),
       comment: dto.comment ?? null,
       paymentMethod: dto.paymentMethod,
-      offerId: opts.offerId ?? null,
+      offerId,
     });
     await this.orders.saveItems(
       items.map((i) => ({ ...toOrderItemPartial(i), orderId: order.id })),
     );
+
+    if (offerRecipientId && offerId) {
+      await this.offersRepo.setRecipientOrderId(businessId, offerRecipientId, order.id);
+    }
 
     await this.businessCustomers.ensureExists(businessId, clientId);
     await this.businessCustomers.bumpOrderStats(businessId, clientId);

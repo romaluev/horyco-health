@@ -9,6 +9,8 @@ export interface CartLine {
   kind: CartLineKind;
   menuItemId?: string;
   portion?: number;
+  /** Количество для per_unit (граммы или штуки). */
+  unitAmount?: number;
   comboId?: string;
   /** slotId → menuItemId */
   slotSelections?: Record<string, string>;

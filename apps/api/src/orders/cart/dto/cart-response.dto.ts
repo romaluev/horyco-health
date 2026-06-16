@@ -13,6 +13,7 @@ export interface CartItemView {
   quantity: number;
   lineTotal: string;
   portion: number;
+  unitAmount: number | null;
   weightGrams: number | null;
   calories: number | null;
   modifiers: ModifierSnapshot[];

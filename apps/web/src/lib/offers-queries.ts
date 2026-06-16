@@ -8,6 +8,7 @@ export interface OfferCompositionLine {
   kind: 'dish' | 'combo';
   menuItemId?: string;
   portion?: number;
+  unitAmount?: number;
   comboId?: string;
   slotSelections?: Record<string, string>;
   modifierIds: string[];

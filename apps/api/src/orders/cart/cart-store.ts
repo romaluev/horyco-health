@@ -4,11 +4,19 @@ import { CartLine, normalizeCartLine, newLineId, legacyLineKey } from './cart-li
 export type { CartLine, CartLineKind } from './cart-line.types';
 export { normalizeCartLine, newLineId, legacyLineKey };
 
+export interface CartMeta {
+  sourceOfferRecipientId: string | null;
+}
+
+const EMPTY_META: CartMeta = { sourceOfferRecipientId: null };
+
 /** Абстракция хранилища корзины (под будущий Redis). */
 export interface ICartStore {
   get(key: string): CartLine[];
   set(key: string, lines: CartLine[]): void;
   clear(key: string): void;
+  getMeta(key: string): CartMeta;
+  setSourceOfferRecipientId(key: string, recipientId: string | null): void;
 }
 
 export const CART_STORE = Symbol('CART_STORE');
@@ -19,6 +27,7 @@ export const CART_STORE = Symbol('CART_STORE');
 @Injectable()
 export class InMemoryCartStore implements ICartStore {
   private readonly carts = new Map<string, CartLine[]>();
+  private readonly meta = new Map<string, CartMeta>();
 
   get(key: string): CartLine[] {
     return (this.carts.get(key) ?? []).map(normalizeCartLine);
@@ -34,5 +43,22 @@ export class InMemoryCartStore implements ICartStore {
 
   clear(key: string): void {
     this.carts.delete(key);
+    this.meta.delete(key);
+  }
+
+  getMeta(key: string): CartMeta {
+    return this.meta.get(key) ?? EMPTY_META;
+  }
+
+  setSourceOfferRecipientId(key: string, recipientId: string | null): void {
+    if (!recipientId) {
+      const cur = this.meta.get(key);
+      if (cur) {
+        this.meta.set(key, { ...cur, sourceOfferRecipientId: null });
+      }
+      return;
+    }
+    const cur = this.meta.get(key) ?? EMPTY_META;
+    this.meta.set(key, { ...cur, sourceOfferRecipientId: recipientId });
   }
 }

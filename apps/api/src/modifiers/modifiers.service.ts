@@ -136,4 +136,13 @@ export class ModifiersService {
   async requiredModifierMenuItemIds(): Promise<Set<string>> {
     return this.repo.findMenuItemIdsWithRequiredModifiers(await this.businessId());
   }
+
+  async modifierGroupMenuItemIds(): Promise<Set<string>> {
+    return this.repo.findMenuItemIdsWithModifierGroups(await this.businessId());
+  }
+
+  async hasModifierGroups(menuItemId: string): Promise<boolean> {
+    const groups = await this.repo.findGroupsForMenuItem(await this.businessId(), menuItemId);
+    return groups.length > 0;
+  }
 }

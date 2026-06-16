@@ -6,8 +6,10 @@ import {
   Nutrition,
   OrderStatus,
   PaymentMethod,
+  PricingMode,
   RecipeStep,
   Role,
+  UnitKind,
 } from '@eatfit/shared';
 
 /** Зеркала response-DTO API (деньги — строки). Источник enum'ов — libs/shared. */
@@ -38,6 +40,13 @@ export interface MenuItemDto {
   descriptionRu: string | null;
   descriptionUz: string | null;
   price: string;
+  pricingMode: PricingMode;
+  unitKind: UnitKind | null;
+  unitStep: number | null;
+  unitMin: number | null;
+  unitMax: number | null;
+  pricePerStep: string | null;
+  unitDefault: number | null;
   hasPhoto: boolean;
   isActive: boolean;
   days: number[];
@@ -53,6 +62,7 @@ export interface MenuItemDto {
   tipRu: string | null;
   tipUz: string | null;
   hasRequiredModifiers?: boolean;
+  hasModifierGroups?: boolean;
   createdAt: string;
 }
 
@@ -68,6 +78,7 @@ export interface CartItemDto {
   quantity: number;
   lineTotal: string;
   portion: number;
+  unitAmount: number | null;
   weightGrams: number | null;
   calories: number | null;
   modifiers: Array<{ id: string; nameRu: string; nameUz: string; priceDelta: string }>;
@@ -98,6 +109,7 @@ export interface OrderItemDto {
   priceAtOrder: string;
   lineTotal: string;
   portion: number;
+  unitAmount: number | null;
   weightGrams: number | null;
   calories: number | null;
   modifiers: Array<{ id: string; nameRu: string; nameUz: string; priceDelta: string }>;

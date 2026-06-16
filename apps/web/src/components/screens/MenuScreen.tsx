@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Category, Language } from '@eatfit/shared';
+import { Category, Language, PricingMode } from '@eatfit/shared';
 import { useMenu, useMenuCombos, useCart, useAddToCart, useSetQuantity } from '@/lib/queries';
 import { useAuthStore } from '@/store/auth.store';
 import { useUiStore } from '@/store/ui.store';
@@ -49,6 +49,12 @@ export function MenuScreen() {
     : activeCombos;
 
   const portionOf = (id: string) => selPortion[id] ?? 1;
+
+  const needsDetail = (item: MenuItemDto) =>
+    item.pricingMode === PricingMode.PerUnit ||
+    item.hasRequiredModifiers === true ||
+    item.hasModifierGroups === true;
+
   // Количество ПРОСТОЙ строки блюда (без модификаторов) выбранной порции — степпер
   // в списке управляет именно ею; строки с модификаторами/комбо считаются отдельно.
   const qtyOf = (id: string) =>
@@ -61,6 +67,10 @@ export function MenuScreen() {
     )?.quantity ?? 0;
 
   const change = (item: MenuItemDto, q: number) => {
+    if (needsDetail(item)) {
+      openDetail(item.id);
+      return;
+    }
     const portion = portionOf(item.id);
     if (q <= 0) {
       setQty.mutate({ menuItemId: item.id, quantity: 0, portion });

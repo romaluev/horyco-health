@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Category, Ingredient, Language, RecipeStep } from '@eatfit/shared';
+import { Category, Ingredient, Language, PricingMode, RecipeStep, UnitKind } from '@eatfit/shared';
 import { useQuery } from '@tanstack/react-query';
 import {
   useAdminMenu,
@@ -50,6 +50,13 @@ function emptyForm(): DishBody {
     descriptionRu: '',
     descriptionUz: '',
     price: 0,
+    pricingMode: PricingMode.Fixed,
+    unitKind: null,
+    unitStep: null,
+    unitMin: null,
+    unitMax: null,
+    pricePerStep: null,
+    unitDefault: null,
     photoUrl: '',
     days: [],
     weightGrams: null,
@@ -122,6 +129,8 @@ export function AdminMenu() {
   // Фото, выбранное при СОЗДАНИИ нового блюда: грузим после create (нужен id). preview — локальный object-URL.
   const [pendingPhoto, setPendingPhoto] = useState<File | null>(null);
   const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const [pendingGroupIds, setPendingGroupIds] = useState<string[]>([]);
+  const setGroups = useSetMenuItemModifierGroups();
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Запомнить/сбросить отложенное фото, освобождая прежний object-URL (без утечек памяти).
@@ -141,6 +150,7 @@ export function AdminMenu() {
     setForm(emptyForm());
     setHasPhoto(false);
     setPending(null);
+    setPendingGroupIds([]);
     setEditing(null);
   };
   const openEdit = (it: MenuItemDto) => {
@@ -151,6 +161,13 @@ export function AdminMenu() {
       descriptionRu: it.descriptionRu ?? '',
       descriptionUz: it.descriptionUz ?? '',
       price: Number(it.price),
+      pricingMode: it.pricingMode ?? PricingMode.Fixed,
+      unitKind: it.unitKind ?? null,
+      unitStep: it.unitStep ?? null,
+      unitMin: it.unitMin ?? null,
+      unitMax: it.unitMax ?? null,
+      pricePerStep: it.pricePerStep != null ? Number(it.pricePerStep) : null,
+      unitDefault: it.unitDefault ?? null,
       photoUrl: '',
       days: it.days ?? [],
       weightGrams: it.weightGrams ?? null,
@@ -232,7 +249,17 @@ export function AdminMenu() {
       }));
     const body: DishBody = {
       ...form,
-      price: Number(form.price),
+      price:
+        form.pricingMode === PricingMode.PerUnit
+          ? Number(form.pricePerStep ?? 0)
+          : Number(form.price),
+      pricingMode: form.pricingMode ?? PricingMode.Fixed,
+      unitKind: form.unitKind ?? null,
+      unitStep: form.unitStep == null ? null : Math.round(form.unitStep),
+      unitMin: form.unitMin == null ? null : Math.round(form.unitMin),
+      unitMax: form.unitMax == null ? null : Math.round(form.unitMax),
+      pricePerStep: form.pricePerStep == null ? null : Number(form.pricePerStep),
+      unitDefault: form.unitDefault == null ? null : Math.round(form.unitDefault),
       photoUrl: form.photoUrl || undefined,
       descriptionRu: form.descriptionRu || undefined,
       descriptionUz: form.descriptionUz || undefined,
@@ -259,21 +286,29 @@ export function AdminMenu() {
     create.mutate(body, {
       onError: (e) => toast.error(`${t('save')}: ${(e as Error).message}`),
       onSuccess: (created) => {
-        // Блюдо создано — если при создании выбрали фото, грузим его на новый id и затем закрываем.
-        if (pendingPhoto) {
-          uploadPhoto.mutate(
-            { id: created.id, file: pendingPhoto },
-            {
-              onSuccess: close,
-              // Блюдо уже создано — сообщаем, что не загрузилось только фото, и закрываем форму.
-              onError: (e) => {
-                toast.error(t('adm_photo_error') + (e as Error).message);
-                close();
+        const afterGroups = () => {
+          if (pendingPhoto) {
+            uploadPhoto.mutate(
+              { id: created.id, file: pendingPhoto },
+              {
+                onSuccess: close,
+                onError: (e) => {
+                  toast.error(t('adm_photo_error') + (e as Error).message);
+                  close();
+                },
               },
-            },
+            );
+          } else {
+            close();
+          }
+        };
+        if (pendingGroupIds.length > 0) {
+          setGroups.mutate(
+            { menuItemId: created.id, groupIds: pendingGroupIds },
+            { onSuccess: afterGroups, onError: afterGroups },
           );
         } else {
-          close();
+          afterGroups();
         }
       },
     });
@@ -339,6 +374,106 @@ export function AdminMenu() {
           );
         })}
         <div className="field">
+          <label>{t('adm_pricing_mode')}</label>
+          <div className="seg">
+            <button
+              type="button"
+              className={form.pricingMode !== PricingMode.PerUnit ? 'active' : ''}
+              onClick={() => setForm({ ...form, pricingMode: PricingMode.Fixed })}
+            >
+              {t('adm_pricing_fixed')}
+            </button>
+            <button
+              type="button"
+              className={form.pricingMode === PricingMode.PerUnit ? 'active' : ''}
+              onClick={() => setForm({ ...form, pricingMode: PricingMode.PerUnit })}
+            >
+              {t('adm_pricing_per_unit')}
+            </button>
+          </div>
+        </div>
+        {form.pricingMode === PricingMode.PerUnit ? (
+          <>
+            <div className="field">
+              <label>{t('adm_unit_kind')}</label>
+              <div className="seg">
+                <button
+                  type="button"
+                  className={form.unitKind === UnitKind.Gram ? 'active' : ''}
+                  onClick={() => setForm({ ...form, unitKind: UnitKind.Gram })}
+                >
+                  {t('unit_gram')}
+                </button>
+                <button
+                  type="button"
+                  className={form.unitKind === UnitKind.Piece ? 'active' : ''}
+                  onClick={() => setForm({ ...form, unitKind: UnitKind.Piece })}
+                >
+                  {t('adm_unit_piece')}
+                </button>
+              </div>
+            </div>
+            <div className="field">
+              <label>{t('adm_price_per_step')}</label>
+              <input
+                className="input"
+                inputMode="numeric"
+                value={form.pricePerStep ?? ''}
+                onChange={(e) => setForm({ ...form, pricePerStep: numOrNull(e.target.value) })}
+              />
+            </div>
+            <div className="row" style={{ gap: 8 }}>
+              <div className="field" style={{ flex: 1 }}>
+                <label>{t('adm_unit_step')}</label>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={form.unitStep ?? ''}
+                  onChange={(e) => setForm({ ...form, unitStep: numOrNull(e.target.value) })}
+                />
+              </div>
+              <div className="field" style={{ flex: 1 }}>
+                <label>{t('adm_unit_min')}</label>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={form.unitMin ?? ''}
+                  onChange={(e) => setForm({ ...form, unitMin: numOrNull(e.target.value) })}
+                />
+              </div>
+              <div className="field" style={{ flex: 1 }}>
+                <label>{t('adm_unit_max')}</label>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={form.unitMax ?? ''}
+                  onChange={(e) => setForm({ ...form, unitMax: numOrNull(e.target.value) })}
+                />
+              </div>
+              <div className="field" style={{ flex: 1 }}>
+                <label>{t('adm_unit_default')}</label>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={form.unitDefault ?? ''}
+                  onChange={(e) => setForm({ ...form, unitDefault: numOrNull(e.target.value) })}
+                />
+              </div>
+            </div>
+            <div className="field">
+              <label>{t('adm_weight')}</label>
+              <input
+                className="input"
+                inputMode="numeric"
+                value={form.weightGrams ?? ''}
+                onChange={(e) => setForm({ ...form, weightGrams: numOrNull(e.target.value) })}
+              />
+              <div className="muted">{t('adm_weight_ref_hint')}</div>
+            </div>
+          </>
+        ) : (
+          <>
+        <div className="field">
           <label>{t('adm_price')}</label>
           <input
             className="input"
@@ -374,6 +509,8 @@ export function AdminMenu() {
             onChange={(e) => setForm({ ...form, weightGrams2: numOrNull(e.target.value) })}
           />
         </div>
+          </>
+        )}
         <div className="field">
           <label>{t('adm_deadline')}</label>
           <input
@@ -645,7 +782,11 @@ export function AdminMenu() {
             )}
           </div>
         </div>
-        {editing && <ModifierGroupsAttach menuItemId={editing.id} />}
+        <ModifierGroupsAttach
+          menuItemId={editing?.id}
+          draftGroupIds={editing ? undefined : pendingGroupIds}
+          onDraftChange={editing ? undefined : setPendingGroupIds}
+        />
 
         <div className="seg">
           <button className="btn" onClick={close}>
@@ -656,7 +797,9 @@ export function AdminMenu() {
             disabled={
               !form.nameRu ||
               !form.nameUz ||
-              form.price <= 0 ||
+              (form.pricingMode === PricingMode.PerUnit
+                ? !form.pricePerStep || form.pricePerStep <= 0
+                : form.price <= 0) ||
               create.isPending ||
               update.isPending ||
               uploadPhoto.isPending
@@ -780,8 +923,16 @@ export function AdminMenu() {
   );
 }
 
-/** Привязка групп модификаторов к блюду (внутри формы редактирования). */
-function ModifierGroupsAttach({ menuItemId }: { menuItemId: string }) {
+/** Привязка групп модификаторов к блюду (редактирование или черновик при создании). */
+function ModifierGroupsAttach({
+  menuItemId,
+  draftGroupIds,
+  onDraftChange,
+}: {
+  menuItemId?: string;
+  draftGroupIds?: string[];
+  onDraftChange?: (ids: string[]) => void;
+}) {
   const t = useT();
   const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
   const { data: allGroups } = useModifierGroupsAdmin();
@@ -800,14 +951,20 @@ function ModifierGroupsAttach({ menuItemId }: { menuItemId: string }) {
   }, [attached]);
 
   if (!allGroups?.length) return null;
-  const sel = selected ?? [];
+  const sel = menuItemId ? (selected ?? []) : (draftGroupIds ?? []);
 
   const toggle = (id: string) => {
     setSaved(false);
-    setSelected((prev) => {
-      const cur = prev ?? [];
-      return cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
-    });
+    if (menuItemId) {
+      setSelected((prev) => {
+        const cur = prev ?? [];
+        return cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+      });
+    } else {
+      onDraftChange?.(
+        sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id],
+      );
+    }
   };
 
   return (
@@ -820,20 +977,22 @@ function ModifierGroupsAttach({ menuItemId }: { menuItemId: string }) {
             <span>{pick(lang, g.nameRu, g.nameUz)}</span>
           </label>
         ))}
-        <button
-          className="btn"
-          type="button"
-          disabled={setGroups.isPending}
-          style={{ marginTop: 8 }}
-          onClick={() =>
-            setGroups.mutate(
-              { menuItemId, groupIds: sel },
-              { onSuccess: () => setSaved(true) },
-            )
-          }
-        >
-          {saved ? t('saved') : t('save')}
-        </button>
+        {menuItemId && (
+          <button
+            className="btn"
+            type="button"
+            disabled={setGroups.isPending}
+            style={{ marginTop: 8 }}
+            onClick={() =>
+              setGroups.mutate(
+                { menuItemId, groupIds: sel },
+                { onSuccess: () => setSaved(true) },
+              )
+            }
+          >
+            {saved ? t('saved') : t('save')}
+          </button>
+        )}
       </div>
     </div>
   );

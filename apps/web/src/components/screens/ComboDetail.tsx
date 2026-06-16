@@ -10,6 +10,7 @@ import { useUiStore } from '@/store/ui.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/lib/i18n';
 import { formatMoney, pick } from '@/lib/format';
+import { sumModifierDeltas } from '@/lib/pricing';
 import { Stepper } from '@/components/Stepper';
 import { ModifierPicker, type ModifierGroupDto } from '@/components/backoffice/ModifierPicker';
 import {
@@ -32,6 +33,7 @@ interface ComboDetailDto {
 
 export function ComboDetail() {
   const comboId = useUiStore((s) => s.comboId);
+  const editComboLineId = useUiStore((s) => s.editComboLineId);
   const closeCombo = useUiStore((s) => s.closeCombo);
   const t = useT();
   const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
@@ -45,6 +47,7 @@ export function ComboDetail() {
   const deleteLine = useDeleteCartLine();
   const [slotSelections, setSlotSelections] = useState<Record<string, string>>({});
   const [modifierIds, setModifierIds] = useState<string[]>([]);
+  const [prefilled, setPrefilled] = useState(false);
 
   const { data: modifierGroups } = useQuery({
     queryKey: ['combo', comboId, 'modifier-groups'],
@@ -56,7 +59,21 @@ export function ComboDetail() {
     if (!combo) return;
     setSlotSelections(defaultSlotSelections(combo.slots));
     setModifierIds([]);
+    setPrefilled(false);
   }, [combo?.id]);
+
+  useEffect(() => {
+    if (!editComboLineId || !cart || !combo || prefilled) return;
+    const line = cart.items.find((i) => i.lineId === editComboLineId);
+    if (!line || line.comboId !== combo.id) return;
+    const sel: Record<string, string> = {};
+    for (const slot of line.comboSlots) {
+      sel[slot.slotId] = slot.menuItemId;
+    }
+    setSlotSelections(sel);
+    setModifierIds(line.modifiers.map((m) => m.id));
+    setPrefilled(true);
+  }, [editComboLineId, cart, combo, prefilled]);
 
   const resolvedSelections = useMemo(() => {
     if (!combo) return {};
@@ -84,13 +101,7 @@ export function ComboDetail() {
   }, [combo, resolvedSelections]);
 
   const modDelta = useMemo(
-    () =>
-      modifierGroups?.reduce((sum, g) => {
-        for (const m of g.modifiers) {
-          if (modifierIds.includes(m.id)) sum += Number(m.priceDelta);
-        }
-        return sum;
-      }, 0) ?? 0,
+    () => sumModifierDeltas(modifierGroups, modifierIds),
     [modifierGroups, modifierIds],
   );
 
@@ -107,7 +118,9 @@ export function ComboDetail() {
     return JSON.stringify(modIds) === JSON.stringify(cur);
   });
 
-  const qty = line?.quantity ?? 0;
+  const qty = editComboLineId
+    ? (cart?.items.find((i) => i.lineId === editComboLineId)?.quantity ?? 0)
+    : (line?.quantity ?? 0);
   const busy = upsertLine.isPending || deleteLine.isPending;
 
   if (!comboId) return null;
@@ -135,7 +148,8 @@ export function ComboDetail() {
   const change = (q: number) => {
     // Уменьшение до нуля — удаляем строку по lineId (POST quantity:0 нарушает @Min(1)).
     if (q <= 0) {
-      if (line) deleteLine.mutate(line.lineId);
+      const targetId = editComboLineId ?? line?.lineId;
+      if (targetId) deleteLine.mutate(targetId);
       return;
     }
     upsertLine.mutate({
@@ -144,7 +158,7 @@ export function ComboDetail() {
       slotSelections: resolvedSelections,
       modifierIds,
       quantity: q,
-      lineId: line?.lineId,
+      lineId: editComboLineId ?? line?.lineId,
     });
   };
 

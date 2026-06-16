@@ -1,4 +1,4 @@
-import { OrderStatus, PaymentMethod } from '@eatfit/shared';
+import { OrderStatus, PaymentMethod, PricingMode, UnitKind } from '@eatfit/shared';
 import { Order } from '../entities/order.entity';
 import { OrderItem } from '../entities/order-item.entity';
 import { ModifierSnapshot, ComboSlotSnapshot } from '../pricing/line-pricing.types';
@@ -13,6 +13,7 @@ export interface OrderItemView {
   priceAtOrder: string;
   lineTotal: string;
   portion: number;
+  unitAmount: number | null;
   weightGrams: number | null;
   calories: number | null;
   nutrition: import('@eatfit/shared').Nutrition | null;
@@ -73,6 +74,7 @@ function mapOrderItemView(it: OrderItem): OrderItemView {
     priceAtOrder: it.priceAtOrder.toString(),
     lineTotal: it.priceAtOrder.multiply(it.quantity).toString(),
     portion: it.portion ?? 1,
+    unitAmount: it.unitAmountAtOrder ?? null,
     weightGrams: it.portionWeightGrams ?? null,
     calories: it.caloriesAtOrder ?? null,
     nutrition: it.nutritionSnapshot ?? null,

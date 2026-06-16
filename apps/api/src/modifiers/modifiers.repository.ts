@@ -101,6 +101,17 @@ export class ModifiersRepository extends TransactionalRepository<ModifierGroup> 
     return new Set(rows.map((r) => r.menu_item_id));
   }
 
+  async findMenuItemIdsWithModifierGroups(businessId: string): Promise<Set<string>> {
+    const rows: { menu_item_id: string }[] = await this.txHost.tx.query(
+      `SELECT DISTINCT j.menu_item_id
+       FROM menu_item_modifier_groups j
+       INNER JOIN modifier_groups g ON g.id = j.group_id
+       WHERE g.business_id = $1 AND g.is_active = true`,
+      [businessId],
+    );
+    return new Set(rows.map((r) => r.menu_item_id));
+  }
+
   getMenuItemGroupIds(businessId: string, menuItemId: string): Promise<string[]> {
     void businessId;
     const joinRepo = this.txHost.tx.getRepository(MenuItemModifierGroup);

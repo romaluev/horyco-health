@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { Language, type Ingredient } from '@eatfit/shared';
+import { Language, PricingMode, UnitKind, type Ingredient } from '@eatfit/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useMenuItem, useCart, useDeleteCartLine } from '@/lib/queries';
 import { useUpsertCartLine } from '@/lib/offers-queries';
@@ -9,9 +9,11 @@ import { useUiStore } from '@/store/ui.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/lib/i18n';
 import { formatMoney, pick } from '@/lib/format';
+import { baseDisplayPrice, sumModifierDeltas, unitAmountOptions } from '@/lib/pricing';
 import { Stepper } from '@/components/Stepper';
 import { ModifierPicker, type ModifierGroupDto } from '@/components/backoffice/ModifierPicker';
 import { api } from '@/lib/api';
+import type { CartItemDto } from '@/lib/types';
 
 function formatIngredientAmount(ing: Ingredient, t: (k: import('@/lib/i18n').I18nKey) => string): string {
   if (ing.amountText?.trim()) return ing.amountText.trim();
@@ -44,6 +46,26 @@ function defaultModifierIds(groups: ModifierGroupDto[] | undefined): string[] {
   return ids;
 }
 
+function lineMatchesConfig(
+  line: CartItemDto,
+  menuItemId: string,
+  portion: number,
+  unitAmount: number | undefined,
+  modifierIds: string[],
+  isPerUnit: boolean,
+): boolean {
+  if (line.kind !== 'dish' || line.menuItemId !== menuItemId) return false;
+  if (isPerUnit) {
+    if (line.unitAmount !== (unitAmount ?? null)) return false;
+  } else if (line.portion !== portion) {
+    return false;
+  }
+  return (
+    JSON.stringify(line.modifiers.map((m) => m.id).sort()) ===
+    JSON.stringify([...modifierIds].sort())
+  );
+}
+
 function Accordion({ title, children }: { title: string; children: ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
@@ -61,18 +83,22 @@ export function DishDetail() {
   const t = useT();
   const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
   const id = useUiStore((s) => s.detailId);
+  const editLineId = useUiStore((s) => s.editLineId);
   const close = useUiStore((s) => s.closeDetail);
   const { data: item, isLoading } = useMenuItem(id);
   const { data: cart } = useCart();
   const upsertLine = useUpsertCartLine();
   const deleteLine = useDeleteCartLine();
   const [portion, setPortion] = useState(1);
+  const [unitAmount, setUnitAmount] = useState<number | undefined>(undefined);
   const [modifierIds, setModifierIds] = useState<string[]>([]);
+  const [prefilled, setPrefilled] = useState(false);
 
-  // Сбрасываем выбор порции/модификаторов при открытии другого блюда.
   useEffect(() => {
     setPortion(1);
+    setUnitAmount(undefined);
     setModifierIds([]);
+    setPrefilled(false);
   }, [id]);
 
   const { data: modifierGroups } = useQuery({
@@ -81,37 +107,58 @@ export function DishDetail() {
     enabled: Boolean(id),
   });
 
-  // Автовыбор первого варианта в обязательных SINGLE-группах — меньше кликов до «Добавить».
   useEffect(() => {
     if (!modifierGroups?.length) return;
     setModifierIds((prev) => (prev.length > 0 ? prev : defaultModifierIds(modifierGroups)));
   }, [modifierGroups, id]);
 
+  const isPerUnit = item?.pricingMode === PricingMode.PerUnit;
+
+  useEffect(() => {
+    if (!item || prefilled) return;
+    if (isPerUnit && unitAmount == null) {
+      setUnitAmount(item.unitDefault ?? item.unitMin ?? item.unitStep ?? 1);
+    }
+  }, [item, isPerUnit, unitAmount, prefilled]);
+
+  // Prefill from cart when editing a line.
+  useEffect(() => {
+    if (!editLineId || !cart || !item || prefilled) return;
+    const line = cart.items.find((i) => i.lineId === editLineId);
+    if (!line || line.menuItemId !== item.id) return;
+    setPortion(line.portion);
+    if (line.unitAmount != null) setUnitAmount(line.unitAmount);
+    setModifierIds(line.modifiers.map((m) => m.id));
+    setPrefilled(true);
+  }, [editLineId, cart, item, prefilled]);
+
   if (!id) return null;
 
-  const line = cart?.items.find(
-    (i) =>
-      i.kind === 'dish' &&
-      i.menuItemId === id &&
-      i.portion === portion &&
-      JSON.stringify(i.modifiers.map((m) => m.id).sort()) === JSON.stringify([...modifierIds].sort()),
+  const resolvedUnitAmount =
+    unitAmount ?? item?.unitDefault ?? item?.unitMin ?? item?.unitStep ?? 1;
+
+  const line = cart?.items.find((i) =>
+    lineMatchesConfig(i, id, portion, resolvedUnitAmount, modifierIds, isPerUnit),
   );
-  const qty = line?.quantity ?? 0;
+  const qty = editLineId
+    ? (cart?.items.find((i) => i.lineId === editLineId)?.quantity ?? 0)
+    : (line?.quantity ?? 0);
   const busy = upsertLine.isPending || deleteLine.isPending;
 
   const change = (q: number) => {
-    // Уменьшение до нуля — удаляем строку по lineId (POST quantity:0 нарушает @Min(1)).
     if (q <= 0) {
-      if (line) deleteLine.mutate(line.lineId);
+      const targetId = editLineId ?? line?.lineId;
+      if (targetId) deleteLine.mutate(targetId);
       return;
     }
     upsertLine.mutate({
       kind: 'dish',
       menuItemId: id,
-      portion,
+      portion: isPerUnit ? 1 : portion,
+      unitAmount: isPerUnit ? resolvedUnitAmount : undefined,
       modifierIds,
       quantity: q,
-      lineId: line?.lineId,
+      lineId: editLineId ?? line?.lineId,
     });
   };
 
@@ -140,27 +187,35 @@ export function DishDetail() {
   const desc = pick(lang, item.descriptionRu, item.descriptionUz);
   const contains = pick(lang, item.allergens?.containsRu, item.allergens?.containsUz);
   const mayContain = pick(lang, item.allergens?.mayContainRu, item.allergens?.mayContainUz);
-  const nut = portion === 2 ? item.nutrition2 : item.nutrition;
+  const nut = isPerUnit ? item.nutrition : portion === 2 ? item.nutrition2 : item.nutrition;
   const hasNutrition =
     nut && (nut.calories != null || nut.protein != null || nut.fat != null || nut.carbs != null);
-  const has2 = item.price2 != null;
-  const curPrice = portion === 2 && item.price2 != null ? item.price2 : item.price;
-  const curWeight = portion === 2 ? item.weightGrams2 : item.weightGrams;
+  const has2 = !isPerUnit && item.price2 != null;
+  const curWeight = isPerUnit
+    ? item.unitKind === UnitKind.Gram
+      ? resolvedUnitAmount
+      : item.weightGrams != null && item.unitDefault
+        ? Math.round((item.weightGrams * resolvedUnitAmount) / item.unitDefault)
+        : resolvedUnitAmount
+    : portion === 2
+      ? item.weightGrams2
+      : item.weightGrams;
   const portionLabel = (p: number, w: number | null, price: string) =>
     `${w != null ? `${w} ${t('unit_gram')}` : `${t('portion')} ${p}`} · ${formatMoney(price)} ${t('currency')}`;
 
-  const modDelta =
-    modifierGroups?.reduce((sum, g) => {
-      for (const m of g.modifiers) {
-        if (modifierIds.includes(m.id)) sum += Number(m.priceDelta);
-      }
-      return sum;
-    }, 0) ?? 0;
-  const displayPrice = Number(curPrice) + modDelta;
+  const displayPrice =
+    baseDisplayPrice(item, { portion, unitAmount: resolvedUnitAmount }) +
+    sumModifierDeltas(modifierGroups, modifierIds);
   const tip = pick(lang, item.tipRu, item.tipUz);
   const ingredientGroups = item.ingredients?.length
     ? groupIngredientsBySection(item.ingredients)
     : [];
+  const amountOpts = isPerUnit ? unitAmountOptions(item) : [];
+
+  const unitLabel = (amount: number) =>
+    item.unitKind === UnitKind.Piece
+      ? `${amount} ${t('adm_unit_piece').toLowerCase()}`
+      : `${amount} ${t('unit_gram')}`;
 
   return (
     <div className="dd">
@@ -182,6 +237,24 @@ export function DishDetail() {
       </div>
 
       <div className="dd-body">
+        {isPerUnit && amountOpts.length > 0 && (
+          <div className="dd-portions">
+            <div className="dd-portions-title">{t('amount_choose')}</div>
+            <div className="seg" style={{ flexWrap: 'wrap' }}>
+              {amountOpts.map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  className={resolvedUnitAmount === amt ? 'active' : ''}
+                  onClick={() => setUnitAmount(amt)}
+                >
+                  {unitLabel(amt)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {has2 && (
           <div className="dd-portions">
             <div className="dd-portions-title">{t('portion_choose')}</div>

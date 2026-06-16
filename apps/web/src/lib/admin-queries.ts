@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Allergens, Category, Ingredient, Nutrition, OrderStatus, RecipeStep, Role } from '@eatfit/shared';
+import { Allergens, Category, Ingredient, Nutrition, OrderStatus, PricingMode, RecipeStep, Role, UnitKind } from '@eatfit/shared';
 import { api, apiUpload } from './api';
 import { ClientDto, MenuItemDto, OrderDto, SettingsDto } from './types';
 import { useAuthStore } from '@/store/auth.store';
@@ -12,6 +12,13 @@ export interface DishBody {
   descriptionRu?: string;
   descriptionUz?: string;
   price: number;
+  pricingMode?: PricingMode;
+  unitKind?: UnitKind | null;
+  unitStep?: number | null;
+  unitMin?: number | null;
+  unitMax?: number | null;
+  pricePerStep?: number | null;
+  unitDefault?: number | null;
   photoUrl?: string;
   isActive?: boolean;
   days?: number[];

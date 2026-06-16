@@ -16,6 +16,7 @@ export interface ModifierGroupDto {
   id: string;
   nameRu: string;
   nameUz: string;
+  kind?: 'modifier' | 'addition';
   selectionType: 'SINGLE' | 'MULTIPLE';
   isRequired: boolean;
   pricingType: 'FREE' | 'PAID' | 'INCLUDED';
@@ -86,11 +87,11 @@ export function ModifierPicker({ groups, selectedIds, onChange }: ModifierPicker
           <div className="seg" style={{ flexWrap: 'wrap', marginTop: 8 }}>
             {group.modifiers.map((mod) => {
               const active = selectedIds.includes(mod.id);
-              const delta = Number(mod.priceDelta);
-              const label =
-                delta > 0
-                  ? `${pick(lang, mod.nameRu, mod.nameUz)} +${formatMoney(mod.priceDelta)}`
-                  : pick(lang, mod.nameRu, mod.nameUz);
+              const showPrice =
+                group.pricingType === 'PAID' && Number(mod.priceDelta) > 0;
+              const label = showPrice
+                ? `${pick(lang, mod.nameRu, mod.nameUz)} +${formatMoney(mod.priceDelta)}`
+                : pick(lang, mod.nameRu, mod.nameUz);
               return (
                 <button
                   key={mod.id}

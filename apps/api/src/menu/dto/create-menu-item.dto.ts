@@ -16,7 +16,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { Category } from '@eatfit/shared';
+import { Category, PricingMode, UnitKind } from '@eatfit/shared';
 import { AllergensDto, IngredientDto, NutritionDto, RecipeStepDto } from './menu-detail.dto';
 
 export class CreateMenuItemDto {
@@ -42,6 +42,39 @@ export class CreateMenuItemDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
   price!: number;
+
+  @IsOptional()
+  @IsEnum(PricingMode)
+  pricingMode?: PricingMode;
+
+  @IsOptional()
+  @IsEnum(UnitKind)
+  unitKind?: UnitKind | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  unitStep?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  unitMin?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  unitMax?: number | null;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
+  pricePerStep?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  unitDefault?: number | null;
 
   @IsOptional()
   @IsString()

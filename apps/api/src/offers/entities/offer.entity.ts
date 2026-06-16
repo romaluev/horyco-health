@@ -28,6 +28,7 @@ export interface OfferCompositionLine {
   kind: CartLineKind;
   menuItemId?: string;
   portion?: number;
+  unitAmount?: number;
   comboId?: string;
   slotSelections?: Record<string, string>;
   modifierIds: string[];

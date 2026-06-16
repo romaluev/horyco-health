@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { PricingMode } from '@eatfit/shared';
 import { ActorContextService } from '../../common/cls/actor-context.service';
 import { ConflictError, NotFoundError } from '../../common/errors/domain-error';
 import { Money } from '../../common/money/money';
@@ -52,6 +53,14 @@ export class CartService {
     this.store.clear(this.cartKey());
   }
 
+  getSourceOfferRecipientId(): string | null {
+    return this.store.getMeta(this.cartKey()).sourceOfferRecipientId;
+  }
+
+  setSourceOfferRecipientId(recipientId: string | null): void {
+    this.store.setSourceOfferRecipientId(this.cartKey(), recipientId);
+  }
+
   /** Legacy bot stepper — POST /cart/items (untouched contract). */
   async addItem(menuItemId: string, quantity: number, portion = 1): Promise<CartResponseDto> {
     const item = await this.menu.findById(this.businessId, menuItemId);
@@ -60,6 +69,9 @@ export class CartService {
     }
     if (await this.modifiers.hasRequiredModifiers(this.businessId, menuItemId)) {
       throw new ConflictError('Выберите модификаторы для этого блюда');
+    }
+    if (item.pricingMode === PricingMode.PerUnit) {
+      throw new ConflictError('Выберите количество для этого блюда');
     }
     if (priceForPortion(item, portion) === null) {
       throw new ConflictError('Выбранная порция недоступна');
@@ -108,6 +120,9 @@ export class CartService {
         if (await this.modifiers.hasRequiredModifiers(this.businessId, menuItemId)) {
           throw new ConflictError('Выберите модификаторы для этого блюда');
         }
+        if (item.pricingMode === PricingMode.PerUnit) {
+          throw new ConflictError('Выберите количество для этого блюда');
+        }
         if (priceForPortion(item, portion) === null) {
           throw new ConflictError('Выбранная порция недоступна');
         }
@@ -133,6 +148,7 @@ export class CartService {
       kind: dto.kind,
       menuItemId: dto.menuItemId,
       portion: dto.portion ?? 1,
+      unitAmount: dto.unitAmount,
       comboId: dto.comboId,
       slotSelections: dto.slotSelections,
       modifierIds: dto.modifierIds ?? [],
@@ -162,6 +178,7 @@ export class CartService {
     }
     if (dto.quantity != null) line.quantity = dto.quantity;
     if (dto.modifierIds != null) line.modifierIds = dto.modifierIds;
+    if (dto.unitAmount != null) line.unitAmount = dto.unitAmount;
     if (dto.slotSelections != null) line.slotSelections = dto.slotSelections;
 
     await this.linePricing.buildOrderItems(this.businessId, [line]);
@@ -182,6 +199,7 @@ export class CartService {
         kind: dto.kind,
         menuItemId: dto.menuItemId,
         portion: dto.portion ?? 1,
+        unitAmount: dto.unitAmount,
         comboId: dto.comboId,
         slotSelections: dto.slotSelections,
         modifierIds: dto.modifierIds ?? [],
@@ -198,6 +216,10 @@ export class CartService {
   clear(): CartResponseDto {
     this.store.clear(this.cartKey());
     return new CartResponseDto([], Money.zero().toString());
+  }
+
+  clearOfferOrigin(): void {
+    this.setSourceOfferRecipientId(null);
   }
 
   async getCart(): Promise<CartResponseDto> {

@@ -277,12 +277,14 @@ export class OffersService implements OnModuleInit {
         kind: l.kind,
         menuItemId: l.menuItemId,
         portion: l.portion,
+        unitAmount: l.unitAmount,
         comboId: l.comboId,
         slotSelections: l.slotSelections,
         modifierIds: l.modifierIds,
         quantity: l.quantity,
       })),
     );
+    this.cart.setSourceOfferRecipientId(recipient.id);
     await this.markRecipientOpened(actor.businessId, recipient.id);
   }
 
@@ -346,6 +348,7 @@ function compositionToCartLines(composition: OfferCompositionLine[]): CartLine[]
       kind: c.kind,
       menuItemId: c.menuItemId,
       portion: c.portion ?? 1,
+      unitAmount: c.unitAmount,
       comboId: c.comboId,
       slotSelections: c.slotSelections,
       modifierIds: c.modifierIds ?? [],

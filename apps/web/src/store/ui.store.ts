@@ -7,10 +7,12 @@ interface UiState {
   setTab: (tab: Tab) => void;
   // Открытая детальная карточка блюда (id) поверх вкладок; null — закрыта.
   detailId: string | null;
-  openDetail: (id: string) => void;
+  editLineId: string | null;
+  openDetail: (id: string, opts?: { editLineId?: string }) => void;
   closeDetail: () => void;
   comboId: string | null;
-  openCombo: (id: string) => void;
+  editComboLineId: string | null;
+  openCombo: (id: string, opts?: { editLineId?: string }) => void;
   closeCombo: () => void;
   offerDetailsId: string | null;
   openOfferDetails: (id: string) => void;
@@ -22,11 +24,15 @@ export const useUiStore = create<UiState>((set) => ({
   tab: 'menu',
   setTab: (tab) => set({ tab }),
   detailId: null,
-  openDetail: (id) => set({ detailId: id, comboId: null, offerDetailsId: null }),
-  closeDetail: () => set({ detailId: null }),
+  editLineId: null,
+  openDetail: (id, opts) =>
+    set({ detailId: id, editLineId: opts?.editLineId ?? null, comboId: null, offerDetailsId: null }),
+  closeDetail: () => set({ detailId: null, editLineId: null }),
   comboId: null,
-  openCombo: (id) => set({ comboId: id, detailId: null, offerDetailsId: null }),
-  closeCombo: () => set({ comboId: null }),
+  editComboLineId: null,
+  openCombo: (id, opts) =>
+    set({ comboId: id, editComboLineId: opts?.editLineId ?? null, detailId: null, offerDetailsId: null }),
+  closeCombo: () => set({ comboId: null, editComboLineId: null }),
   offerDetailsId: null,
   openOfferDetails: (id) => set({ offerDetailsId: id, detailId: null, comboId: null }),
   closeOfferDetails: () => set({ offerDetailsId: null }),

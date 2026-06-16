@@ -50,6 +50,9 @@ export class OrderItem extends BaseEntity {
   portionWeightGrams!: number | null;
 
   @Column({ type: 'int', nullable: true })
+  unitAmountAtOrder!: number | null;
+
+  @Column({ type: 'int', nullable: true })
   caloriesAtOrder!: number | null;
 
   @Column({ type: 'varchar' })

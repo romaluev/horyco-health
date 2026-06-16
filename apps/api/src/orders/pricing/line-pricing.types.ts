@@ -31,6 +31,7 @@ export interface BuiltOrderItem {
   priceAtOrder: import('../../common/money/money').Money;
   portion: number;
   portionWeightGrams: number | null;
+  unitAmountAtOrder: number | null;
   caloriesAtOrder: number | null;
   nameRuSnapshot: string;
   nameUzSnapshot: string;
@@ -53,6 +54,7 @@ export interface BuiltCartLineView {
   quantity: number;
   lineTotal: string;
   portion: number;
+  unitAmount: number | null;
   weightGrams: number | null;
   calories: number | null;
   modifiers: ModifierSnapshot[];

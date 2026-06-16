@@ -6,12 +6,13 @@ import { MenuRepository } from '../../menu/menu.repository';
 import { MenuItem } from '../../menu/entities/menu-item.entity';
 import { CartLine } from '../cart/cart-line.types';
 import {
-  caloriesForPortion,
+  basePriceForLine,
+  caloriesForLine,
   effectiveModifierPriceDelta,
-  nutritionForPortion,
-  priceForPortion,
+  nutritionForLine,
   sumModifierDeltas,
-  weightForPortion,
+  unitAmountForLine,
+  weightForLine,
 } from './line-pricing';
 import { BuiltCartLineView, BuiltOrderItem, ModifierSnapshot } from './line-pricing.types';
 import { Modifier, ModifierPricingType } from '../../modifiers/entities/modifier.entity';
@@ -71,15 +72,11 @@ export class LinePricingService {
     if (!line.menuItemId) {
       throw new ConflictError('Некорректная строка корзины');
     }
-    const portion = line.portion ?? 1;
     const item = await this.menu.findById(businessId, line.menuItemId);
     if (!item || !item.isActive) {
       throw new ConflictError('Блюдо недоступно');
     }
-    const basePrice = priceForPortion(item, portion);
-    if (basePrice === null) {
-      throw new ConflictError('Порция недоступна');
-    }
+    const basePrice = basePriceForLine(item, line);
 
     const modifierSnapshots = await this.resolveModifiers(
       businessId,
@@ -91,6 +88,7 @@ export class LinePricingService {
       modifierSnapshots.map((m) => ({ priceDelta: Money.fromMajor(m.priceDelta) })),
     );
     const unitPrice = basePrice.add(modifierTotal);
+    const portion = line.portion ?? 1;
 
     return {
       kind: 'dish',
@@ -99,11 +97,12 @@ export class LinePricingService {
       quantity: line.quantity,
       priceAtOrder: unitPrice,
       portion,
-      portionWeightGrams: weightForPortion(item, portion),
-      caloriesAtOrder: caloriesForPortion(item, portion),
+      portionWeightGrams: weightForLine(item, line),
+      unitAmountAtOrder: unitAmountForLine(item, line),
+      caloriesAtOrder: caloriesForLine(item, line),
       nameRuSnapshot: item.nameRu,
       nameUzSnapshot: item.nameUz,
-      nutritionSnapshot: nutritionForPortion(item, portion),
+      nutritionSnapshot: nutritionForLine(item, line),
       ingredientsSnapshot: item.ingredients,
       allergensSnapshot: item.allergens,
       modifiersSnapshot: modifierSnapshots.length ? modifierSnapshots : null,
@@ -152,6 +151,7 @@ export class LinePricingService {
       priceAtOrder: unitPrice,
       portion: 1,
       portionWeightGrams: null,
+      unitAmountAtOrder: null,
       caloriesAtOrder: null,
       nameRuSnapshot: combo.nameRu,
       nameUzSnapshot: combo.nameUz,
@@ -179,6 +179,7 @@ export class LinePricingService {
       quantity: line.quantity,
       lineTotal: lineTotal.toString(),
       portion: built.portion,
+      unitAmount: built.unitAmountAtOrder,
       weightGrams: built.portionWeightGrams,
       calories: built.caloriesAtOrder,
       modifiers: built.modifiersSnapshot ?? [],
@@ -201,6 +202,7 @@ export class LinePricingService {
       quantity: line.quantity,
       lineTotal: lineTotal.toString(),
       portion: 1,
+      unitAmount: null,
       weightGrams: null,
       calories: null,
       modifiers: built.modifiersSnapshot ?? [],
@@ -252,6 +254,7 @@ export function toOrderItemPartial(built: BuiltOrderItem): Record<string, unknow
     priceAtOrder: built.priceAtOrder,
     portion: built.portion,
     portionWeightGrams: built.portionWeightGrams,
+    unitAmountAtOrder: built.unitAmountAtOrder,
     caloriesAtOrder: built.caloriesAtOrder,
     nameRuSnapshot: built.nameRuSnapshot,
     nameUzSnapshot: built.nameUzSnapshot,

@@ -23,12 +23,14 @@ function emptyGroup(): ModifierGroupBody {
   return {
     nameRu: '',
     nameUz: '',
+    kind: 'modifier',
     selectionType: 'SINGLE',
     pricingType: 'PAID',
     minSelect: 0,
     maxSelect: null,
     isRequired: false,
     isActive: true,
+    sortOrder: 0,
   };
 }
 
@@ -74,6 +76,45 @@ export function ModifiersTab() {
         <div className="field">
           <label>{t('adm_name_uz')}</label>
           <input className="input" value={b.nameUz} onChange={(e) => set({ nameUz: e.target.value })} />
+        </div>
+        <div className="field">
+          <label>{t('bo_mod_kind')}</label>
+          <div className="seg">
+            {(['modifier', 'addition'] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={b.kind === k ? 'active' : ''}
+                onClick={() => set({ kind: k })}
+              >
+                {k === 'modifier' ? t('bo_mod_kind_modifier') : t('bo_mod_kind_addition')}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="field">
+          <label>{t('bo_mod_pricing')}</label>
+          <div className="seg">
+            {(['FREE', 'PAID', 'INCLUDED'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                className={b.pricingType === p ? 'active' : ''}
+                onClick={() => set({ pricingType: p })}
+              >
+                {p === 'FREE' ? t('bo_mod_free') : p === 'PAID' ? t('bo_mod_paid') : t('bo_mod_included')}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="field">
+          <label>{t('bo_mod_sort')}</label>
+          <input
+            className="input"
+            type="number"
+            value={b.sortOrder ?? 0}
+            onChange={(e) => set({ sortOrder: Number(e.target.value) || 0 })}
+          />
         </div>
         <div className="field">
           <label>{t('bo_mod_selection')}</label>
@@ -223,6 +264,8 @@ function GroupCard({
           <strong>{pick(lang, group.nameRu, group.nameUz)}</strong>
           <div className="muted">
             {group.selectionType === 'SINGLE' ? t('bo_mod_single') : t('bo_mod_multiple')}
+            {group.kind === 'addition' ? ` · ${t('bo_mod_kind_addition')}` : ''}
+            {group.pricingType !== 'PAID' ? ` · ${group.pricingType}` : ''}
             {group.isRequired ? ` · ${t('mod_required')}` : ''}
             {!group.isActive ? ` · ${t('adm_hidden')}` : ''}
           </div>

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Allergens, Category, Ingredient, Nutrition, RecipeStep } from '@eatfit/shared';
+import { Allergens, Category, Ingredient, Nutrition, PricingMode, RecipeStep } from '@eatfit/shared';
 import { ActorContextService } from '../common/cls/actor-context.service';
 import { DefaultBusinessService } from '../businesses/default-business.service';
 import { NotFoundError } from '../common/errors/domain-error';
@@ -33,9 +33,16 @@ export class MenuService {
     // Витрина — только блюда на сегодняшний день недели (по локальному TZ).
     const bizId = await this.bizId();
     const items = await this.repo.findActive(bizId, category, this.currentIsoWeekday());
-    const requiredIds = await this.modifiers.requiredModifierMenuItemIds();
+    const [requiredIds, modifierGroupIds] = await Promise.all([
+      this.modifiers.requiredModifierMenuItemIds(),
+      this.modifiers.modifierGroupMenuItemIds(),
+    ]);
     return items.map(
-      (i) => new MenuItemResponseDto(i, { hasRequiredModifiers: requiredIds.has(i.id) }),
+      (i) =>
+        new MenuItemResponseDto(i, {
+          hasRequiredModifiers: requiredIds.has(i.id),
+          hasModifierGroups: modifierGroupIds.has(i.id),
+        }),
     );
   }
 
@@ -60,8 +67,11 @@ export class MenuService {
   async getOne(id: string): Promise<MenuItemResponseDto> {
     const item = await this.getEntityOrThrow(id);
     if (!item.isActive) throw new NotFoundError('Блюдо не найдено');
-    const hasRequiredModifiers = await this.modifiers.hasRequiredModifiers(id);
-    return new MenuItemResponseDto(item, { hasRequiredModifiers });
+    const [hasRequiredModifiers, hasModifierGroups] = await Promise.all([
+      this.modifiers.hasRequiredModifiers(id),
+      this.modifiers.hasModifierGroups(id),
+    ]);
+    return new MenuItemResponseDto(item, { hasRequiredModifiers, hasModifierGroups });
   }
 
   async create(dto: CreateMenuItemDto): Promise<MenuItemResponseDto> {
@@ -74,6 +84,13 @@ export class MenuService {
       descriptionRu: dto.descriptionRu ?? null,
       descriptionUz: dto.descriptionUz ?? null,
       price: Money.fromMajor(dto.price),
+      pricingMode: dto.pricingMode ?? PricingMode.Fixed,
+      unitKind: dto.unitKind ?? null,
+      unitStep: dto.unitStep ?? null,
+      unitMin: dto.unitMin ?? null,
+      unitMax: dto.unitMax ?? null,
+      pricePerStep: dto.pricePerStep != null ? Money.fromMajor(dto.pricePerStep) : null,
+      unitDefault: dto.unitDefault ?? null,
       photoFileId: dto.photoFileId ?? null,
       photoUrl: dto.photoUrl ?? null,
       isActive: dto.isActive ?? true,
@@ -101,6 +118,15 @@ export class MenuService {
     if (dto.descriptionRu !== undefined) item.descriptionRu = dto.descriptionRu;
     if (dto.descriptionUz !== undefined) item.descriptionUz = dto.descriptionUz;
     if (dto.price !== undefined) item.price = Money.fromMajor(dto.price);
+    if (dto.pricingMode !== undefined) item.pricingMode = dto.pricingMode;
+    if (dto.unitKind !== undefined) item.unitKind = dto.unitKind ?? null;
+    if (dto.unitStep !== undefined) item.unitStep = dto.unitStep ?? null;
+    if (dto.unitMin !== undefined) item.unitMin = dto.unitMin ?? null;
+    if (dto.unitMax !== undefined) item.unitMax = dto.unitMax ?? null;
+    if (dto.pricePerStep !== undefined) {
+      item.pricePerStep = dto.pricePerStep != null ? Money.fromMajor(dto.pricePerStep) : null;
+    }
+    if (dto.unitDefault !== undefined) item.unitDefault = dto.unitDefault ?? null;
     if (dto.photoFileId !== undefined) item.photoFileId = dto.photoFileId;
     if (dto.photoUrl !== undefined) item.photoUrl = dto.photoUrl;
     if (dto.isActive !== undefined) item.isActive = dto.isActive;

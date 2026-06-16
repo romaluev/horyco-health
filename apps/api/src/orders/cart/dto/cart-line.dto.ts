@@ -21,6 +21,11 @@ export class UpsertCartLineDto {
   portion?: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(1)
+  unitAmount?: number;
+
+  @IsOptional()
   @IsUUID()
   comboId?: string;
 
@@ -49,6 +54,11 @@ export class PatchCartLineDto {
   @IsArray()
   @IsUUID('4', { each: true })
   modifierIds?: string[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  unitAmount?: number;
 
   @IsOptional()
   slotSelections?: Record<string, string>;
