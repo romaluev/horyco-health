@@ -24,13 +24,14 @@ PostgreSQL via TypeORM migrations. Each business has its own Telegram bot (per-t
 
 **Staff login:** phone + password (`POST /api/auth/staff-login`). Platform admins need JWT `kind=platform` (`is_platform_admin` in DB).
 
-### Menu seed (Eat&fit)
+### Menu seed (Eat&fit tech cards)
 
-Bulk-import dishes from a Word «технологическая карта» docx:
+Bulk-import dishes from the EATFIT PDF технологические карты:
 
 ```bash
-# Re-parse docx → apps/api/scripts/seed/eatfit-menu/menu.json + photos/
-npm run menu:parse -- ~/Downloads/menu.docx
+# Requires: pip3 install pypdf Pillow pymupdf
+# Parse PDF → apps/api/scripts/seed/eatfit-menu/menu.json + photos/
+npm run menu:parse -- ~/Downloads/EATFIT_all_techcards_combined_full_nutrients.pdf
 
 # Import seed into Postgres (uses DATABASE_URL from .env; idempotent)
 npm run menu:import
@@ -38,24 +39,14 @@ npm run menu:import
 # Preview without writes
 npm run menu:import -- --dry-run
 
+# Validate menu.json + DB parity (run after parse/import)
+npm run menu:validate
+
 # Replace existing dishes with same name_ru
 npm run menu:import -- --force
 ```
 
-### Bowl menu boot seed (9 dishes + modifiers)
-
-On API start, when `SEED_MENU=true`, the app idempotently inserts bowl dishes (full recipe cards: ingredients, КБЖU, cooking steps, P.S. tip, photos) and example modifier groups (**Размер порции**, **Вес порции**, **Тип мяса**) for business `MENU_SEED_BUSINESS_ID` (default `c12704d8-0e0d-4226-94b9-e84d43cb76dc`).
-
-```bash
-# In .env
-SEED_MENU=true
-MENU_SEED_BUSINESS_ID=c12704d8-0e0d-4226-94b9-e84d43cb76dc
-MENU_SEED_PRICE=55000   # placeholder price (UZS) — edit in back office later
-
-npm run api:dev   # or deploy with same env vars
-```
-
-Seed data lives in `apps/api/src/menu/seed/`; photos are bundled via `nest-cli.json` assets.
+Optional env for placeholder price (UZS): `MENU_SEED_PRICE=50000`
 
 ---
 

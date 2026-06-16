@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { Language, PricingMode, UnitKind, type Ingredient } from '@eatfit/shared';
+import { Language, PricingMode, UnitKind, type ExtendedNutrition, type Ingredient } from '@eatfit/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useMenuItem, useCart, useDeleteCartLine } from '@/lib/queries';
 import { useUpsertCartLine } from '@/lib/offers-queries';
@@ -77,6 +77,38 @@ function Accordion({ title, children }: { title: string; children: ReactNode }) 
       {open && <div className="dd-acc-body">{children}</div>}
     </div>
   );
+}
+
+type NutrientRowKey = keyof ExtendedNutrition;
+
+const EXTENDED_NUTRIENT_ROWS: Array<{ key: NutrientRowKey; labelKey: import('@/lib/i18n').I18nKey; unit: 'kcal' | 'g' | 'mg' | 'mcg' }> = [
+  { key: 'calories', labelKey: 'nut_calories', unit: 'kcal' },
+  { key: 'protein', labelKey: 'nut_protein', unit: 'g' },
+  { key: 'fat', labelKey: 'nut_fat', unit: 'g' },
+  { key: 'saturatedFat', labelKey: 'nut_saturated_fat', unit: 'g' },
+  { key: 'carbs', labelKey: 'nut_carbs', unit: 'g' },
+  { key: 'sugars', labelKey: 'nut_sugars', unit: 'g' },
+  { key: 'fiber', labelKey: 'nut_fiber', unit: 'g' },
+  { key: 'sodium', labelKey: 'nut_sodium', unit: 'mg' },
+  { key: 'potassium', labelKey: 'nut_potassium', unit: 'mg' },
+  { key: 'calcium', labelKey: 'nut_calcium', unit: 'mg' },
+  { key: 'magnesium', labelKey: 'nut_magnesium', unit: 'mg' },
+  { key: 'iron', labelKey: 'nut_iron', unit: 'mg' },
+  { key: 'vitaminA', labelKey: 'nut_vitamin_a', unit: 'mcg' },
+  { key: 'vitaminC', labelKey: 'nut_vitamin_c', unit: 'mg' },
+  { key: 'vitaminE', labelKey: 'nut_vitamin_e', unit: 'mg' },
+];
+
+function formatNutrientValue(
+  value: number | null | undefined,
+  unit: 'kcal' | 'g' | 'mg' | 'mcg',
+  t: (k: import('@/lib/i18n').I18nKey) => string,
+): string {
+  if (value == null) return '—';
+  if (unit === 'kcal') return `${value} ${t('unit_kcal')}`;
+  if (unit === 'g') return `${value} ${t('unit_gram')}`;
+  if (unit === 'mg') return `${value} мг`;
+  return `${value} мкг`;
 }
 
 export function DishDetail() {
@@ -207,6 +239,16 @@ export function DishDetail() {
     baseDisplayPrice(item, { portion, unitAmount: resolvedUnitAmount }) +
     sumModifierDeltas(modifierGroups, modifierIds);
   const tip = pick(lang, item.tipRu, item.tipUz);
+  const storageText = pick(lang, item.storageHandling?.storageRu, item.storageHandling?.storageUz);
+  const reheatText = pick(lang, item.storageHandling?.reheatRu, item.storageHandling?.reheatUz);
+  const nutritionDetail = item.nutritionDetail;
+  const hasExtendedNutrition =
+    nutritionDetail &&
+    EXTENDED_NUTRIENT_ROWS.some(({ key }) => {
+      const portionVal = nutritionDetail.perPortion?.[key];
+      const per100Val = nutritionDetail.per100g?.[key];
+      return portionVal != null || per100Val != null;
+    });
   const ingredientGroups = item.ingredients?.length
     ? groupIngredientsBySection(item.ingredients)
     : [];
@@ -366,6 +408,49 @@ export function DishDetail() {
                 )}
               </tbody>
             </table>
+          </Accordion>
+        )}
+
+        {hasExtendedNutrition && nutritionDetail && (
+          <Accordion title={t('detail_nutrition_extended')}>
+            <table className="dd-table">
+              <thead>
+                <tr>
+                  <th>{t('detail_nutrient')}</th>
+                  <th>{t('detail_per_portion')}</th>
+                  <th>{t('detail_per_100g')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {EXTENDED_NUTRIENT_ROWS.map(({ key, labelKey, unit }) => {
+                  const portionVal = nutritionDetail.perPortion?.[key];
+                  const per100Val = nutritionDetail.per100g?.[key];
+                  if (portionVal == null && per100Val == null) return null;
+                  return (
+                    <tr key={key}>
+                      <td>{t(labelKey)}</td>
+                      <td>{formatNutrientValue(portionVal, unit, t)}</td>
+                      <td>{formatNutrientValue(per100Val, unit, t)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Accordion>
+        )}
+
+        {(storageText || reheatText) && (
+          <Accordion title={t('detail_storage')}>
+            {storageText && (
+              <div className="dd-tip">
+                <strong>{t('detail_storage')}:</strong> {storageText}
+              </div>
+            )}
+            {reheatText && (
+              <div className="dd-tip" style={{ marginTop: storageText ? 8 : 0 }}>
+                <strong>{t('detail_reheat')}:</strong> {reheatText}
+              </div>
+            )}
           </Accordion>
         )}
 

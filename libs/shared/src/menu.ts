@@ -34,3 +34,36 @@ export interface Nutrition {
   fat: number | null;
   carbs: number | null;
 }
+
+/** Расширенная пищевая ценность (КБЖУ + микронутриенты). */
+export interface ExtendedNutrition {
+  calories: number | null;
+  protein: number | null;
+  fat: number | null;
+  carbs: number | null;
+  fiber?: number | null;
+  saturatedFat?: number | null;
+  sugars?: number | null;
+  sodium?: number | null;
+  potassium?: number | null;
+  calcium?: number | null;
+  magnesium?: number | null;
+  iron?: number | null;
+  vitaminA?: number | null;
+  vitaminC?: number | null;
+  vitaminE?: number | null;
+}
+
+/** Полная таблица пищевой ценности: на порцию и на 100 г. */
+export interface NutritionDetail {
+  perPortion: ExtendedNutrition;
+  per100g: ExtendedNutrition;
+}
+
+/** Условия хранения и разогрева (двуязычно). */
+export interface StorageHandling {
+  storageRu: string | null;
+  reheatRu: string | null;
+  storageUz: string | null;
+  reheatUz: string | null;
+}

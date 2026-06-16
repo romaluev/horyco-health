@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Allergens, Category, Ingredient, Nutrition, PricingMode, RecipeStep } from '@eatfit/shared';
+import { Allergens, Category, ExtendedNutrition, Ingredient, Nutrition, NutritionDetail, PricingMode, RecipeStep, StorageHandling } from '@eatfit/shared';
 import { ActorContextService } from '../common/cls/actor-context.service';
 import { DefaultBusinessService } from '../businesses/default-business.service';
 import { NotFoundError } from '../common/errors/domain-error';
@@ -10,7 +10,7 @@ import { MenuRepository } from './menu.repository';
 import { MenuItem } from './entities/menu-item.entity';
 import { ModifiersService } from '../modifiers/modifiers.service';
 import { CreateMenuItemDto } from './dto/create-menu-item.dto';
-import { AllergensDto, IngredientDto, NutritionDto, RecipeStepDto } from './dto/menu-detail.dto';
+import { AllergensDto, ExtendedNutritionDto, IngredientDto, NutritionDetailDto, NutritionDto, RecipeStepDto, StorageHandlingDto } from './dto/menu-detail.dto';
 import { UpdateMenuItemDto } from './dto/update-menu-item.dto';
 import { MenuItemResponseDto } from './dto/menu-item-response.dto';
 
@@ -103,6 +103,8 @@ export class MenuService {
       allergens: normalizeAllergens(dto.allergens),
       nutrition: normalizeNutrition(dto.nutrition),
       nutrition2: normalizeNutrition(dto.nutrition2),
+      nutritionDetail: normalizeNutritionDetail(dto.nutritionDetail),
+      storageHandling: normalizeStorageHandling(dto.storageHandling),
       instructions: normalizeInstructions(dto.instructions),
       tipRu: normalizeTip(dto.tipRu),
       tipUz: normalizeTip(dto.tipUz),
@@ -139,6 +141,8 @@ export class MenuService {
     if (dto.allergens !== undefined) item.allergens = normalizeAllergens(dto.allergens);
     if (dto.nutrition !== undefined) item.nutrition = normalizeNutrition(dto.nutrition);
     if (dto.nutrition2 !== undefined) item.nutrition2 = normalizeNutrition(dto.nutrition2);
+    if (dto.nutritionDetail !== undefined) item.nutritionDetail = normalizeNutritionDetail(dto.nutritionDetail);
+    if (dto.storageHandling !== undefined) item.storageHandling = normalizeStorageHandling(dto.storageHandling);
     if (dto.instructions !== undefined) item.instructions = normalizeInstructions(dto.instructions);
     if (dto.tipRu !== undefined) item.tipRu = normalizeTip(dto.tipRu);
     if (dto.tipUz !== undefined) item.tipUz = normalizeTip(dto.tipUz);
@@ -252,6 +256,61 @@ function normalizeNutrition(n?: NutritionDto | null): Nutrition | null {
     protein: num(n.protein),
     fat: num(n.fat),
     carbs: num(n.carbs),
+  };
+  return Object.values(result).some((v) => v !== null) ? result : null;
+}
+
+function normalizeExtendedNutrition(n?: ExtendedNutritionDto | null): ExtendedNutrition | null {
+  if (!n) return null;
+  const num = (v?: number | null) => (v === null || v === undefined ? null : v);
+  const result: ExtendedNutrition = {
+    calories: num(n.calories),
+    protein: num(n.protein),
+    fat: num(n.fat),
+    carbs: num(n.carbs),
+    fiber: num(n.fiber),
+    saturatedFat: num(n.saturatedFat),
+    sugars: num(n.sugars),
+    sodium: num(n.sodium),
+    potassium: num(n.potassium),
+    calcium: num(n.calcium),
+    magnesium: num(n.magnesium),
+    iron: num(n.iron),
+    vitaminA: num(n.vitaminA),
+    vitaminC: num(n.vitaminC),
+    vitaminE: num(n.vitaminE),
+  };
+  return Object.values(result).some((v) => v !== null) ? result : null;
+}
+
+function normalizeNutritionDetail(n?: NutritionDetailDto | null): NutritionDetail | null {
+  if (!n) return null;
+  const perPortion = normalizeExtendedNutrition(n.perPortion);
+  const per100g = normalizeExtendedNutrition(n.per100g);
+  if (!perPortion && !per100g) return null;
+  return {
+    perPortion: perPortion ?? {
+      calories: null,
+      protein: null,
+      fat: null,
+      carbs: null,
+    },
+    per100g: per100g ?? {
+      calories: null,
+      protein: null,
+      fat: null,
+      carbs: null,
+    },
+  };
+}
+
+function normalizeStorageHandling(s?: StorageHandlingDto | null): StorageHandling | null {
+  if (!s) return null;
+  const result: StorageHandling = {
+    storageRu: normalizeTip(s.storageRu),
+    reheatRu: normalizeTip(s.reheatRu),
+    storageUz: normalizeTip(s.storageUz),
+    reheatUz: normalizeTip(s.reheatUz),
   };
   return Object.values(result).some((v) => v !== null) ? result : null;
 }

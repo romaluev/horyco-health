@@ -1,4 +1,4 @@
-import { Allergens, Category, Ingredient, Nutrition, PricingMode, RecipeStep, UnitKind } from '@eatfit/shared';
+import { Allergens, Category, Ingredient, Nutrition, NutritionDetail, PricingMode, RecipeStep, StorageHandling, UnitKind } from '@eatfit/shared';
 import { MenuItem } from '../entities/menu-item.entity';
 
 /**
@@ -32,6 +32,8 @@ export class MenuItemResponseDto {
   allergens: Allergens | null;
   nutrition: Nutrition | null;
   nutrition2: Nutrition | null;
+  nutritionDetail: NutritionDetail | null;
+  storageHandling: StorageHandling | null;
   instructions: RecipeStep[] | null;
   tipRu: string | null;
   tipUz: string | null;
@@ -68,6 +70,8 @@ export class MenuItemResponseDto {
     this.allergens = item.allergens ?? null;
     this.nutrition = item.nutrition ?? null;
     this.nutrition2 = item.nutrition2 ?? null;
+    this.nutritionDetail = item.nutritionDetail ?? null;
+    this.storageHandling = item.storageHandling ?? null;
     this.instructions = item.instructions ?? null;
     this.tipRu = item.tipRu ?? null;
     this.tipUz = item.tipUz ?? null;

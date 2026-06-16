@@ -103,9 +103,7 @@ Set in Coolify → Application → **Environment Variables**.
 | `PLATFORM_ADMIN_PHONE`    | Platform owner phone for staff login (synced on every boot)                 |
 | `PLATFORM_ADMIN_PASSWORD` | Platform owner password (synced on every boot — must match what you type)   |
 | `PLATFORM_ADMIN_NAME`     | Platform owner display name (optional)                                      |
-| `SEED_MENU`               | `true` — idempotent bowl menu + modifier groups seed on API boot (default `false`) |
-| `MENU_SEED_BUSINESS_ID`   | Target business UUID (default `c12704d8-0e0d-4226-94b9-e84d43cb76dc`)     |
-| `MENU_SEED_PRICE`         | Placeholder dish price in UZS for seeded bowls (default `55000`)             |
+| `MENU_SEED_PRICE`         | Placeholder dish price in UZS for PDF menu import (default `50000`)         |
 
 
 **Removed (multi-tenant):** `CHANNEL_ID`, `COOK_GROUP_ID`, `COURIER_GROUP_ID`, `ADMIN_GROUP_ID` — bind groups per business via `/bind` in Telegram.
@@ -141,14 +139,19 @@ If staff login returns 401 but the phone looks correct, the hash in DB reflects 
 
 Do **not** change `TOKEN_ENC_KEY` without re-pasting bot tokens — existing `bot_token_enc` values become undecryptable.
 
-### Bowl menu boot seed
+### Menu seed (PDF tech cards)
 
-Set `SEED_MENU=true` on **one** API replica (same rule as migrations — single writer). On each boot the service:
+From a machine with `DATABASE_URL` and the PDF file:
 
-1. Ensures modifier groups **Размер порции**, **Вес порции**, **Тип мяса** exist for the business.
-2. Inserts 9 bowl dishes (ingredients with `amountText`/`section`, КБЖU, numbered **Приготовление**, **P.S.** tip, photos) if no active row with the same `name_ru` exists.
+```bash
+pip3 install pypdf Pillow pymupdf
+npm run menu:parse -- ~/Downloads/EATFIT_all_techcards_combined_full_nutrients.pdf
+npm run menu:import -- --dry-run
+npm run menu:validate
+npm run menu:import
+```
 
-Configure `MENU_SEED_BUSINESS_ID` and `MENU_SEED_PRICE` in Coolify env. Turn off (`SEED_MENU=false`) after first successful seed to avoid log noise.
+Seed JSON and photos live under `apps/api/scripts/seed/eatfit-menu/`. Run migrations before import on a fresh deploy.
 
 ## Migrations
 

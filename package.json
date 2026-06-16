@@ -16,7 +16,8 @@
     "api:dev": "npm run start:dev -w @eatfit/api",
     "dev": "npm run api:dev",
     "menu:import": "node apps/api/scripts/import-eatfit-menu.mjs",
-    "menu:parse": "node apps/api/scripts/parse-menu-docx.mjs",
+    "menu:parse": "node apps/api/scripts/parse-menu-pdf.mjs",
+    "menu:validate": "node apps/api/scripts/validate-menu-seed.mjs",
     "start": "node apps/api/dist/main.js"
   },
   "keywords": [

@@ -1,14 +1,17 @@
 import {
   Allergens,
   Category,
+  ExtendedNutrition,
   Ingredient,
   Language,
   Nutrition,
+  NutritionDetail,
   OrderStatus,
   PaymentMethod,
   PricingMode,
   RecipeStep,
   Role,
+  StorageHandling,
   UnitKind,
 } from '@eatfit/shared';
 
@@ -58,6 +61,8 @@ export interface MenuItemDto {
   allergens: Allergens | null;
   nutrition: Nutrition | null;
   nutrition2: Nutrition | null;
+  nutritionDetail: NutritionDetail | null;
+  storageHandling: StorageHandling | null;
   instructions: RecipeStep[] | null;
   tipRu: string | null;
   tipUz: string | null;

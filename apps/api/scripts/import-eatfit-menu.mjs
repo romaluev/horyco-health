@@ -50,7 +50,7 @@ function jsonOrNull(obj) {
 
 async function main() {
   if (!existsSync(MENU_JSON)) {
-    console.error(`Seed not found: ${MENU_JSON}\nRun: node apps/api/scripts/parse-menu-docx.mjs`);
+    console.error(`Seed not found: ${MENU_JSON}\nRun: npm run menu:parse -- ~/Downloads/EATFIT_all_techcards_combined_full_nutrients.pdf`);
     process.exit(1);
   }
 
@@ -101,7 +101,14 @@ async function main() {
       }
 
       if (dryRun) {
-        console.log(`  would insert: ${item.nameRu} (photo: ${photoData ? photoMime : 'none'})`);
+        const extras = [
+          item.instructions?.length ? `${item.instructions.length} steps` : null,
+          item.nutritionDetail ? 'nutritionDetail' : null,
+          item.storageHandling ? 'storage' : null,
+        ].filter(Boolean).join(', ');
+        console.log(
+          `  would insert: ${item.nameRu} (photo: ${photoData ? photoMime : 'none'}${extras ? `; ${extras}` : ''})`,
+        );
         inserted++;
         continue;
       }
@@ -118,14 +125,16 @@ async function main() {
           business_id, category, name_ru, name_uz, description_ru, description_uz,
           price, photo_file_id, photo_url, photo_data, photo_mime,
           weight_grams, price2, weight_grams2, order_deadline,
-          ingredients, allergens, nutrition, nutrition2,
+          ingredients, allergens, nutrition, nutrition2, nutrition_detail, storage_handling,
+          instructions, tip_ru, tip_uz,
           is_active, days
         ) VALUES (
           $1, $2, $3, $4, $5, $6,
           $7, NULL, NULL, $8, $9,
           $10, $11, $12, $13,
-          $14::jsonb, $15::jsonb, $16::jsonb, $17::jsonb,
-          $18, $19
+          $14::jsonb, $15::jsonb, $16::jsonb, $17::jsonb, $18::jsonb, $19::jsonb,
+          $20::jsonb, $21, $22,
+          $23, $24
         )`,
         [
           businessId,
@@ -145,6 +154,11 @@ async function main() {
           jsonOrNull(item.allergens),
           jsonOrNull(item.nutrition),
           jsonOrNull(item.nutrition2),
+          jsonOrNull(item.nutritionDetail),
+          jsonOrNull(item.storageHandling),
+          jsonOrNull(item.instructions),
+          item.tipRu || null,
+          item.tipUz || null,
           item.isActive ?? true,
           item.days ?? [],
         ],
