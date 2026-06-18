@@ -12,7 +12,7 @@ export function OnboardingBanner() {
   if (!settings || settings.status !== 'onboarding') return null;
 
   return (
-    <div className="adm-banner">
+    <div className="bg-primary/5 mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
       <span>{t('bo_onboarding_banner')}</span>
       <Button size="sm" asChild>
         <Link href="/b/onboarding/">{t('bo_onboarding_continue')}</Link>

@@ -22,7 +22,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type ComposeLine = ComposerLine;
@@ -131,8 +130,8 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
         <TabsContent value="clients" className="space-y-3">
           <Input placeholder={t('adm_search_user')} value={userQuery} onChange={(e) => setUserQuery(e.target.value)} />
           <Badge variant="secondary">{selected.size} {t('bo_recipients')}</Badge>
-          <ScrollArea className="max-h-[60vh]">
-            <div className="divide-y divide-border pr-2">
+          <div className="max-h-[60vh] overflow-y-auto rounded-md border border-border">
+            <div className="divide-y divide-border">
               {users?.map((u) => (
                 <label
                   key={u.id}
@@ -149,7 +148,7 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
                 </label>
               ))}
             </div>
-          </ScrollArea>
+          </div>
           <Button className="w-full" disabled={selected.size === 0} onClick={() => setStep('basket')}>
             {t('bo_next')}
             <ChevronRight className="h-4 w-4" />
@@ -196,8 +195,8 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
                 </Button>
               </div>
               <Input placeholder={t('comment_ph')} value={comment} onChange={(e) => setComment(e.target.value)} />
-              <ScrollArea className="max-h-64">
-                <div className="space-y-2 pr-2 text-sm">
+              <div className="max-h-64 overflow-y-auto rounded-md border border-border">
+                <div className="space-y-2 p-2 text-sm">
                 {selectedUsers.map((u) => (
                   <div key={u.id} className="rounded-lg border bg-card px-3 py-2">
                     <strong>{u.name}</strong>
@@ -212,7 +211,7 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
                   </div>
                 ))}
                 </div>
-              </ScrollArea>
+              </div>
               <Button className="w-full" disabled={createOrders.isPending} onClick={submit}>
                 {createOrders.isPending ? t('loading') : t('adm_order_submit')}
               </Button>

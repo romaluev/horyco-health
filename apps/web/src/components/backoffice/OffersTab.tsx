@@ -27,7 +27,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type ComposeLine = ComposerLine;
@@ -210,13 +209,13 @@ export function OffersTab() {
         <TabsContent value="compose" className="mt-4 space-y-4">
           <FilterBar
             left={
-              <div className="flex flex-wrap gap-1">
+              <div className="flex w-fit flex-wrap gap-1 rounded-lg border p-1">
                 {stepLabels.map((s, idx) => (
                   <Button
                     key={s.id}
                     type="button"
                     size="sm"
-                    variant={step === s.id ? 'default' : 'outline'}
+                    variant={step === s.id ? 'default' : 'ghost'}
                     disabled={
                       (s.id === 'recipients' && composition.length === 0) ||
                       (s.id === 'review' && selected.size === 0)
@@ -280,8 +279,8 @@ export function OffersTab() {
                     </>
                   }
                 />
-                <ScrollArea className="max-h-64">
-                  <div className="divide-y divide-border pr-2">
+                <div className="max-h-64 overflow-y-auto rounded-md border border-border">
+                  <div className="divide-y divide-border">
                     {users?.map((u) => (
                       <label
                         key={u.id}
@@ -305,7 +304,7 @@ export function OffersTab() {
                       </label>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => setStep('build')}>
                     <ChevronLeft className="h-4 w-4" />

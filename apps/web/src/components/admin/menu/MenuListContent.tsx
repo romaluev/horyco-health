@@ -165,34 +165,37 @@ export function MenuListContent() {
         actions={(it) => (
           <div className="flex items-center justify-end gap-1">
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
+              className="h-8 w-8"
               aria-label={t('adm_edit')}
               onClick={() => router.push(`/b/menu/edit?id=${it.id}`)}
             >
               <Pencil className="h-4 w-4" />
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
+              className="h-8 w-8"
               aria-label={it.isActive ? t('adm_hide') : t('adm_show')}
               onClick={() => setActive.mutate({ id: it.id, isActive: !it.isActive })}
             >
               {it.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
+              className="h-8 w-8"
               aria-label={t('adm_copy_link')}
               onClick={() => void copyLink(it.id)}
             >
               <Link2 className="h-4 w-4" />
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
               aria-label={t('adm_delete')}
-              className="text-destructive hover:text-destructive"
               onClick={() => {
                 if (window.confirm(t('adm_delete_q'))) del.mutate(it.id);
               }}

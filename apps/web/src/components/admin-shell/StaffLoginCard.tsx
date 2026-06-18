@@ -45,10 +45,10 @@ export function StaffLoginCard({
   };
 
   return (
-    <div className="adm-login-page adm-root">
-      <div className="adm-login-card">
-        <h1>{t(titleKey as Parameters<typeof t>[0])}</h1>
-        <p className="adm-muted mb-5">{t(hintKey as Parameters<typeof t>[0])}</p>
+    <div className="flex min-h-svh items-center justify-center p-6">
+      <div className="bg-card w-full max-w-md rounded-xl border p-7 shadow-sm">
+        <h1 className="mb-2 text-xl font-semibold">{t(titleKey as Parameters<typeof t>[0])}</h1>
+        <p className="text-muted-foreground mb-5 text-sm">{t(hintKey as Parameters<typeof t>[0])}</p>
         <form className="space-y-4" onSubmit={(e) => void submit(e)}>
           <Field label={t('phone')} htmlFor="staff-phone">
             <Input
@@ -69,7 +69,7 @@ export function StaffLoginCard({
             />
           </Field>
           {error && (
-            <div className="adm-alert adm-alert-error" role="alert">
+            <div className="bg-destructive/10 text-destructive rounded-lg border px-3 py-2 text-sm" role="alert">
               {error}
             </div>
           )}

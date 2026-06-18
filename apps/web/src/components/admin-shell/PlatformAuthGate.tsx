@@ -63,8 +63,8 @@ export function PlatformAuthGate({ children, allowSetup = false }: PlatformAuthG
 
   if (!booted || needsSetup === null || status === 'loading') {
     return (
-      <div className="adm-root adm-login-page">
-        <p className="adm-muted">{t('loading')}</p>
+      <div className="flex min-h-svh items-center justify-center">
+        <p className="text-muted-foreground text-sm">{t('loading')}</p>
       </div>
     );
   }
@@ -77,10 +77,10 @@ export function PlatformAuthGate({ children, allowSetup = false }: PlatformAuthG
     const kind = jwtKind(token);
     if (token && kind === 'staff' && client) {
       return (
-        <div className="adm-root adm-login-page">
-          <div className="adm-login-card">
-            <h1>{t('platform_denied')}</h1>
-            <p className="adm-muted mb-4">
+        <div className="flex min-h-svh items-center justify-center p-6">
+          <div className="bg-card w-full max-w-md rounded-xl border p-7 shadow-sm">
+            <h1 className="mb-2 text-xl font-semibold">{t('platform_denied')}</h1>
+            <p className="text-muted-foreground mb-4 text-sm">
               {client.name} — {t('platform_staff_logged_in')}
             </p>
             <div className="flex flex-wrap gap-2">

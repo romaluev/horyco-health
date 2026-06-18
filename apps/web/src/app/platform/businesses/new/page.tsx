@@ -59,7 +59,7 @@ export default function PlatformCreateBusinessPage() {
       <>
         <DashboardPageHeader title={t('platform_create_success')} />
         <FormSection title={t('platform_owner_credentials')}>
-          <div className="adm-alert adm-alert-success mb-4" role="status">
+          <div className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 mb-4 rounded-lg border px-3 py-2 text-sm" role="status">
             {t('platform_create_success')}: <strong>{success.business.name}</strong>
           </div>
           <p>
@@ -91,7 +91,7 @@ export default function PlatformCreateBusinessPage() {
     <FormPageLayout backHref="/platform/businesses" title={t('platform_create')}>
       <FormSection title={t('platform_create')}>
         {error && (
-          <div className="adm-alert adm-alert-error mb-4" role="alert">
+          <div className="bg-destructive/10 text-destructive mb-4 rounded-lg border px-3 py-2 text-sm" role="alert">
             {error}
           </div>
         )}

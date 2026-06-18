@@ -45,22 +45,22 @@ export default function PlatformDashboardPage() {
     <div className="space-y-6">
       <DashboardPageHeader title={t('platform_title')} />
       {metrics && (
-        <div className="adm-kpi-grid">
-          <div className="adm-kpi">
-            <div className="adm-kpi-label">{t('platform_total')}</div>
-            <div className="adm-kpi-value">{metrics.totalBusinesses}</div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="bg-card rounded-lg border p-4">
+            <div className="text-muted-foreground mb-1 text-xs">{t('platform_total')}</div>
+            <div className="text-2xl font-bold tabular-nums">{metrics.totalBusinesses}</div>
           </div>
-          <div className="adm-kpi">
-            <div className="adm-kpi-label">{t('platform_active')}</div>
-            <div className="adm-kpi-value">{metrics.activeBusinesses}</div>
+          <div className="bg-card rounded-lg border p-4">
+            <div className="text-muted-foreground mb-1 text-xs">{t('platform_active')}</div>
+            <div className="text-2xl font-bold tabular-nums">{metrics.activeBusinesses}</div>
           </div>
-          <div className="adm-kpi">
-            <div className="adm-kpi-label">{t('platform_orders')}</div>
-            <div className="adm-kpi-value">{metrics.totalOrders}</div>
+          <div className="bg-card rounded-lg border p-4">
+            <div className="text-muted-foreground mb-1 text-xs">{t('platform_orders')}</div>
+            <div className="text-2xl font-bold tabular-nums">{metrics.totalOrders}</div>
           </div>
-          <div className="adm-kpi">
-            <div className="adm-kpi-label">{t('platform_gmv')}</div>
-            <div className="adm-kpi-value">{formatMoney(metrics.totalGmv)}</div>
+          <div className="bg-card rounded-lg border p-4">
+            <div className="text-muted-foreground mb-1 text-xs">{t('platform_gmv')}</div>
+            <div className="text-2xl font-bold tabular-nums">{formatMoney(metrics.totalGmv)}</div>
           </div>
         </div>
       )}

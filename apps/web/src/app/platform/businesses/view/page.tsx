@@ -34,11 +34,11 @@ function BusinessViewInner() {
   }, [business, initialized]);
 
   if (!id) {
-    return <div className="adm-alert adm-alert-error">{t('error_generic')}</div>;
+    return <div className="bg-destructive/10 text-destructive rounded-lg border px-3 py-2 text-sm">{t('error_generic')}</div>;
   }
 
   if (!business) {
-    return <p className="adm-muted">{t('loading')}</p>;
+    return <p className="text-muted-foreground text-sm">{t('loading')}</p>;
   }
 
   return (
@@ -102,7 +102,7 @@ function BusinessViewInner() {
 export default function PlatformBusinessViewPage() {
   const t = useT();
   return (
-    <Suspense fallback={<p className="adm-muted">{t('loading')}</p>}>
+    <Suspense fallback={<p className="text-muted-foreground text-sm">{t('loading')}</p>}>
       <BusinessViewInner />
     </Suspense>
   );

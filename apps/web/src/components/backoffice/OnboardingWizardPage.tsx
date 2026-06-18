@@ -185,18 +185,32 @@ export function OnboardingWizardPage() {
         description={settings?.botUsername ? `@${settings.botUsername}` : undefined}
       />
 
-      <div className="rounded-lg bg-card p-4 md:p-6">
-      <div className="adm-stepper">
+      <div className="bg-card rounded-lg p-4 md:p-6">
+        <div className="mb-6 flex flex-col gap-0">
         {steps.map((step, idx) => {
           const isActive = activeIdx === idx;
           const isExpanded = expandedId === step.id;
           return (
             <div
               key={step.id}
-              className={cn('adm-step', step.done && 'done', isActive && 'active')}
+              className={cn(
+                'relative flex gap-3.5 pb-5',
+                idx < steps.length - 1 &&
+                  'before:bg-border before:absolute before:top-8 before:bottom-0 before:left-4 before:w-px',
+                step.done && idx < steps.length - 1 && 'before:bg-emerald-500/60',
+              )}
             >
-              <div className="adm-step-icon">{step.done ? <Check className="size-4" /> : idx + 1}</div>
-              <div className="adm-step-body min-w-0 flex-1">
+              <div
+                className={cn(
+                  'flex size-8 shrink-0 items-center justify-center rounded-full border text-sm font-bold',
+                  step.done && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600',
+                  isActive && !step.done && 'border-primary/40 bg-primary/10 text-primary',
+                  !step.done && !isActive && 'text-muted-foreground bg-muted',
+                )}
+              >
+                {step.done ? <Check className="size-4" /> : idx + 1}
+              </div>
+              <div className="min-w-0 flex-1">
                 <Button
                   type="button"
                   variant="ghost"

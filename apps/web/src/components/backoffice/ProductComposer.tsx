@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 export interface ComposerLine {
@@ -279,7 +278,7 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <ScrollArea className="max-h-48 overflow-hidden rounded-md">
+          <div className="h-52 overflow-y-auto rounded-md border border-border">
             <div className="divide-y divide-border">
             {pickKind === 'dish'
               ? filteredDishes.map((m) => (
@@ -319,7 +318,7 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
               <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t('nothing_found')}</p>
             ) : null}
             </div>
-          </ScrollArea>
+          </div>
 
           {(selectedDishId || selectedComboId) && selectedItemLabel ? (
             <div className="space-y-3 rounded-md p-3">
@@ -336,13 +335,13 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
 
               {selectedDishId ? (
                 <Field label={t('detail_portion')} compact>
-                  <div className="flex gap-1.5">
+                  <div className="flex w-fit gap-1 rounded-lg border p-1">
                     {[1, 2].map((p) => (
                       <Button
                         key={p}
                         type="button"
                         size="sm"
-                        variant={draftPortion === p ? 'default' : 'outline'}
+                        variant={draftPortion === p ? 'default' : 'ghost'}
                         onClick={() => setDraftPortion(p)}
                       >
                         {p}
@@ -386,7 +385,7 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
         </CardContent>
       </Card>
 
-      <Card className="lg:sticky lg:top-[calc(var(--adm-topbar-h)+16px)] lg:self-start">
+      <Card className="lg:sticky lg:top-20 lg:self-start">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-base">{t('bo_cart_preview')}</CardTitle>
           <span className="text-sm font-semibold tabular-nums">

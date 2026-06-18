@@ -11,7 +11,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 export interface DataTableColumn<T> {
   key: string;
@@ -22,7 +21,7 @@ export interface DataTableColumn<T> {
   render: (row: T) => ReactNode;
 }
 
-/** Bordered table with sticky header + scroll; cards on mobile. */
+/** Bordered table with sticky header + native scroll; cards on mobile. */
 export function DataTableShell<T>({
   columns,
   rows,
@@ -49,8 +48,8 @@ export function DataTableShell<T>({
 
   return (
     <div className={cn('w-full', className)}>
-      <div className={cn('hidden overflow-hidden rounded-lg border md:block', maxHeight)}>
-        <ScrollArea className={maxHeight}>
+      <div className={cn('hidden overflow-hidden rounded-lg border md:block')}>
+        <div className={cn('overflow-auto', maxHeight)}>
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-muted">
               <TableRow className="hover:bg-muted">
@@ -83,11 +82,10 @@ export function DataTableShell<T>({
               ))}
             </TableBody>
           </Table>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
       </div>
 
-      <ScrollArea className="max-h-[70vh] md:hidden">
+      <div className="max-h-[70vh] overflow-y-auto md:hidden">
         <div className="flex flex-col gap-2 pr-2">
           {rows.map((row) => (
             <Card
@@ -122,7 +120,7 @@ export function DataTableShell<T>({
             </Card>
           ))}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

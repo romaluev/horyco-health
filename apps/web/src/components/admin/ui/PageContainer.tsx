@@ -1,9 +1,9 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
+/** Scrollable page shell inside SidebarInset main. */
 export function PageContainer({
   children,
   scrollable = true,
@@ -15,21 +15,14 @@ export function PageContainer({
 }) {
   if (scrollable) {
     return (
-      <ScrollArea className={cn('h-[calc(100dvh-var(--adm-topbar-h))] w-full', className)}>
-        <div className="w-full p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:px-6 lg:pb-6 max-lg:pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">
-          {children}
-        </div>
-      </ScrollArea>
+      <div className={cn('flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden', className)}>
+        <div className="w-full p-4 md:p-6">{children}</div>
+      </div>
     );
   }
 
   return (
-    <div
-      className={cn(
-        'flex h-[calc(100dvh-var(--adm-topbar-h))] w-full flex-col overflow-hidden p-4 md:px-6',
-        className,
-      )}
-    >
+    <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden p-4 md:p-6', className)}>
       {children}
     </div>
   );
