@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { CommandPalette, useCommandPalette } from '@/components/admin/ui/CommandPalette';
+import { PageContainer } from '@/components/admin/ui/PageContainer';
 import { cn } from '@/lib/utils';
 
 interface AdminShellProps {
@@ -229,7 +230,7 @@ export function AdminShell({
           </header>
 
           <main className="adm-content" id="main-content">
-            {children}
+            <PageContainer>{children}</PageContainer>
           </main>
 
           <BottomNav items={primaryNav} pathname={pathname} onMore={() => setMoreOpen(true)} />

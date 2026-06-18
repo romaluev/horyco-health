@@ -14,7 +14,7 @@ import {
 import { ApiError } from '@/lib/api';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { PageHeader, FormSection, FormGrid, Field } from '@/components/admin/ui';
+import { FormSection, FormGrid, Field, DashboardPageHeader } from '@/components/admin/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -156,7 +156,7 @@ export function BackofficeSettings() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={t('adm_settings')} />
+      <DashboardPageHeader title={t('adm_settings')} />
 
       {showWizardLink && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-primary/10 px-4 py-3">

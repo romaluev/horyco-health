@@ -3,7 +3,7 @@
 import { usePlatformMetrics } from '@/lib/backoffice-queries';
 import { useT } from '@/lib/i18n';
 import { formatMoney } from '@/lib/format';
-import { DataList, FormSection, type DataListColumn } from '@/components/admin/ui';
+import { DataTableShell, FormSection, DashboardPageHeader, type DataTableColumn } from '@/components/admin/ui';
 
 type BizRow = {
   id: string;
@@ -17,7 +17,7 @@ export default function PlatformDashboardPage() {
   const t = useT();
   const { data: metrics } = usePlatformMetrics(true);
 
-  const columns: DataListColumn<BizRow>[] = [
+  const columns: DataTableColumn<BizRow>[] = [
     {
       key: 'name',
       header: t('platform_field_name'),
@@ -42,7 +42,8 @@ export default function PlatformDashboardPage() {
   ];
 
   return (
-    <>
+    <div className="space-y-6">
+      <DashboardPageHeader title={t('platform_title')} />
       {metrics && (
         <div className="adm-kpi-grid">
           <div className="adm-kpi">
@@ -66,9 +67,9 @@ export default function PlatformDashboardPage() {
 
       {metrics && metrics.businesses.length > 0 && (
         <FormSection title={t('platform_gmv_by_biz')} className="mt-4">
-          <DataList columns={columns} rows={metrics.businesses} keyFn={(b) => b.id} />
+          <DataTableShell columns={columns} rows={metrics.businesses} keyFn={(b) => b.id} />
         </FormSection>
       )}
-    </>
+    </div>
   );
 }

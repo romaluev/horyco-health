@@ -1,7 +1,7 @@
 'use client';
 
-import { AdminMenu } from '@/components/admin/AdminMenu';
+import { MenuListContent } from '@/components/admin/menu';
 
 export default function BackofficeMenuPage() {
-  return <AdminMenu />;
+  return <MenuListContent />;
 }

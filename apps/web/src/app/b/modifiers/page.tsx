@@ -1,7 +1,7 @@
 'use client';
 
-import { ModifiersTab } from '@/components/backoffice/ModifiersTab';
+import { ModifiersListContent } from '@/components/admin/modifiers';
 
 export default function BackofficeModifiersPage() {
-  return <ModifiersTab />;
+  return <ModifiersListContent />;
 }

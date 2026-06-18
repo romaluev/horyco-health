@@ -1864,46 +1864,47 @@ body {
   border-color: var(--border);
 }
 
-/* Admin preflight: Tailwind preflight is skipped globally for B2C */
-.adm-root button,
-.adm-root [type='button'],
-.adm-root [type='submit'],
-.adm-root [type='reset'] {
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: none;
-  border-style: solid;
-  border-width: 0;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
+@layer base {
+  /* Admin preflight: Tailwind preflight is skipped globally for B2C */
+  .adm-root button,
+  .adm-root [type='button'],
+  .adm-root [type='submit'],
+  .adm-root [type='reset'] {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
 
-.adm-root input,
-.adm-root textarea,
-.adm-root select {
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: none;
-  font: inherit;
-  color: inherit;
-}
+  .adm-root input,
+  .adm-root textarea,
+  .adm-root select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: none;
+    font: inherit;
+    color: inherit;
+  }
 
-.adm-root a:not([class]) {
-  color: var(--adm-primary);
-}
+  .adm-root a:not([class]) {
+    color: var(--adm-primary);
+  }
 
-.adm-root button:focus-visible,
-.adm-root input:focus-visible,
-.adm-root textarea:focus-visible,
-.adm-root select:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 1px var(--adm-ring);
+  .adm-root button:focus-visible,
+  .adm-root input:focus-visible,
+  .adm-root textarea:focus-visible,
+  .adm-root select:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px var(--adm-ring);
+  }
 }
 
 .adm-layout {
   display: flex;
-  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .adm-sidebar {
@@ -2012,6 +2013,8 @@ body {
 .adm-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -2067,22 +2070,10 @@ body {
 
 .adm-content {
   flex: 1;
-  padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px));
-  max-width: 1280px;
+  min-height: 0;
+  overflow: hidden;
   width: 100%;
   margin: 0 auto;
-}
-
-@media (min-width: 1024px) {
-  .adm-content {
-    padding: 20px 24px 32px;
-  }
-}
-
-@media (max-width: 1023px) {
-  .adm-content {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-  }
 }
 
 /* Mobile bottom tab bar (back office) */
@@ -2165,7 +2156,6 @@ body {
 @media (min-width: 1024px) {
   .adm-sidebar { display: flex; }
   .adm-menu-btn { display: none; }
-  .adm-content { padding: 24px 32px 40px; }
 }
 
 .adm-card {

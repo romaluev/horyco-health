@@ -1,9 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { Language, PaymentMethod } from '@eatfit/shared';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   useAdminUsers,
@@ -14,6 +13,7 @@ import {
 } from '@/lib/admin-queries';
 import { useAdminCombosForOffers } from '@/lib/offers-queries';
 import { ProductComposer, type ComposerLine } from '@/components/backoffice/ProductComposer';
+import { FormPageLayout } from '@/components/admin/ui';
 import { useT } from '@/lib/i18n';
 import { formatMoney } from '@/lib/format';
 import { useAuthStore } from '@/store/auth.store';
@@ -112,19 +112,11 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/b/orders/">
-            <ChevronLeft />
-          </Link>
-        </Button>
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">{t('adm_create_order')}</h2>
-          <p className="text-sm text-muted-foreground">{t('adm_create_order_hint')}</p>
-        </div>
-      </div>
-
+    <FormPageLayout
+      backHref="/b/orders/"
+      title={t('adm_create_order')}
+      description={t('adm_create_order_hint')}
+    >
       <Tabs value={step} onValueChange={(v) => setStep(v as typeof step)}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="clients">{t('adm_order_step_clients')}</TabsTrigger>
@@ -228,6 +220,6 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </FormPageLayout>
   );
 }

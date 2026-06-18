@@ -12,7 +12,7 @@ import { useT } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Field, FormGrid, FormSection, PageHeader } from '@/components/admin/ui';
+import { Field, FormGrid, FormSection, DashboardPageHeader } from '@/components/admin/ui';
 
 function BusinessViewInner() {
   const t = useT();
@@ -43,7 +43,7 @@ function BusinessViewInner() {
 
   return (
     <>
-      <PageHeader
+      <DashboardPageHeader
         title={business.name}
         description={`${business.slug} · ${business.status}`}
         actions={

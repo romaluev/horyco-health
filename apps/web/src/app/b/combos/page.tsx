@@ -1,7 +1,7 @@
 'use client';
 
-import { CombosTab } from '@/components/backoffice/CombosTab';
+import { CombosListContent } from '@/components/admin/combos';
 
 export default function BackofficeCombosPage() {
-  return <CombosTab />;
+  return <CombosListContent />;
 }

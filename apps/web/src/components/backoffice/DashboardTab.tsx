@@ -20,7 +20,7 @@ import { OrderStatus } from '@eatfit/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PageHeader } from '@/components/admin/ui';
+import { DashboardPageHeader } from '@/components/admin/ui';
 import { cn } from '@/lib/utils';
 
 type Range = 'today' | '7d' | '30d';
@@ -274,7 +274,7 @@ export function DashboardTab() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
+      <DashboardPageHeader
         title={t('dash_title')}
         description={data?.label}
         actions={rangeTabs}

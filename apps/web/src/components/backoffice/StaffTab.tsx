@@ -10,7 +10,7 @@ import {
   useUpdateStaffRole,
 } from '@/lib/backoffice-queries';
 import { useT } from '@/lib/i18n';
-import { PageHeader, FormSection, FormGrid, Field, DataList, type DataListColumn } from '@/components/admin/ui';
+import { FormSection, FormGrid, Field, DataTableShell, DashboardPageHeader, type DataTableColumn } from '@/components/admin/ui';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,7 +47,7 @@ export function StaffTab() {
   const updateRole = useUpdateStaffRole();
   const [inviteForm, setInviteForm] = useState({ name: '', phone: '', role: MemberRole.Cook });
 
-  const columns = useMemo<DataListColumn<StaffRow>[]>(
+  const columns = useMemo<DataTableColumn<StaffRow>[]>(
     () => [
       {
         key: 'name',
@@ -97,7 +97,7 @@ export function StaffTab() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={t('bo_staff')} description={t('bo_staff_hint')} />
+      <DashboardPageHeader title={t('bo_staff')} description={t('bo_staff_hint')} />
 
       <FormSection title={t('bo_invite')}>
         <div className="space-y-4">
@@ -144,7 +144,7 @@ export function StaffTab() {
         </div>
       </FormSection>
 
-      <DataList
+      <DataTableShell
         columns={columns}
         rows={staff ?? []}
         keyFn={(m) => m.id}

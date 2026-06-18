@@ -14,9 +14,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   AdminEmptyState,
-  DataList,
-  PageHeader,
-  type DataListColumn,
+  DashboardPageHeader,
+  DataTableShell,
+  FormSection,
+  type DataTableColumn,
 } from '@/components/admin/ui';
 
 function botBadge(status: string, t: ReturnType<typeof useT>) {
@@ -39,7 +40,7 @@ export default function PlatformBusinessesPage() {
   const suspend = useSuspendBusiness();
   const activate = useActivateBusiness();
 
-  const columns: DataListColumn<PlatformBusiness>[] = [
+  const columns: DataTableColumn<PlatformBusiness>[] = [
     {
       key: 'name',
       header: t('platform_field_name'),
@@ -77,8 +78,8 @@ export default function PlatformBusinessesPage() {
   ];
 
   return (
-    <>
-      <PageHeader
+    <div className="space-y-6">
+      <DashboardPageHeader
         title={t('platform_list')}
         actions={
           <Button asChild>
@@ -87,7 +88,7 @@ export default function PlatformBusinessesPage() {
         }
       />
 
-      <DataList
+      <DataTableShell
         columns={columns}
         rows={businesses ?? []}
         keyFn={(b) => b.id}
@@ -122,6 +123,6 @@ export default function PlatformBusinessesPage() {
           />
         }
       />
-    </>
+    </div>
   );
 }

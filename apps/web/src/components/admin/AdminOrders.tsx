@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { OrderStatus, PaymentMethod } from '@eatfit/shared';
-import { MapPin, Package, Phone } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { OrderStatus } from '@eatfit/shared';
+import { Package } from 'lucide-react';
 import { useAdminOrders, useTransition } from '@/lib/admin-queries';
 import { useT, useStatusText, type I18nKey } from '@/lib/i18n';
 import { formatMoney } from '@/lib/format';
@@ -13,22 +14,12 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  DataList,
-  EditDrawer,
   AdminEmptyState,
-  PageHeader,
-  Toolbar,
-  type DataListColumn,
+  DashboardPageHeader,
+  DataTableShell,
+  FilterBar,
+  type DataTableColumn,
 } from '@/components/admin/ui';
-import { cn } from '@/lib/utils';
 import type { OrderDto } from '@/lib/types';
 
 const ACTIVE: OrderStatus[] = [
@@ -65,182 +56,18 @@ const NEXT: Partial<Record<OrderStatus, { status: OrderStatus; key: I18nKey; pri
 
 type FilterKey = 'active' | 'all' | OrderStatus;
 
-function paymentLabel(t: (k: I18nKey) => string, method: PaymentMethod): string {
-  switch (method) {
-    case PaymentMethod.Balance:
-      return t('pay_method_balance');
-    case PaymentMethod.OnDelivery:
-      return t('pay_method_on_delivery');
-    default: {
-      const _exhaustive: never = method;
-      return String(_exhaustive);
-    }
-  }
-}
-
 function getPrimaryAction(status: OrderStatus) {
   return NEXT[status]?.find((a) => a.primary);
-}
-
-function OrderDetailDrawer({
-  order,
-  open,
-  onOpenChange,
-  onTransition,
-  pending,
-}: {
-  order: OrderDto | null;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onTransition: (id: string, status: OrderStatus) => void;
-  pending: boolean;
-}) {
-  const t = useT();
-  const st = useStatusText();
-  const [cancelOpen, setCancelOpen] = useState(false);
-
-  if (!order) return null;
-
-  const actions = NEXT[order.status];
-  const secondaryActions = actions?.filter((a) => !a.primary && a.status !== OrderStatus.Cancelled) ?? [];
-  const canCancel = actions?.some((a) => a.status === OrderStatus.Cancelled);
-  const mapsUrl =
-    order.deliveryLat != null && order.deliveryLng != null
-      ? `https://maps.google.com/?q=${order.deliveryLat},${order.deliveryLng}`
-      : null;
-
-  const drawerFooter =
-    actions && (secondaryActions.length > 0 || canCancel) ? (
-      <div className="flex w-full flex-col gap-2">
-        {secondaryActions.map((a) => (
-          <Button
-            key={a.status}
-            variant="secondary"
-            className="w-full sm:w-auto"
-            disabled={pending}
-            onClick={() => onTransition(order.id, a.status)}
-          >
-            {t(a.key)}
-          </Button>
-        ))}
-        {canCancel && (
-          <Button
-            variant="destructive"
-            className="w-full sm:w-auto"
-            disabled={pending}
-            onClick={() => setCancelOpen(true)}
-          >
-            {t('act_cancel')}
-          </Button>
-        )}
-      </div>
-    ) : undefined;
-
-  return (
-    <>
-      <EditDrawer
-        open={open}
-        onOpenChange={onOpenChange}
-        title={`#${order.number} · ${st(order.status)}`}
-        footer={drawerFooter}
-      >
-        <div className="space-y-4 text-sm">
-          {order.customerName && (
-            <p>
-              <span className="text-muted-foreground">{t('bo_order_customer')}: </span>
-              <strong>{order.customerName}</strong>
-            </p>
-          )}
-          {order.customerPhone && (
-            <p className="flex items-center gap-2">
-              <Phone className="size-4 shrink-0" />
-              <a href={`tel:${order.customerPhone}`} className="hover:underline">
-                {order.customerPhone}
-              </a>
-            </p>
-          )}
-          <p>
-            <span className="text-muted-foreground">{t('bo_order_payment')}: </span>
-            {paymentLabel(t, order.paymentMethod)}
-          </p>
-          {order.comment && (
-            <p>
-              <span className="text-muted-foreground">{t('bo_order_comment')}: </span>
-              {order.comment}
-            </p>
-          )}
-          <div>
-            <p className="mb-1 text-muted-foreground">{t('address')}</p>
-            <p>{order.address}</p>
-            {mapsUrl && (
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1 inline-flex items-center gap-1.5 text-[13px] text-primary underline underline-offset-4 hover:underline"
-              >
-                <MapPin className="size-4 shrink-0" />
-                {t('bo_order_map')}
-              </a>
-            )}
-          </div>
-          <div className="space-y-1">
-            {order.items.map((i, idx) => (
-              <div key={idx}>
-                {i.nameRu} ×{i.quantity} — {formatMoney(i.lineTotal)} {t('currency')}
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-between border-t border-border/60 pt-3 font-semibold">
-            <span>{t('total')}</span>
-            <span className="tabular-nums">
-              {formatMoney(order.total)} {t('currency')}
-            </span>
-          </div>
-          {order.totalCalories != null && (
-            <p className="text-muted-foreground">
-              {t('total_calories')}: {order.totalCalories} {t('unit_kcal')}
-            </p>
-          )}
-        </div>
-      </EditDrawer>
-
-      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('bo_cancel_confirm')}</DialogTitle>
-            <DialogDescription>#{order.number}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setCancelOpen(false)}>
-              {t('bo_cancel_confirm_no')}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={pending}
-              onClick={() => {
-                onTransition(order.id, OrderStatus.Cancelled);
-                setCancelOpen(false);
-                onOpenChange(false);
-              }}
-            >
-              {t('bo_cancel_confirm_yes')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
 }
 
 export function AdminOrders() {
   const t = useT();
   const st = useStatusText();
+  const router = useRouter();
   const { data: orders, isLoading } = useAdminOrders();
   const tr = useTransition();
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<FilterKey>('active');
-  const [detailId, setDetailId] = useState<string | null>(null);
 
   const counts = useMemo(() => {
     const map: Record<string, number> = { active: 0, all: orders?.length ?? 0 };
@@ -274,9 +101,7 @@ export function AdminOrders() {
     );
   }, [orders, filter, q, st]);
 
-  const detailOrder = orders?.find((o) => o.id === detailId) ?? null;
-
-  const columns: DataListColumn<OrderDto>[] = useMemo(
+  const columns: DataTableColumn<OrderDto>[] = useMemo(
     () => [
       {
         key: 'number',
@@ -285,7 +110,9 @@ export function AdminOrders() {
         render: (o) => (
           <div>
             <strong>#{o.number}</strong>
-            {o.customerName ? <span className="ml-2 text-muted-foreground">{o.customerName}</span> : null}
+            {o.customerName ? (
+              <span className="ml-2 text-muted-foreground">{o.customerName}</span>
+            ) : null}
           </div>
         ),
       },
@@ -311,7 +138,9 @@ export function AdminOrders() {
         header: t('bo_offer_date'),
         primary: false,
         render: (o) => (
-          <span className="whitespace-nowrap text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</span>
+          <span className="whitespace-nowrap text-muted-foreground">
+            {new Date(o.createdAt).toLocaleString()}
+          </span>
         ),
       },
       {
@@ -363,44 +192,50 @@ export function AdminOrders() {
   ];
 
   return (
-    <div>
-      <PageHeader
+    <div className="space-y-6">
+      <DashboardPageHeader
         title={t('adm_orders')}
         actions={
           <Button asChild>
             <Link href="/b/orders/new/">{t('adm_create_order')}</Link>
           </Button>
         }
-        search={<Input placeholder={t('search_ph')} value={q} onChange={(e) => setQ(e.target.value)} />}
       />
 
-      <Toolbar>
-        <Tabs
-          value={filter}
-          onValueChange={(v) => setFilter(v as typeof filter)}
-          className="w-full"
-        >
-          <TabsList className="w-full justify-start overflow-x-auto">
-            {filterTabs.map((tab) => (
-              <TabsTrigger key={tab.key} value={tab.key}>
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </Toolbar>
+      <FilterBar
+        left={
+          <Input
+            className="max-w-sm"
+            placeholder={t('search_ph')}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        }
+        right={
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>
+            <TabsList className="h-auto flex-wrap justify-start">
+              {filterTabs.map((tab) => (
+                <TabsTrigger key={tab.key} value={tab.key} className="text-xs sm:text-sm">
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        }
+      />
 
-      <DataList
+      <DataTableShell
         columns={columns}
         rows={filtered}
         keyFn={(o) => o.id}
-        onRowClick={(o) => setDetailId(o.id)}
+        onRowClick={(o) => router.push(`/b/orders/view?id=${o.id}`)}
         actions={(o) => {
           const primary = getPrimaryAction(o.status);
           if (!primary) return null;
           return (
             <Button
               size="sm"
+              variant="outline"
               disabled={tr.isPending}
               onClick={() => tr.mutate({ id: o.id, status: primary.status })}
             >
@@ -411,14 +246,6 @@ export function AdminOrders() {
         empty={
           <AdminEmptyState icon={Package} title={t('nothing_found')} description={t('search_ph')} />
         }
-      />
-
-      <OrderDetailDrawer
-        order={detailOrder}
-        open={Boolean(detailId)}
-        onOpenChange={(open) => !open && setDetailId(null)}
-        pending={tr.isPending}
-        onTransition={(id, status) => tr.mutate({ id, status })}
       />
     </div>
   );

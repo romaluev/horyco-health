@@ -21,7 +21,7 @@ import { useAdminUsers } from '@/lib/admin-queries';
 import { ProductComposer, type ComposerLine } from '@/components/backoffice/ProductComposer';
 import { useT } from '@/lib/i18n';
 import { formatMoney } from '@/lib/format';
-import { PageHeader, Toolbar, AdminEmptyState } from '@/components/admin/ui';
+import { DashboardPageHeader, FilterBar, AdminEmptyState } from '@/components/admin/ui';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -199,7 +199,7 @@ export function OffersTab() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={t('bo_offers')} description={t('bo_offers_hint')} />
+      <DashboardPageHeader title={t('bo_offers')} description={t('bo_offers_hint')} />
 
       <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as typeof mainTab)}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -208,27 +208,31 @@ export function OffersTab() {
         </TabsList>
 
         <TabsContent value="compose" className="mt-4 space-y-4">
-          <Toolbar>
-            <div className="flex flex-wrap gap-1">
-              {stepLabels.map((s, idx) => (
-                <Button
-                  key={s.id}
-                  type="button"
-                  size="sm"
-                  variant={step === s.id ? 'default' : 'outline'}
-                  disabled={
-                    (s.id === 'recipients' && composition.length === 0) ||
-                    (s.id === 'review' && selected.size === 0)
-                  }
-                  onClick={() => setStep(s.id)}
-                >
-                  <span className="mr-1.5 text-xs opacity-70">{idx + 1}</span>
-                  {s.label}
-                </Button>
-              ))}
-            </div>
-            {savingDraft ? <span className="text-xs text-muted-foreground">{t('loading')}</span> : null}
-          </Toolbar>
+          <FilterBar
+            left={
+              <div className="flex flex-wrap gap-1">
+                {stepLabels.map((s, idx) => (
+                  <Button
+                    key={s.id}
+                    type="button"
+                    size="sm"
+                    variant={step === s.id ? 'default' : 'outline'}
+                    disabled={
+                      (s.id === 'recipients' && composition.length === 0) ||
+                      (s.id === 'review' && selected.size === 0)
+                    }
+                    onClick={() => setStep(s.id)}
+                  >
+                    <span className="mr-1.5 text-xs opacity-70">{idx + 1}</span>
+                    {s.label}
+                  </Button>
+                ))}
+              </div>
+            }
+            right={
+              savingDraft ? <span className="text-xs text-muted-foreground">{t('loading')}</span> : null
+            }
+          />
 
           {step === 'build' ? (
             <ProductComposer
@@ -263,14 +267,19 @@ export function OffersTab() {
                     </Button>
                   ))}
                 </div>
-                <Toolbar className="mb-0">
-                  <Button type="button" variant="outline" size="sm" onClick={toggleAll}>
-                    {t('bo_select_all')}
-                  </Button>
-                  <Badge variant="secondary">
-                    {selected.size} {t('bo_recipients')}
-                  </Badge>
-                </Toolbar>
+                <FilterBar
+                  className="mb-0"
+                  left={
+                    <>
+                      <Button type="button" variant="outline" size="sm" onClick={toggleAll}>
+                        {t('bo_select_all')}
+                      </Button>
+                      <Badge variant="secondary">
+                        {selected.size} {t('bo_recipients')}
+                      </Badge>
+                    </>
+                  }
+                />
                 <ScrollArea className="max-h-64">
                   <div className="divide-y divide-border pr-2">
                     {users?.map((u) => (

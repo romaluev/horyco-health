@@ -8,7 +8,7 @@ import { useT } from '@/lib/i18n';
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Field, FormGrid, FormSection, PageHeader } from '@/components/admin/ui';
+import { Field, FormGrid, FormSection, FormPageLayout, DashboardPageHeader } from '@/components/admin/ui';
 
 export default function PlatformCreateBusinessPage() {
   const t = useT();
@@ -57,7 +57,7 @@ export default function PlatformCreateBusinessPage() {
   if (success) {
     return (
       <>
-        <PageHeader title={t('platform_create_success')} />
+        <DashboardPageHeader title={t('platform_create_success')} />
         <FormSection title={t('platform_owner_credentials')}>
           <div className="adm-alert adm-alert-success mb-4" role="status">
             {t('platform_create_success')}: <strong>{success.business.name}</strong>
@@ -88,8 +88,7 @@ export default function PlatformCreateBusinessPage() {
   }
 
   return (
-    <>
-      <PageHeader title={t('platform_create')} />
+    <FormPageLayout backHref="/platform/businesses" title={t('platform_create')}>
       <FormSection title={t('platform_create')}>
         {error && (
           <div className="adm-alert adm-alert-error mb-4" role="alert">
@@ -149,6 +148,6 @@ export default function PlatformCreateBusinessPage() {
           </Button>
         </div>
       </FormSection>
-    </>
+    </FormPageLayout>
   );
 }

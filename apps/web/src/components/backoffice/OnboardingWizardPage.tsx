@@ -14,7 +14,7 @@ import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Field } from '@/components/admin/ui';
+import { Field, DashboardPageHeader } from '@/components/admin/ui';
 
 const BIND_COMMANDS = [
   { kind: 'cook', cmd: '/bind cook' },
@@ -179,11 +179,14 @@ export function OnboardingWizardPage() {
   };
 
   return (
-    <div className="rounded-lg bg-card p-4 md:p-6">
-      <h3 className="text-lg font-semibold">{t('bo_onboarding')}</h3>
-      {settings?.botUsername ? <p className="text-sm text-muted-foreground">@{settings.botUsername}</p> : null}
+    <div className="space-y-6">
+      <DashboardPageHeader
+        title={t('bo_onboarding')}
+        description={settings?.botUsername ? `@${settings.botUsername}` : undefined}
+      />
 
-      <div className="adm-stepper mt-4">
+      <div className="rounded-lg bg-card p-4 md:p-6">
+      <div className="adm-stepper">
         {steps.map((step, idx) => {
           const isActive = activeIdx === idx;
           const isExpanded = expandedId === step.id;
@@ -215,6 +218,7 @@ export function OnboardingWizardPage() {
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

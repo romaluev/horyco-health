@@ -1,35 +1,25 @@
 'use client';
 
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { useRouter } from 'next/navigation';
 import { Language } from '@eatfit/shared';
-import { Layers, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import {
-  useAdminCombos,
   useAdminComboDetail,
   useAdminMenu,
   useCreateCombo,
   useUpdateCombo,
-  usePublishCombo,
   type ComboBody,
   type ComboSlotBody,
 } from '@/lib/admin-queries';
 import { useModifierGroups } from '@/lib/offers-queries';
 import { useT } from '@/lib/i18n';
-import { formatMoney, pick } from '@/lib/format';
+import { pick } from '@/lib/format';
 import { useAuthStore } from '@/store/auth.store';
-import {
-  PageHeader,
-  DataList,
-  EditDrawer,
-  FormSection,
-  FormGrid,
-  Field,
-  AdminEmptyState,
-  type DataListColumn,
-} from '@/components/admin/ui';
+import { toast } from 'sonner';
+import { Field, FormGrid, FormPageLayout, FormSection } from '@/components/admin/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
@@ -39,13 +29,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 function emptySlot(): ComboSlotBody {
   return { nameRu: '', nameUz: '', options: [{ menuItemId: '', priceOverride: '0', isDefault: true }] };
@@ -67,86 +50,54 @@ function emptyForm(): ComboBody {
   };
 }
 
-type ComboListRow = {
-  id: string;
-  nameRu: string;
-  nameUz: string;
-  price: string;
-  isActive: boolean;
-};
-
-export function CombosTab() {
+export function ComboFormContent({ comboId }: { comboId?: string }) {
   const t = useT();
+  const router = useRouter();
   const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
-  const { data: combos } = useAdminCombos();
   const { data: menu } = useAdminMenu();
   const { data: modifierGroups } = useModifierGroups();
   const create = useCreateCombo();
   const update = useUpdateCombo();
-  const publish = usePublishCombo();
+  const { data: loaded, isLoading } = useAdminComboDetail(comboId ?? null);
 
-  const [msg, setMsg] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null | undefined>(undefined);
+  const isNew = !comboId;
   const [form, setForm] = useState<ComboBody>(emptyForm());
+  const [initialized, setInitialized] = useState(isNew);
 
-  const drawerOpen = editingId !== undefined;
-
-  const close = () => {
-    setEditingId(undefined);
-    setForm(emptyForm());
-  };
-
-  const openNew = () => {
-    setForm(emptyForm());
-    setEditingId(null);
-  };
-
-  const openEdit = (id: string) => {
-    setForm(emptyForm());
-    setEditingId(id);
-  };
-
-  const save = () => {
-    setMsg(null);
-    const body: ComboBody = {
-      ...form,
-      price: String(form.price),
-      slots: form.slots
-        ?.map((slot) => ({
-          ...slot,
-          options: slot.options.filter((o) => o.menuItemId),
-        }))
-        .filter((s) => s.options.length > 0),
-    };
-    if (editingId) {
-      update.mutate(
-        { id: editingId, body },
-        {
-          onSuccess: () => {
-            setMsg(t('bo_combo_saved'));
-            close();
-          },
-          onError: (e) => setMsg(e instanceof Error ? e.message : String(e)),
-        },
-      );
-    } else {
-      create.mutate(body, {
-        onSuccess: () => {
-          setMsg(t('bo_combo_saved'));
-          close();
-        },
-        onError: (e) => setMsg(e instanceof Error ? e.message : String(e)),
-      });
+  useEffect(() => {
+    if (isNew) return;
+    if (!isLoading && comboId && !loaded) {
+      router.replace('/b/combos');
+      return;
     }
-  };
-
-  const doPublish = (id: string) => {
-    setMsg(null);
-    publish.mutate(id, {
-      onSuccess: () => setMsg(t('adm_published')),
-      onError: (e) => setMsg(e instanceof Error ? e.message : String(e)),
-    });
-  };
+    if (loaded && !initialized) {
+      setForm({
+        nameRu: loaded.nameRu,
+        nameUz: loaded.nameUz,
+        descriptionRu: loaded.descriptionRu ?? '',
+        descriptionUz: loaded.descriptionUz ?? '',
+        price: loaded.price,
+        originalPrice: loaded.originalPrice,
+        photoUrl: loaded.photoUrl ?? '',
+        isActive: loaded.isActive,
+        days: loaded.days ?? [],
+        modifierGroupIds: loaded.modifierGroupIds ?? [],
+        slots:
+          loaded.slots.length > 0
+            ? loaded.slots.map((s) => ({
+                nameRu: s.nameRu,
+                nameUz: s.nameUz,
+                options: s.options.map((o) => ({
+                  menuItemId: o.menuItemId,
+                  priceOverride: o.priceOverride,
+                  isDefault: o.isDefault,
+                })),
+              }))
+            : [emptySlot()],
+      });
+      setInitialized(true);
+    }
+  }, [isNew, isLoading, comboId, loaded, initialized, router]);
 
   const updateSlot = (idx: number, patch: Partial<ComboSlotBody>) => {
     setForm((f) => ({
@@ -163,123 +114,65 @@ export function CombosTab() {
     setForm((f) => ({ ...f, slots: f.slots?.filter((_, i) => i !== idx) }));
   };
 
-  const columns: DataListColumn<ComboListRow>[] = [
-    {
-      key: 'name',
-      header: t('adm_name_ru'),
-      render: (c) => (
-        <div>
-          <div className="font-medium">{pick(lang, c.nameRu, c.nameUz)}</div>
-          {!c.isActive ? (
-            <Badge variant="secondary" className="mt-1">
-              {t('adm_hidden')}
-            </Badge>
-          ) : null}
-        </div>
-      ),
-    },
-    {
-      key: 'price',
-      header: t('adm_price'),
-      primary: false,
-      render: (c) => (
-        <span className="tabular-nums">
-          {formatMoney(c.price)} {t('currency')}
-        </span>
-      ),
-    },
-  ];
+  const save = () => {
+    const body: ComboBody = {
+      ...form,
+      price: String(form.price),
+      slots: form.slots
+        ?.map((slot) => ({
+          ...slot,
+          options: slot.options.filter((o) => o.menuItemId),
+        }))
+        .filter((s) => s.options.length > 0),
+    };
+    const onSuccess = (saved?: { id: string }) => {
+      toast.success(t('bo_combo_saved'));
+      router.push(saved?.id ? `/b/combos/edit?id=${saved.id}` : '/b/combos');
+    };
+    const onError = (e: Error) => toast.error(e.message);
+
+    if (comboId) {
+      update.mutate({ id: comboId, body }, { onSuccess: () => onSuccess({ id: comboId }), onError });
+    } else {
+      create.mutate(body, { onSuccess, onError });
+    }
+  };
+
+  if (!isNew && (!initialized || isLoading)) {
+    return <p className="py-8 text-center text-muted-foreground">{t('loading')}</p>;
+  }
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title={t('bo_combos')}
-        description={t('bo_combos_manage_hint')}
-        actions={
-          <Button type="button" onClick={openNew}>
-            <Plus className="h-4 w-4" />
-            {t('bo_combo_new')}
+    <FormPageLayout
+      backHref="/b/combos"
+      title={comboId ? t('bo_combo_edit') : t('bo_combo_new')}
+      actions={
+        <>
+          <Button type="button" variant="outline" onClick={() => router.push('/b/combos')}>
+            {t('act_cancel')}
           </Button>
-        }
+          <Button type="button" disabled={create.isPending || update.isPending} onClick={save}>
+            {t('save')}
+          </Button>
+        </>
+      }
+    >
+      <ComboEditorBody
+        form={form}
+        setForm={setForm}
+        menu={menu}
+        modifierGroups={modifierGroups}
+        updateSlot={updateSlot}
+        addSlot={addSlot}
+        removeSlot={removeSlot}
+        t={t}
+        lang={lang}
       />
-
-      {msg ? (
-        <div className="rounded-lg bg-card px-4 py-3 text-sm">{msg}</div>
-      ) : null}
-
-      <DataList
-        columns={columns}
-        rows={combos ?? []}
-        keyFn={(c) => c.id}
-        onRowClick={(c) => openEdit(c.id)}
-        actions={(c) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEdit(c.id)}>{t('adm_edit')}</DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={publish.isPending || !c.isActive}
-                onClick={() => doPublish(c.id)}
-              >
-                {publish.isPending ? t('adm_publishing') : t('adm_publish')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        empty={
-          <AdminEmptyState
-            icon={Layers}
-            title={t('bo_combos_empty')}
-            action={
-              <Button type="button" onClick={openNew}>
-                <Plus className="h-4 w-4" />
-                {t('bo_combo_new')}
-              </Button>
-            }
-          />
-        }
-      />
-
-      <EditDrawer
-        open={drawerOpen}
-        onOpenChange={(open) => !open && close()}
-        title={editingId ? t('bo_combo_edit') : t('bo_combo_new')}
-        footer={
-          <div className="flex w-full gap-2 sm:justify-end">
-            <Button type="button" variant="outline" onClick={close}>
-              {t('detail_back')}
-            </Button>
-            <Button type="button" disabled={create.isPending || update.isPending} onClick={save}>
-              {t('save')}
-            </Button>
-          </div>
-        }
-      >
-        {drawerOpen ? (
-          <ComboEditor
-            editingId={editingId ?? null}
-            form={form}
-            setForm={setForm}
-            menu={menu}
-            modifierGroups={modifierGroups}
-            updateSlot={updateSlot}
-            addSlot={addSlot}
-            removeSlot={removeSlot}
-            t={t}
-            lang={lang}
-          />
-        ) : null}
-      </EditDrawer>
-    </div>
+    </FormPageLayout>
   );
 }
 
-function ComboEditor({
-  editingId,
+function ComboEditorBody({
   form,
   setForm,
   menu,
@@ -290,7 +183,6 @@ function ComboEditor({
   t,
   lang,
 }: {
-  editingId: string | null;
   form: ComboBody;
   setForm: Dispatch<SetStateAction<ComboBody>>;
   menu: ReturnType<typeof useAdminMenu>['data'];
@@ -301,42 +193,8 @@ function ComboEditor({
   t: ReturnType<typeof useT>;
   lang: Language;
 }) {
-  const { data: loaded, isLoading } = useAdminComboDetail(editingId);
-
-  useEffect(() => {
-    if (!editingId || !loaded) return;
-    setForm({
-      nameRu: loaded.nameRu,
-      nameUz: loaded.nameUz,
-      descriptionRu: loaded.descriptionRu ?? '',
-      descriptionUz: loaded.descriptionUz ?? '',
-      price: loaded.price,
-      originalPrice: loaded.originalPrice,
-      photoUrl: loaded.photoUrl ?? '',
-      isActive: loaded.isActive,
-      days: loaded.days ?? [],
-      modifierGroupIds: loaded.modifierGroupIds ?? [],
-      slots:
-        loaded.slots.length > 0
-          ? loaded.slots.map((s) => ({
-              nameRu: s.nameRu,
-              nameUz: s.nameUz,
-              options: s.options.map((o) => ({
-                menuItemId: o.menuItemId,
-                priceOverride: o.priceOverride,
-                isDefault: o.isDefault,
-              })),
-            }))
-          : [emptySlot()],
-    });
-  }, [editingId, loaded, setForm]);
-
-  if (editingId && isLoading) {
-    return <p className="py-8 text-center text-muted-foreground">{t('loading')}</p>;
-  }
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <FormSection title={t('bo_combo_edit')}>
         <div className="space-y-4">
           <FormGrid>
@@ -459,10 +317,9 @@ function ComboEditor({
                         </Select>
                       </Field>
 
-                      <Field label="+" compact className="w-full sm:w-28">
+                      <Field label={t('bo_mod_price_delta')} compact className="w-full sm:w-28">
                         <Input
                           type="number"
-                          placeholder="+"
                           value={opt.priceOverride ?? '0'}
                           onChange={(e) => {
                             const options = [...slot.options];

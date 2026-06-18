@@ -1,637 +1,40 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Category, Ingredient, Language, PricingMode, RecipeStep, UnitKind } from '@eatfit/shared';
+import { useEffect, useRef, type RefObject } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ChefHat,
-  Eye,
-  EyeOff,
-  Link2,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Send,
-  Trash2,
-} from 'lucide-react';
-import {
-  useAdminMenu,
-  useCreateDish,
-  useUpdateDish,
-  useSetDishActive,
-  useDeleteDish,
-  useUploadDishPhoto,
-  useDeleteDishPhoto,
-  usePublicConfig,
-  usePublishDish,
-  type DishBody,
-} from '@/lib/admin-queries';
-import {
-  useModifierGroupsAdmin,
-  useSetMenuItemModifierGroups,
-} from '@/lib/modifiers-queries';
+  Category,
+  Ingredient,
+  Language,
+  PricingMode,
+  RecipeStep,
+  UnitKind,
+} from '@eatfit/shared';
+import { Plus } from 'lucide-react';
+import type { DishBody } from '@/lib/admin-queries';
+import { useModifierGroupsAdmin } from '@/lib/modifiers-queries';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
-import { useT, type I18nKey } from '@/lib/i18n';
-import { formatMoney, pick } from '@/lib/format';
+import { useT } from '@/lib/i18n';
+import { pick } from '@/lib/format';
 import { MenuItemDto } from '@/lib/types';
-import { toast } from 'sonner';
-import {
-  AdminEmptyState,
-  DataList,
-  EditDrawer,
-  Field,
-  FormGrid,
-  FormSection,
-  PageHeader,
-  type DataListColumn,
-} from '@/components/admin/ui';
+import { Field, FormGrid, FormSection } from '@/components/admin/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { CATS, DAY_KEYS } from './constants';
+import { numOrNull } from './utils';
 
-const CATS: { cat: Category; key: I18nKey }[] = [
-  { cat: Category.Main, key: 'cat_main' },
-  { cat: Category.Drink, key: 'cat_drink' },
-  { cat: Category.Dessert, key: 'cat_dessert' },
-];
-
-const DAY_KEYS: I18nKey[] = ['day_1', 'day_2', 'day_3', 'day_4', 'day_5', 'day_6', 'day_7'];
-
-function emptyForm(): DishBody {
-  return {
-    category: Category.Main,
-    nameRu: '',
-    nameUz: '',
-    descriptionRu: '',
-    descriptionUz: '',
-    price: 0,
-    pricingMode: PricingMode.Fixed,
-    unitKind: null,
-    unitStep: null,
-    unitMin: null,
-    unitMax: null,
-    pricePerStep: null,
-    unitDefault: null,
-    photoUrl: '',
-    days: [],
-    weightGrams: null,
-    price2: null,
-    weightGrams2: null,
-    orderDeadline: '',
-    ingredients: [],
-    allergens: { containsRu: '', containsUz: '', mayContainRu: '', mayContainUz: '' },
-    nutrition: { calories: null, protein: null, fat: null, carbs: null },
-    nutrition2: { calories: null, protein: null, fat: null, carbs: null },
-    instructions: [],
-    tipRu: '',
-    tipUz: '',
-  };
-}
-
-function numOrNull(v: string): number | null {
-  if (v.trim() === '') return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-function categoryLabel(t: (k: I18nKey) => string, cat: Category): string {
-  const found = CATS.find((c) => c.cat === cat);
-  return found ? t(found.key) : cat;
-}
-
-function formatDays(t: (k: I18nKey) => string, days: number[]): string {
-  return days
-    .slice()
-    .sort((a, b) => a - b)
-    .map((d) => t(DAY_KEYS[d - 1]))
-    .join(', ');
-}
-
-function ToggleButtons({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: string; label: string }[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((opt) => (
-        <Button
-          key={opt.value}
-          type="button"
-          size="sm"
-          variant={value === opt.value ? 'default' : 'outline'}
-          onClick={() => onChange(opt.value)}
-        >
-          {opt.label}
-        </Button>
-      ))}
-    </div>
-  );
-}
-
-export function AdminMenu() {
-  const t = useT();
-  const { data: items } = useAdminMenu();
-  const create = useCreateDish();
-  const update = useUpdateDish();
-  const setActive = useSetDishActive();
-  const del = useDeleteDish();
-  const uploadPhoto = useUploadDishPhoto();
-  const deletePhoto = useDeleteDishPhoto();
-  const { data: config } = usePublicConfig();
-  const publish = usePublishDish();
-  const setGroups = useSetMenuItemModifierGroups();
-
-  const [postFor, setPostFor] = useState<MenuItemDto | null>(null);
-  const [q, setQ] = useState('');
-  const [editing, setEditing] = useState<MenuItemDto | null | undefined>(undefined);
-  const [form, setForm] = useState<DishBody>(emptyForm());
-  const [photoVer, setPhotoVer] = useState(0);
-  const [hasPhoto, setHasPhoto] = useState(false);
-  const [pendingPhoto, setPendingPhoto] = useState<File | null>(null);
-  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
-  const [modifierGroupIds, setModifierGroupIds] = useState<string[]>([]);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const drawerOpen = editing !== undefined;
-  const isNew = editing === null;
-
-  const setPending = (file: File | null) => {
-    setPendingPreview((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return file ? URL.createObjectURL(file) : null;
-    });
-    setPendingPhoto(file);
-  };
-
-  const close = () => {
-    setPending(null);
-    setEditing(undefined);
-  };
-
-  const openNew = () => {
-    setForm(emptyForm());
-    setHasPhoto(false);
-    setPending(null);
-    setModifierGroupIds([]);
-    setEditing(null);
-  };
-
-  const openEdit = (it: MenuItemDto) => {
-    setForm({
-      category: it.category,
-      nameRu: it.nameRu,
-      nameUz: it.nameUz,
-      descriptionRu: it.descriptionRu ?? '',
-      descriptionUz: it.descriptionUz ?? '',
-      price: Number(it.price),
-      pricingMode: it.pricingMode ?? PricingMode.Fixed,
-      unitKind: it.unitKind ?? null,
-      unitStep: it.unitStep ?? null,
-      unitMin: it.unitMin ?? null,
-      unitMax: it.unitMax ?? null,
-      pricePerStep: it.pricePerStep != null ? Number(it.pricePerStep) : null,
-      unitDefault: it.unitDefault ?? null,
-      photoUrl: '',
-      days: it.days ?? [],
-      weightGrams: it.weightGrams ?? null,
-      price2: it.price2 != null ? Number(it.price2) : null,
-      weightGrams2: it.weightGrams2 ?? null,
-      orderDeadline: it.orderDeadline ?? '',
-      ingredients: it.ingredients ?? [],
-      allergens: {
-        containsRu: it.allergens?.containsRu ?? '',
-        containsUz: it.allergens?.containsUz ?? '',
-        mayContainRu: it.allergens?.mayContainRu ?? '',
-        mayContainUz: it.allergens?.mayContainUz ?? '',
-      },
-      nutrition: {
-        calories: it.nutrition?.calories ?? null,
-        protein: it.nutrition?.protein ?? null,
-        fat: it.nutrition?.fat ?? null,
-        carbs: it.nutrition?.carbs ?? null,
-      },
-      nutrition2: {
-        calories: it.nutrition2?.calories ?? null,
-        protein: it.nutrition2?.protein ?? null,
-        fat: it.nutrition2?.fat ?? null,
-        carbs: it.nutrition2?.carbs ?? null,
-      },
-      instructions: it.instructions ?? [],
-      tipRu: it.tipRu ?? '',
-      tipUz: it.tipUz ?? '',
-    });
-    setHasPhoto(it.hasPhoto);
-    setPending(null);
-    setModifierGroupIds([]);
-    setEditing(it);
-  };
-
-  const onPublish = (id: string) => {
-    publish.mutate(id, {
-      onSuccess: () => toast.success(t('adm_published')),
-      onError: (e) => toast.error((e as Error).message),
-    });
-  };
-
-  const deepLink = (id: string): string | null =>
-    config?.botUsername ? `https://t.me/${config.botUsername}?start=item_${id}` : null;
-
-  const copyLink = async (id: string) => {
-    const link = deepLink(id);
-    if (!link) {
-      toast.error(t('adm_no_bot_username'));
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(link);
-      toast.success(t('adm_link_copied'));
-    } catch {
-      window.prompt(t('adm_copy_link'), link);
-    }
-  };
-
-  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    if (editing) {
-      uploadPhoto.mutate(
-        { id: editing.id, file },
-        {
-          onSuccess: () => {
-            setHasPhoto(true);
-            setPhotoVer((v) => v + 1);
-          },
-          onError: (e) => toast.error(t('adm_photo_error') + (e as Error).message),
-        },
-      );
-    } else {
-      setPending(file);
-    }
-  };
-
-  const onRemovePhoto = () => {
-    if (!editing) return;
-    deletePhoto.mutate(editing.id, {
-      onSuccess: () => {
-        setHasPhoto(false);
-        setPhotoVer((v) => v + 1);
-      },
-    });
-  };
-
-  const buildBody = (): DishBody => {
-    const ingredients = (form.ingredients ?? [])
-      .filter((r) => r.nameRu?.trim())
-      .map<Ingredient>((r) => ({
-        nameRu: r.nameRu.trim(),
-        nameUz: (r.nameUz ?? '').trim(),
-        grams: r.grams == null ? null : Math.round(r.grams),
-        amountText: r.amountText?.trim() || null,
-        section: r.section?.trim() || null,
-      }));
-    const instructions = (form.instructions ?? [])
-      .filter((s) => s.textRu?.trim())
-      .map<RecipeStep>((s) => ({
-        textRu: s.textRu.trim(),
-        textUz: (s.textUz ?? s.textRu).trim(),
-      }));
-    return {
-      ...form,
-      price:
-        form.pricingMode === PricingMode.PerUnit
-          ? Number(form.pricePerStep ?? 0)
-          : Number(form.price),
-      pricingMode: form.pricingMode ?? PricingMode.Fixed,
-      unitKind: form.unitKind ?? null,
-      unitStep: form.unitStep == null ? null : Math.round(form.unitStep),
-      unitMin: form.unitMin == null ? null : Math.round(form.unitMin),
-      unitMax: form.unitMax == null ? null : Math.round(form.unitMax),
-      pricePerStep: form.pricePerStep == null ? null : Number(form.pricePerStep),
-      unitDefault: form.unitDefault == null ? null : Math.round(form.unitDefault),
-      photoUrl: form.photoUrl || undefined,
-      descriptionRu: form.descriptionRu || undefined,
-      descriptionUz: form.descriptionUz || undefined,
-      days: (form.days ?? []).slice().sort((a, b) => a - b),
-      weightGrams: form.weightGrams == null ? null : Math.round(form.weightGrams),
-      price2: form.price2 == null ? null : Number(form.price2),
-      weightGrams2: form.weightGrams2 == null ? null : Math.round(form.weightGrams2),
-      orderDeadline: form.orderDeadline || '',
-      ingredients,
-      allergens: form.allergens,
-      nutrition: form.nutrition,
-      nutrition2: form.nutrition2,
-      instructions: instructions.length ? instructions : null,
-      tipRu: form.tipRu?.trim() || null,
-      tipUz: form.tipUz?.trim() || null,
-    };
-  };
-
-  const finishAfterGroups = (itemId: string) => {
-    if (pendingPhoto && isNew) {
-      uploadPhoto.mutate(
-        { id: itemId, file: pendingPhoto },
-        {
-          onSuccess: close,
-          onError: (e) => {
-            toast.error(t('adm_photo_error') + (e as Error).message);
-            close();
-          },
-        },
-      );
-    } else {
-      close();
-    }
-  };
-
-  const saveModifierGroups = (itemId: string) => {
-    setGroups.mutate(
-      { menuItemId: itemId, groupIds: modifierGroupIds },
-      {
-        onSuccess: () => finishAfterGroups(itemId),
-        onError: (e) => {
-          toast.error(`${t('save')}: ${(e as Error).message}`);
-          finishAfterGroups(itemId);
-        },
-      },
-    );
-  };
-
-  const submit = () => {
-    const body = buildBody();
-    if (editing) {
-      update.mutate(
-        { id: editing.id, body },
-        {
-          onSuccess: () => saveModifierGroups(editing.id),
-          onError: (e) => toast.error(`${t('save')}: ${(e as Error).message}`),
-        },
-      );
-      return;
-    }
-    create.mutate(body, {
-      onError: (e) => toast.error(`${t('save')}: ${(e as Error).message}`),
-      onSuccess: (created) => saveModifierGroups(created.id),
-    });
-  };
-
-  const saveDisabled =
-    !form.nameRu ||
-    !form.nameUz ||
-    (form.pricingMode === PricingMode.PerUnit
-      ? !form.pricePerStep || form.pricePerStep <= 0
-      : form.price <= 0) ||
-    create.isPending ||
-    update.isPending ||
-    uploadPhoto.isPending ||
-    setGroups.isPending;
-
-  const needle = q.trim().toLowerCase();
-  const filtered = needle
-    ? items?.filter((it) => `${it.nameRu} ${it.nameUz}`.toLowerCase().includes(needle))
-    : items;
-
-  const columns: DataListColumn<MenuItemDto>[] = [
-    {
-      key: 'name',
-      header: t('adm_name_ru'),
-      primary: true,
-      render: (it) => (
-        <div className="min-w-0">
-          <p className="truncate font-medium">{it.nameRu}</p>
-          {it.nameUz && it.nameUz !== it.nameRu ? (
-            <p className="truncate text-xs text-muted-foreground">{it.nameUz}</p>
-          ) : null}
-        </div>
-      ),
-    },
-    {
-      key: 'price',
-      header: t('adm_price'),
-      render: (it) => (
-        <span className="tabular-nums whitespace-nowrap">
-          {formatMoney(it.price)} {t('currency')}
-        </span>
-      ),
-    },
-    {
-      key: 'category',
-      header: t('adm_category'),
-      primary: false,
-      render: (it) => categoryLabel(t, it.category),
-    },
-    {
-      key: 'days',
-      header: t('adm_days'),
-      primary: false,
-      render: (it) => (it.days?.length ? formatDays(t, it.days) : '—'),
-    },
-    {
-      key: 'status',
-      header: t('status'),
-      render: (it) => (
-        <Badge variant={it.isActive ? 'default' : 'secondary'}>
-          {it.isActive ? t('bo_orders_filter_active') : t('adm_hidden')}
-        </Badge>
-      ),
-    },
-  ];
-
-  const postItem = postFor;
-  const postLink = postItem ? deepLink(postItem.id) : null;
-
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title={t('adm_menu')}
-        actions={
-          <Button onClick={openNew}>
-            <Plus className="h-4 w-4" />
-            {t('adm_add_dish')}
-          </Button>
-        }
-        search={
-          <Input
-            placeholder={t('search_ph')}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        }
-      />
-
-      <DataList
-        columns={columns}
-        rows={filtered ?? []}
-        keyFn={(it) => it.id}
-        onRowClick={openEdit}
-        actions={(it) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label={t('adm_edit')}>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEdit(it)}>
-                <Pencil />
-                {t('adm_edit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setActive.mutate({ id: it.id, isActive: !it.isActive })}
-              >
-                {it.isActive ? <EyeOff /> : <Eye />}
-                {it.isActive ? t('adm_hide') : t('adm_show')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => copyLink(it.id)}>
-                <Link2 />
-                {t('adm_copy_link')}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setPostFor(it)}>
-                <Eye />
-                {t('adm_post_preview')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => del.mutate(it.id)}
-              >
-                <Trash2 />
-                {t('adm_delete')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        empty={
-          needle && !filtered?.length ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">{t('nothing_found')}</p>
-          ) : !items?.length ? (
-            <AdminEmptyState
-              icon={ChefHat}
-              title={t('adm_add_dish')}
-              action={
-                <Button onClick={openNew}>
-                  <Plus className="h-4 w-4" />
-                  {t('adm_add_dish')}
-                </Button>
-              }
-            />
-          ) : null
-        }
-      />
-
-      <EditDrawer
-        open={drawerOpen}
-        onOpenChange={(open) => !open && close()}
-        title={isNew ? t('adm_add_dish') : form.nameRu || t('adm_edit')}
-        description={isNew ? undefined : form.nameUz || undefined}
-        footer={
-          <>
-            <Button type="button" variant="outline" onClick={close}>
-              {t('act_cancel')}
-            </Button>
-            <Button type="button" disabled={saveDisabled} onClick={submit}>
-              {create.isPending || update.isPending || setGroups.isPending
-                ? t('loading')
-                : t('save')}
-            </Button>
-          </>
-        }
-      >
-        <DishForm
-          form={form}
-          setForm={setForm}
-          editing={editing ?? null}
-          hasPhoto={hasPhoto}
-          photoVer={photoVer}
-          pendingPreview={pendingPreview}
-          pendingPhoto={pendingPhoto}
-          fileRef={fileRef}
-          onPickPhoto={onPickPhoto}
-          onRemovePhoto={onRemovePhoto}
-          uploadPhotoPending={uploadPhoto.isPending}
-          deletePhotoPending={deletePhoto.isPending}
-          onClearPending={() => setPending(null)}
-          modifierGroupIds={modifierGroupIds}
-          onModifierGroupIdsChange={setModifierGroupIds}
-        />
-      </EditDrawer>
-
-      <Dialog open={Boolean(postItem)} onOpenChange={(open) => !open && setPostFor(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('adm_post_preview')}</DialogTitle>
-          </DialogHeader>
-          {postItem ? (
-            <div className="space-y-3">
-              {postItem.hasPhoto ? (
-                <img
-                  className="max-h-44 w-full rounded-lg object-cover"
-                  src={`/api/menu/${postItem.id}/photo`}
-                  alt={postItem.nameRu}
-                />
-              ) : null}
-              <div>
-                <p className="font-semibold">
-                  🍽 {postItem.nameUz || postItem.nameRu}
-                  {postItem.nameRu &&
-                  postItem.nameUz &&
-                  postItem.nameUz !== postItem.nameRu
-                    ? ` / ${postItem.nameRu}`
-                    : ''}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  💵 {formatMoney(postItem.price)} сум / so&apos;m
-                </p>
-              </div>
-              {postLink ? (
-                <Button className="w-full" asChild>
-                  <a href={postLink} target="_blank" rel="noreferrer">
-                    {t('adm_order_btn')}
-                  </a>
-                </Button>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t('adm_no_bot_username')}</p>
-              )}
-              <Button
-                className="w-full"
-                variant="secondary"
-                disabled={publish.isPending}
-                onClick={() => onPublish(postItem.id)}
-              >
-                <Send className="h-4 w-4" />
-                {publish.isPending ? t('adm_publishing') : t('adm_publish')}
-              </Button>
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function DishForm({
+export function DishForm({
   form,
   setForm,
   editing,
@@ -655,7 +58,7 @@ function DishForm({
   photoVer: number;
   pendingPreview: string | null;
   pendingPhoto: File | null;
-  fileRef: React.RefObject<HTMLInputElement | null>;
+  fileRef: RefObject<HTMLInputElement | null>;
   onPickPhoto: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemovePhoto: () => void;
   uploadPhotoPending: boolean;
@@ -699,11 +102,21 @@ function DishForm({
       <FormSection title={t('adm_section_basic')} collapsible defaultOpen>
         <div className="space-y-4">
           <Field label={t('adm_category')}>
-            <ToggleButtons
+            <Select
               value={form.category}
-              onChange={(v) => setForm({ ...form, category: v as Category })}
-              options={CATS.map((c) => ({ value: c.cat, label: t(c.key) }))}
-            />
+              onValueChange={(v) => setForm({ ...form, category: v as Category })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATS.map((c) => (
+                  <SelectItem key={c.cat} value={c.cat}>
+                    {t(c.key)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
 
           <FormGrid>
@@ -829,27 +242,35 @@ function DishForm({
       <FormSection title={t('adm_pricing_mode')} collapsible defaultOpen>
         <div className="space-y-4">
           <Field label={t('adm_pricing_mode')}>
-            <ToggleButtons
+            <Select
               value={form.pricingMode ?? PricingMode.Fixed}
-              onChange={(v) => setForm({ ...form, pricingMode: v as PricingMode })}
-              options={[
-                { value: PricingMode.Fixed, label: t('adm_pricing_fixed') },
-                { value: PricingMode.PerUnit, label: t('adm_pricing_per_unit') },
-              ]}
-            />
+              onValueChange={(v) => setForm({ ...form, pricingMode: v as PricingMode })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={PricingMode.Fixed}>{t('adm_pricing_fixed')}</SelectItem>
+                <SelectItem value={PricingMode.PerUnit}>{t('adm_pricing_per_unit')}</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
 
           {form.pricingMode === PricingMode.PerUnit ? (
             <>
               <Field label={t('adm_unit_kind')}>
-                <ToggleButtons
+                <Select
                   value={form.unitKind ?? UnitKind.Gram}
-                  onChange={(v) => setForm({ ...form, unitKind: v as UnitKind })}
-                  options={[
-                    { value: UnitKind.Gram, label: t('unit_gram') },
-                    { value: UnitKind.Piece, label: t('adm_unit_piece') },
-                  ]}
-                />
+                  onValueChange={(v) => setForm({ ...form, unitKind: v as UnitKind })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={UnitKind.Gram}>{t('unit_gram')}</SelectItem>
+                    <SelectItem value={UnitKind.Piece}>{t('adm_unit_piece')}</SelectItem>
+                  </SelectContent>
+                </Select>
               </Field>
               <Field label={t('adm_price_per_step')}>
                 <Input
@@ -1055,10 +476,7 @@ function DishForm({
           <Field label={t('adm_ingredients')}>
             <div className="space-y-3">
               {ings.map((row, i) => (
-                <div
-                  key={i}
-                  className="grid grid-cols-1 gap-2 md:grid-cols-6 md:items-end"
-                >
+                <div key={i} className="grid grid-cols-1 gap-2 md:grid-cols-6 md:items-end">
                   <Input
                     placeholder={t('adm_ing_name_ru')}
                     value={row.nameRu}
