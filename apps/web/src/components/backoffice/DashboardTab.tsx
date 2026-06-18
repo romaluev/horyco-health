@@ -20,6 +20,7 @@ import { OrderStatus } from '@eatfit/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/admin/ui';
 import { cn } from '@/lib/utils';
 
 type Range = 'today' | '7d' | '30d';
@@ -54,16 +55,25 @@ function KpiCard({
   delta?: string | null;
 }) {
   return (
-    <Card>
+    <Card className="h-full">
       <CardContent className="pt-4">
         <p className="text-xs text-muted-foreground">{title}</p>
         <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-        {delta && (
-          <p className={cn('text-xs mt-1 font-medium', delta.startsWith('+') ? 'text-emerald-600' : delta.startsWith('-') ? 'text-red-600' : 'text-muted-foreground')}>
-            {delta} {title.includes('%') ? '' : ''}
+        {sub ? <p className="mt-1 text-xs text-muted-foreground">{sub}</p> : null}
+        {delta ? (
+          <p
+            className={cn(
+              'mt-1 text-xs font-medium',
+              delta.startsWith('+')
+                ? 'text-emerald-600'
+                : delta.startsWith('-')
+                  ? 'text-destructive'
+                  : 'text-muted-foreground',
+            )}
+          >
+            {delta}
           </p>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -74,9 +84,7 @@ function DashboardBody({ data }: { data: AnalyticsDto }) {
   const st = useStatusText();
   const prior = data.priorPeriod;
 
-  const revDelta = prior
-    ? deltaPct(Number(data.totalRevenue), Number(prior.totalRevenue))
-    : null;
+  const revDelta = prior ? deltaPct(Number(data.totalRevenue), Number(prior.totalRevenue)) : null;
   const ordersDelta = prior ? deltaPct(data.orderCount, prior.orderCount) : null;
 
   const trendData = data.revenueByDay.map((d) => ({
@@ -98,7 +106,7 @@ function DashboardBody({ data }: { data: AnalyticsDto }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard
           title={t('dash_revenue')}
           value={`${formatMoney(data.totalRevenue)} ${t('currency')}`}
@@ -121,31 +129,33 @@ function DashboardBody({ data }: { data: AnalyticsDto }) {
         />
       </div>
 
-      {trendData.length > 0 && (
+      {trendData.length > 0 ? (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">{t('dash_revenue_trend')}</CardTitle>
           </CardHeader>
-          <CardContent className="h-56">
+          <CardContent className="h-56 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} width={48} />
-                <Tooltip formatter={(v) => [`${formatMoney(String(Number(v ?? 0)))} ${t('currency')}`, t('dash_revenue')]} />
-                <Line type="monotone" dataKey="revenue" stroke="var(--adm-primary)" strokeWidth={2} dot={false} />
+                <Tooltip
+                  formatter={(v) => [`${formatMoney(String(Number(v ?? 0)))} ${t('currency')}`, t('dash_revenue')]}
+                />
+                <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">{t('dash_by_status')}</CardTitle>
           </CardHeader>
-          <CardContent className="h-48">
+          <CardContent className="h-48 md:h-52">
             {statusData.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('dash_no_data')}</p>
             ) : (
@@ -154,7 +164,7 @@ function DashboardBody({ data }: { data: AnalyticsDto }) {
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="name" width={88} tick={{ fontSize: 11 }} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="var(--adm-primary)" radius={4} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={4} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -165,7 +175,7 @@ function DashboardBody({ data }: { data: AnalyticsDto }) {
           <CardHeader className="pb-2">
             <CardTitle className="text-base">{t('dash_top_items')}</CardTitle>
           </CardHeader>
-          <CardContent className="h-48">
+          <CardContent className="h-48 md:h-52">
             {topData.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('dash_no_data')}</p>
             ) : (
@@ -174,8 +184,10 @@ function DashboardBody({ data }: { data: AnalyticsDto }) {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
                   <YAxis tick={{ fontSize: 11 }} width={40} />
-                  <Tooltip formatter={(v) => [`${formatMoney(String(Number(v ?? 0)))} ${t('currency')}`, t('dash_revenue')]} />
-                  <Bar dataKey="revenue" fill="var(--adm-primary)" radius={4} />
+                  <Tooltip
+                    formatter={(v) => [`${formatMoney(String(Number(v ?? 0)))} ${t('currency')}`, t('dash_revenue')]}
+                  />
+                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={4} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -183,47 +195,52 @@ function DashboardBody({ data }: { data: AnalyticsDto }) {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t('dash_by_payment')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          {data.revenueByPayment.length === 0 && <p className="text-muted-foreground">{t('dash_no_data')}</p>}
-          {data.revenueByPayment.map((r) => {
-            const key = paymentMethodKey(r.method);
-            return (
-              <div key={r.method} className="flex justify-between">
-                <span>{key ? t(key) : r.method}</span>
-                <span>
-                  {formatMoney(r.amount)} · {r.orders}
-                </span>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{t('dash_by_payment')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {data.revenueByPayment.length === 0 ? (
+              <p className="text-muted-foreground">{t('dash_no_data')}</p>
+            ) : (
+              data.revenueByPayment.map((r) => {
+                const key = paymentMethodKey(r.method);
+                return (
+                  <div key={r.method} className="flex justify-between gap-2">
+                    <span>{key ? t(key) : r.method}</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {formatMoney(r.amount)} · {r.orders}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t('dash_offer_funnel')}</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-3 gap-2 text-center text-sm">
-          <div>
-            <p className="text-2xl font-bold tabular-nums">{data.offerFunnel.sent}</p>
-            <p className="text-muted-foreground">{t('dash_funnel_sent')}</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold tabular-nums">{data.offerFunnel.opened}</p>
-            <p className="text-muted-foreground">{t('dash_funnel_opened')}</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold tabular-nums">{data.offerFunnel.ordered}</p>
-            <p className="text-muted-foreground">{t('dash_funnel_ordered')}</p>
-          </div>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{t('dash_offer_funnel')}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-3 gap-2 text-center text-sm">
+            <div>
+              <p className="text-2xl font-bold tabular-nums">{data.offerFunnel.sent}</p>
+              <p className="text-muted-foreground">{t('dash_funnel_sent')}</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold tabular-nums">{data.offerFunnel.opened}</p>
+              <p className="text-muted-foreground">{t('dash_funnel_opened')}</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold tabular-nums">{data.offerFunnel.ordered}</p>
+              <p className="text-muted-foreground">{t('dash_funnel_ordered')}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-3">
         <Link href="/b/orders/" className="text-sm text-primary underline-offset-4 hover:underline">
           {t('adm_orders')} →
         </Link>
@@ -243,32 +260,37 @@ export function DashboardTab() {
   const [range, setRange] = useState<Range>('today');
   const { data, isLoading } = useAnalytics(range);
 
+  const rangeTabs = (
+    <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
+      <TabsList>
+        {(['today', '7d', '30d'] as const).map((r) => (
+          <TabsTrigger key={r} value={r}>
+            {t(r === 'today' ? 'dash_range_today' : r === '7d' ? 'dash_range_7d' : 'dash_range_30d')}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">{t('dash_title')}</h2>
-        <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
-          <TabsList>
-            {(['today', '7d', '30d'] as const).map((r) => (
-              <TabsTrigger key={r} value={r}>
-                {t(r === 'today' ? 'dash_range_today' : r === '7d' ? 'dash_range_7d' : 'dash_range_30d')}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
+      <PageHeader
+        title={t('dash_title')}
+        description={data?.label}
+        actions={rangeTabs}
+      />
 
-      {data && <p className="text-sm text-muted-foreground">{data.label}</p>}
-
-      {isLoading && (
-        <div className="grid grid-cols-2 gap-3">
+      {isLoading ? (
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <Skeleton className="h-24" />
           <Skeleton className="h-24" />
-          <Skeleton className="h-56 col-span-2" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="col-span-2 h-56 md:col-span-full" />
         </div>
-      )}
+      ) : null}
 
-      {data && <DashboardBody data={data} />}
+      {data ? <DashboardBody data={data} /> : null}
     </div>
   );
 }

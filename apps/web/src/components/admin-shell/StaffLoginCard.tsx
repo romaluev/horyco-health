@@ -5,6 +5,9 @@ import { staffLogin, saveStaffToken } from '@/lib/staff-auth';
 import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/lib/i18n';
 import { ApiError } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Field } from '@/components/admin/ui';
 
 interface StaffLoginCardProps {
   titleKey?: string;
@@ -45,40 +48,34 @@ export function StaffLoginCard({
     <div className="adm-login-page adm-root">
       <div className="adm-login-card">
         <h1>{t(titleKey as Parameters<typeof t>[0])}</h1>
-        <p className="adm-muted" style={{ marginBottom: 20 }}>
-          {t(hintKey as Parameters<typeof t>[0])}
-        </p>
-        <form onSubmit={(e) => void submit(e)}>
-          <div className="adm-field">
-            <label htmlFor="staff-phone">{t('phone')}</label>
-            <input
+        <p className="adm-muted mb-5">{t(hintKey as Parameters<typeof t>[0])}</p>
+        <form className="space-y-4" onSubmit={(e) => void submit(e)}>
+          <Field label={t('phone')} htmlFor="staff-phone">
+            <Input
               id="staff-phone"
-              className="adm-input"
               inputMode="tel"
               autoComplete="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
-          </div>
-          <div className="adm-field">
-            <label htmlFor="staff-password">{t('web_password')}</label>
-            <input
+          </Field>
+          <Field label={t('web_password')} htmlFor="staff-password">
+            <Input
               id="staff-password"
-              className="adm-input"
               type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-          </div>
+          </Field>
           {error && (
             <div className="adm-alert adm-alert-error" role="alert">
               {error}
             </div>
           )}
-          <button className="adm-btn adm-btn-primary" style={{ width: '100%' }} disabled={busy} type="submit">
+          <Button className="w-full" disabled={busy} type="submit">
             {t('web_login')}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

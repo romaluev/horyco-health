@@ -3,22 +3,15 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { OrderStatus, PaymentMethod } from '@eatfit/shared';
-import { MapPin, Phone } from 'lucide-react';
+import { MapPin, Package, Phone } from 'lucide-react';
 import { useAdminOrders, useTransition } from '@/lib/admin-queries';
 import { useT, useStatusText, type I18nKey } from '@/lib/i18n';
 import { formatMoney } from '@/lib/format';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +20,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DataList,
+  EditDrawer,
+  AdminEmptyState,
+  PageHeader,
+  Toolbar,
+  type DataListColumn,
+} from '@/components/admin/ui';
 import { cn } from '@/lib/utils';
 import type { OrderDto } from '@/lib/types';
 
@@ -77,7 +78,11 @@ function paymentLabel(t: (k: I18nKey) => string, method: PaymentMethod): string 
   }
 }
 
-function OrderDetailSheet({
+function getPrimaryAction(status: OrderStatus) {
+  return NEXT[status]?.find((a) => a.primary);
+}
+
+function OrderDetailDrawer({
   order,
   open,
   onOpenChange,
@@ -95,99 +100,107 @@ function OrderDetailSheet({
   const [cancelOpen, setCancelOpen] = useState(false);
 
   if (!order) return null;
+
   const actions = NEXT[order.status];
+  const secondaryActions = actions?.filter((a) => !a.primary && a.status !== OrderStatus.Cancelled) ?? [];
+  const canCancel = actions?.some((a) => a.status === OrderStatus.Cancelled);
   const mapsUrl =
     order.deliveryLat != null && order.deliveryLng != null
       ? `https://maps.google.com/?q=${order.deliveryLat},${order.deliveryLng}`
       : null;
 
+  const drawerFooter =
+    actions && (secondaryActions.length > 0 || canCancel) ? (
+      <div className="flex w-full flex-col gap-2">
+        {secondaryActions.map((a) => (
+          <Button
+            key={a.status}
+            variant="secondary"
+            className="min-h-10 w-full sm:w-auto"
+            disabled={pending}
+            onClick={() => onTransition(order.id, a.status)}
+          >
+            {t(a.key)}
+          </Button>
+        ))}
+        {canCancel && (
+          <Button
+            variant="destructive"
+            className="min-h-10 w-full sm:w-auto"
+            disabled={pending}
+            onClick={() => setCancelOpen(true)}
+          >
+            {t('act_cancel')}
+          </Button>
+        )}
+      </div>
+    ) : undefined;
+
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>
-              #{order.number} · {st(order.status)}
-            </SheetTitle>
-          </SheetHeader>
-          <div className="mt-4 space-y-4 text-sm">
-            {order.customerName && (
-              <p>
-                <span className="text-muted-foreground">{t('bo_order_customer')}: </span>
-                <strong>{order.customerName}</strong>
-              </p>
-            )}
-            {order.customerPhone && (
-              <p className="flex items-center gap-2">
-                <Phone className="size-4" />
-                <a href={`tel:${order.customerPhone}`}>{order.customerPhone}</a>
-              </p>
-            )}
+      <EditDrawer
+        open={open}
+        onOpenChange={onOpenChange}
+        title={`#${order.number} · ${st(order.status)}`}
+        footer={drawerFooter}
+      >
+        <div className="space-y-4 text-sm">
+          {order.customerName && (
             <p>
-              <span className="text-muted-foreground">{t('bo_order_payment')}: </span>
-              {paymentLabel(t, order.paymentMethod)}
+              <span className="text-muted-foreground">{t('bo_order_customer')}: </span>
+              <strong>{order.customerName}</strong>
             </p>
-            {order.comment && (
-              <p>
-                <span className="text-muted-foreground">{t('bo_order_comment')}: </span>
-                {order.comment}
-              </p>
-            )}
-            <div>
-              <p className="text-muted-foreground mb-1">{t('address')}</p>
-              <p>{order.address}</p>
-              {mapsUrl && (
-                <Button variant="link" className="h-auto p-0 mt-1" asChild>
-                  <a href={mapsUrl} target="_blank" rel="noreferrer">
-                    <MapPin className="size-4 mr-1 inline" />
-                    {t('bo_order_map')}
-                  </a>
-                </Button>
-              )}
-            </div>
-            <div className="space-y-1">
-              {order.items.map((i, idx) => (
-                <div key={idx}>
-                  {i.nameRu} ×{i.quantity} — {formatMoney(i.lineTotal)} {t('currency')}
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between border-t pt-3 font-semibold">
-              <span>{t('total')}</span>
-              <span>
-                {formatMoney(order.total)} {t('currency')}
-              </span>
-            </div>
-            {order.totalCalories != null && (
-              <p className="text-muted-foreground">
-                {t('total_calories')}: {order.totalCalories} {t('unit_kcal')}
-              </p>
-            )}
-            {actions && (
-              <div className="flex flex-col gap-2 pt-2">
-                {actions
-                  .filter((a) => a.status !== OrderStatus.Cancelled)
-                  .map((a) => (
-                    <Button
-                      key={a.status}
-                      variant={a.primary ? 'default' : 'secondary'}
-                      className="min-h-11"
-                      disabled={pending}
-                      onClick={() => onTransition(order.id, a.status)}
-                    >
-                      {t(a.key)}
-                    </Button>
-                  ))}
-                {actions.some((a) => a.status === OrderStatus.Cancelled) && (
-                  <Button variant="destructive" className="min-h-11" disabled={pending} onClick={() => setCancelOpen(true)}>
-                    {t('act_cancel')}
-                  </Button>
-                )}
-              </div>
+          )}
+          {order.customerPhone && (
+            <p className="flex items-center gap-2">
+              <Phone className="size-4 shrink-0" />
+              <a href={`tel:${order.customerPhone}`} className="hover:underline">
+                {order.customerPhone}
+              </a>
+            </p>
+          )}
+          <p>
+            <span className="text-muted-foreground">{t('bo_order_payment')}: </span>
+            {paymentLabel(t, order.paymentMethod)}
+          </p>
+          {order.comment && (
+            <p>
+              <span className="text-muted-foreground">{t('bo_order_comment')}: </span>
+              {order.comment}
+            </p>
+          )}
+          <div>
+            <p className="mb-1 text-muted-foreground">{t('address')}</p>
+            <p>{order.address}</p>
+            {mapsUrl && (
+              <Button variant="link" className="mt-1 h-auto p-0" asChild>
+                <a href={mapsUrl} target="_blank" rel="noreferrer">
+                  <MapPin className="mr-1 inline size-4" />
+                  {t('bo_order_map')}
+                </a>
+              </Button>
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+          <div className="space-y-1">
+            {order.items.map((i, idx) => (
+              <div key={idx}>
+                {i.nameRu} ×{i.quantity} — {formatMoney(i.lineTotal)} {t('currency')}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between border-t pt-3 font-semibold">
+            <span>{t('total')}</span>
+            <span className="tabular-nums">
+              {formatMoney(order.total)} {t('currency')}
+            </span>
+          </div>
+          {order.totalCalories != null && (
+            <p className="text-muted-foreground">
+              {t('total_calories')}: {order.totalCalories} {t('unit_kcal')}
+            </p>
+          )}
+        </div>
+      </EditDrawer>
 
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <DialogContent>
@@ -260,6 +273,59 @@ export function AdminOrders() {
 
   const detailOrder = orders?.find((o) => o.id === detailId) ?? null;
 
+  const columns: DataListColumn<OrderDto>[] = useMemo(
+    () => [
+      {
+        key: 'number',
+        header: '#',
+        primary: true,
+        render: (o) => (
+          <div>
+            <strong>#{o.number}</strong>
+            {o.customerName ? <span className="ml-2 text-muted-foreground">{o.customerName}</span> : null}
+          </div>
+        ),
+      },
+      {
+        key: 'status',
+        header: t('status'),
+        primary: true,
+        render: (o) => <Badge variant="secondary">{st(o.status)}</Badge>,
+      },
+      {
+        key: 'items',
+        header: t('bo_lines'),
+        primary: false,
+        className: 'max-w-[240px]',
+        render: (o) => (
+          <span className="line-clamp-2 text-muted-foreground">
+            {o.items.map((i) => `${i.nameRu} ×${i.quantity}`).join(', ')}
+          </span>
+        ),
+      },
+      {
+        key: 'createdAt',
+        header: t('bo_offer_date'),
+        primary: false,
+        render: (o) => (
+          <span className="whitespace-nowrap text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</span>
+        ),
+      },
+      {
+        key: 'total',
+        header: t('total'),
+        primary: true,
+        className: 'text-right',
+        render: (o) => (
+          <strong className="tabular-nums">
+            {formatMoney(o.total)} {t('currency')}
+          </strong>
+        ),
+      },
+    ],
+    [t, st],
+  );
+
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -272,12 +338,15 @@ export function AdminOrders() {
 
   if (!orders?.length) {
     return (
-      <div className="space-y-4">
-        <Button className="w-full min-h-11" asChild>
-          <Link href="/b/orders/new/">{t('adm_create_order')}</Link>
-        </Button>
-        <p className="text-center text-muted-foreground py-10">{t('no_orders')}</p>
-      </div>
+      <AdminEmptyState
+        icon={Package}
+        title={t('no_orders')}
+        action={
+          <Button asChild>
+            <Link href="/b/orders/new/">{t('adm_create_order')}</Link>
+          </Button>
+        }
+      />
     );
   }
 
@@ -291,54 +360,59 @@ export function AdminOrders() {
   ];
 
   return (
-    <div className="space-y-4">
-      <Button className="w-full min-h-11" asChild>
-        <Link href="/b/orders/new/">{t('adm_create_order')}</Link>
-      </Button>
-      <Input placeholder={t('search_ph')} value={q} onChange={(e) => setQ(e.target.value)} />
+    <div>
+      <PageHeader
+        title={t('adm_orders')}
+        actions={
+          <Button asChild>
+            <Link href="/b/orders/new/">{t('adm_create_order')}</Link>
+          </Button>
+        }
+        search={<Input placeholder={t('search_ph')} value={q} onChange={(e) => setQ(e.target.value)} />}
+      />
 
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>
-        <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
-          {filterTabs.map((tab) => (
-            <TabsTrigger
-              key={tab.key}
-              value={tab.key}
-              className={cn('min-h-9 rounded-full border px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground')}
+      <Toolbar>
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)} className="w-full">
+          <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
+            {filterTabs.map((tab) => (
+              <TabsTrigger
+                key={tab.key}
+                value={tab.key}
+                className={cn(
+                  'min-h-9 rounded-full border px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground',
+                )}
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </Toolbar>
+
+      <DataList
+        columns={columns}
+        rows={filtered}
+        keyFn={(o) => o.id}
+        onRowClick={(o) => setDetailId(o.id)}
+        actions={(o) => {
+          const primary = getPrimaryAction(o.status);
+          if (!primary) return null;
+          return (
+            <Button
+              size="sm"
+              disabled={tr.isPending}
+              onClick={() => tr.mutate({ id: o.id, status: primary.status })}
             >
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+              {t(primary.key)}
+            </Button>
+          );
+        }}
+        empty={
+          <AdminEmptyState icon={Package} title={t('nothing_found')} description={t('search_ph')} />
+        }
+      />
 
-      {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">{t('nothing_found')}</p>}
-
-      <div className="space-y-3">
-        {filtered.map((o) => (
-          <Card key={o.id} className="cursor-pointer transition-colors hover:bg-muted/30" onClick={() => setDetailId(o.id)}>
-            <CardContent className="py-3 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <strong>#{o.number}</strong>
-                  {o.customerName && <span className="ml-2 text-sm">{o.customerName}</span>}
-                </div>
-                <Badge variant="secondary">{st(o.status)}</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {o.items.map((i) => `${i.nameRu} ×${i.quantity}`).join(', ')}
-              </p>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</span>
-                <strong className="tabular-nums">
-                  {formatMoney(o.total)} {t('currency')}
-                </strong>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <OrderDetailSheet
+      <OrderDetailDrawer
         order={detailOrder}
         open={Boolean(detailId)}
         onOpenChange={(open) => !open && setDetailId(null)}

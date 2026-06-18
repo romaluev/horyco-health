@@ -31,10 +31,10 @@ export function BusinessSwitcher() {
 
   return (
     <Select value={activeSlug ?? ''} onValueChange={(v) => void onSwitch(v)}>
-      <SelectTrigger className="h-9 w-[min(180px,40vw)] text-xs">
+      <SelectTrigger className="h-9 w-[min(180px,40vw)] border-input bg-background text-xs shadow-sm">
         <SelectValue placeholder={t('bo_switch_business')} />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent align="end">
         {businesses.map((b) => (
           <SelectItem key={b.businessId} value={b.slug}>
             {b.name}

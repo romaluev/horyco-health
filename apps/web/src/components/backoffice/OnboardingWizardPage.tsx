@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { Check, Circle, Copy } from 'lucide-react';
+import { Check, ChevronDown, Circle, Copy } from 'lucide-react';
 import {
   useBusinessSettings,
   useBusinessChats,
@@ -11,6 +11,10 @@ import {
   useStaffList,
 } from '@/lib/backoffice-queries';
 import { useT } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Field } from '@/components/admin/ui';
 
 const BIND_COMMANDS = [
   { kind: 'cook', cmd: '/bind cook' },
@@ -27,6 +31,7 @@ export function OnboardingWizardPage() {
   const setBot = useSetBotToken();
   const [token, setToken] = useState('');
   const [copied, setCopied] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const itemOk = (key: string) => checklist?.items.find((i) => i.key === key)?.ok ?? false;
 
@@ -40,32 +45,25 @@ export function OnboardingWizardPage() {
     }
   };
 
-  const steps = [
+  const steps: { id: string; title: string; done: boolean; body: ReactNode }[] = [
     {
       id: 'bot',
       title: t('bo_onboarding_step_bot'),
       done: itemOk('token') && itemOk('webhook'),
       body: (
         <>
-          <p className="adm-muted">{t('bo_token_hint')}</p>
-          <div className="adm-field">
-            <label>{t('bo_bot_token')}</label>
-            <input
-              className="adm-input"
+          <p className="text-sm text-muted-foreground">{t('bo_token_hint')}</p>
+          <Field label={t('bo_bot_token')}>
+            <Input
               type="password"
               value={token}
               onChange={(e) => setToken(e.target.value)}
               placeholder="123456:ABC..."
             />
-          </div>
-          <button
-            type="button"
-            className="adm-btn adm-btn-primary adm-btn-sm"
-            disabled={!token.trim() || setBot.isPending}
-            onClick={() => setBot.mutate(token.trim())}
-          >
+          </Field>
+          <Button size="sm" disabled={!token.trim() || setBot.isPending} onClick={() => setBot.mutate(token.trim())}>
             {t('bo_connect_bot')}
-          </button>
+          </Button>
         </>
       ),
     },
@@ -75,22 +73,27 @@ export function OnboardingWizardPage() {
       done: itemOk('cook_group') && itemOk('admin_group'),
       body: (
         <>
-          <p className="adm-muted">{t('bo_bind_hint')}</p>
-          <ul style={{ listStyle: 'none', padding: 0, margin: '12px 0' }}>
+          <p className="text-sm text-muted-foreground">{t('bo_bind_hint')}</p>
+          <ul className="my-3 list-none space-y-2.5 p-0">
             {BIND_COMMANDS.map(({ kind, cmd }) => {
               const bound = chats?.find((c) => c.kind === kind && c.chatId && c.status === 'active');
               return (
-                <li key={kind} style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <code>{cmd}</code>
-                  <button type="button" className="adm-btn adm-btn-sm" onClick={() => void copyCmd(cmd)}>
-                    <Copy size={14} aria-hidden /> {copied === cmd ? t('bo_copied') : t('bo_bind_copy')}
-                  </button>
-                  {bound && <span className="adm-badge adm-badge-ok">OK</span>}
+                <li key={kind} className="flex flex-wrap items-center gap-2">
+                  <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{cmd}</code>
+                  <Button type="button" variant="outline" size="sm" onClick={() => void copyCmd(cmd)}>
+                    <Copy className="mr-1.5 size-3.5" aria-hidden />
+                    {copied === cmd ? t('bo_copied') : t('bo_bind_copy')}
+                  </Button>
+                  {bound ? (
+                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      OK
+                    </span>
+                  ) : null}
                 </li>
               );
             })}
           </ul>
-          <p className="adm-muted" style={{ fontSize: 13 }}>{t('bo_bind_step1')}</p>
+          <p className="text-xs text-muted-foreground">{t('bo_bind_step1')}</p>
         </>
       ),
     },
@@ -100,10 +103,10 @@ export function OnboardingWizardPage() {
       done: itemOk('menu'),
       body: (
         <>
-          <p className="adm-muted">{checklist?.items.find((i) => i.key === 'menu')?.hint}</p>
-          <Link href="/b/menu/" className="adm-btn adm-btn-primary adm-btn-sm">
-            {t('bo_go_menu')}
-          </Link>
+          <p className="text-sm text-muted-foreground">{checklist?.items.find((i) => i.key === 'menu')?.hint}</p>
+          <Button size="sm" asChild>
+            <Link href="/b/menu/">{t('bo_go_menu')}</Link>
+          </Button>
         </>
       ),
     },
@@ -113,13 +116,18 @@ export function OnboardingWizardPage() {
       done: itemOk('cook'),
       body: (
         <>
-          <p className="adm-muted">{checklist?.items.find((i) => i.key === 'cook')?.hint}</p>
-          {staff?.filter((s) => s.status === 'active' && s.inviteLink).slice(0, 1).map((s) => (
-            <p key={s.id} style={{ wordBreak: 'break-all', fontSize: 13 }}>{s.inviteLink}</p>
-          ))}
-          <Link href="/b/settings/" className="adm-btn adm-btn-sm">
-            {t('bo_go_settings')}
-          </Link>
+          <p className="text-sm text-muted-foreground">{checklist?.items.find((i) => i.key === 'cook')?.hint}</p>
+          {staff
+            ?.filter((s) => s.status === 'active' && s.inviteLink)
+            .slice(0, 1)
+            .map((s) => (
+              <p key={s.id} className="break-all text-xs text-muted-foreground">
+                {s.inviteLink}
+              </p>
+            ))}
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/b/settings/">{t('bo_go_settings')}</Link>
+          </Button>
         </>
       ),
     },
@@ -130,12 +138,18 @@ export function OnboardingWizardPage() {
       body: (
         <>
           {checklist?.ready ? (
-            <div className="adm-alert adm-alert-success">{t('bo_ready')}</div>
+            <div className="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
+              {t('bo_ready')}
+            </div>
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            <ul className="m-0 list-none space-y-1.5 p-0">
               {checklist?.items.map((item) => (
-                <li key={item.key} style={{ display: 'flex', gap: 8, marginBottom: 6, fontSize: 14 }}>
-                  {item.ok ? <Check size={16} color="var(--adm-success)" /> : <Circle size={16} />}
+                <li key={item.key} className="flex items-start gap-2 text-sm">
+                  {item.ok ? (
+                    <Check className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-hidden />
+                  ) : (
+                    <Circle className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  )}
                   <span>{item.label}</span>
                 </li>
               ))}
@@ -147,27 +161,54 @@ export function OnboardingWizardPage() {
   ];
 
   const activeIdx = steps.findIndex((s) => !s.done);
+  const defaultExpanded = activeIdx >= 0 ? steps[activeIdx].id : steps[steps.length - 1]?.id ?? null;
+
+  useEffect(() => {
+    if (expandedId === null && defaultExpanded) {
+      setExpandedId(defaultExpanded);
+    }
+  }, [defaultExpanded, expandedId]);
+
+  const toggleStep = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
 
   return (
-    <div className="adm-card">
-      <h3>{t('bo_onboarding')}</h3>
-      {settings?.botUsername && (
-        <p className="adm-muted">@{settings.botUsername}</p>
-      )}
-      <div className="adm-stepper">
-        {steps.map((step, idx) => (
-          <div
-            key={step.id}
-            className={`adm-step${step.done ? ' done' : ''}${activeIdx === idx ? ' active' : ''}`}
-          >
-            <div className="adm-step-icon">{step.done ? <Check size={16} /> : idx + 1}</div>
-            <div className="adm-step-body">
-              <h4>{step.title}</h4>
-              {!step.done && activeIdx === idx && step.body}
-              {step.done && <p>{t('bo_ready')}</p>}
+    <div className="rounded-lg border bg-card p-4 md:p-6">
+      <h3 className="text-lg font-semibold">{t('bo_onboarding')}</h3>
+      {settings?.botUsername ? <p className="text-sm text-muted-foreground">@{settings.botUsername}</p> : null}
+
+      <div className="adm-stepper mt-4">
+        {steps.map((step, idx) => {
+          const isActive = activeIdx === idx;
+          const isExpanded = expandedId === step.id;
+          return (
+            <div
+              key={step.id}
+              className={cn('adm-step', step.done && 'done', isActive && 'active')}
+            >
+              <div className="adm-step-icon">{step.done ? <Check className="size-4" /> : idx + 1}</div>
+              <div className="adm-step-body min-w-0 flex-1">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 text-left"
+                  onClick={() => toggleStep(step.id)}
+                  aria-expanded={isExpanded}
+                >
+                  <h4 className="text-sm font-semibold">{step.title}</h4>
+                  <ChevronDown
+                    className={cn('size-4 shrink-0 text-muted-foreground transition-transform', isExpanded && 'rotate-180')}
+                    aria-hidden
+                  />
+                </button>
+                {step.done && !isExpanded ? (
+                  <p className="text-xs text-emerald-600">{t('bo_onboarding_step_complete')}</p>
+                ) : null}
+                {isExpanded ? <div className="mt-3 space-y-3">{step.body}</div> : null}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

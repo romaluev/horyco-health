@@ -8,6 +8,9 @@ import { saveStaffToken } from '@/lib/staff-auth';
 import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/lib/i18n';
 import type { StaffLoginResponse } from '@/lib/backoffice-queries';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Field } from '@/components/admin/ui';
 
 export default function PlatformSetupPage() {
   const t = useT();
@@ -61,26 +64,38 @@ export default function PlatformSetupPage() {
     <div className="adm-root adm-login-page">
       <div className="adm-login-card">
         <h1>{t('platform_setup_title')}</h1>
-        <p className="adm-muted" style={{ marginBottom: 20 }}>
-          {t('platform_setup_hint')}
-        </p>
-        <form onSubmit={(e) => void submit(e)}>
-          <div className="adm-field">
-            <label htmlFor="setup-name">{t('name')}</label>
-            <input id="setup-name" className="adm-input" value={name} onChange={(e) => setName(e.target.value)} required />
-          </div>
-          <div className="adm-field">
-            <label htmlFor="setup-phone">{t('phone')}</label>
-            <input id="setup-phone" className="adm-input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-          </div>
-          <div className="adm-field">
-            <label htmlFor="setup-password">{t('web_password')}</label>
-            <input id="setup-password" className="adm-input" type="password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </div>
-          {error && <div className="adm-alert adm-alert-error" role="alert">{error}</div>}
-          <button className="adm-btn adm-btn-primary" style={{ width: '100%' }} disabled={busy} type="submit">
+        <p className="adm-muted mb-5">{t('platform_setup_hint')}</p>
+        <form className="space-y-4" onSubmit={(e) => void submit(e)}>
+          <Field label={t('name')} htmlFor="setup-name">
+            <Input id="setup-name" value={name} onChange={(e) => setName(e.target.value)} required />
+          </Field>
+          <Field label={t('phone')} htmlFor="setup-phone">
+            <Input
+              id="setup-phone"
+              inputMode="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+            />
+          </Field>
+          <Field label={t('web_password')} htmlFor="setup-password">
+            <Input
+              id="setup-password"
+              type="password"
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </Field>
+          {error && (
+            <div className="adm-alert adm-alert-error" role="alert">
+              {error}
+            </div>
+          )}
+          <Button className="w-full" disabled={busy} type="submit">
             {t('platform_setup_submit')}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

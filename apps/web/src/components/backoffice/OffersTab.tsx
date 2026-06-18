@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { Language, OrderStatus } from '@eatfit/shared';
-import { ChevronLeft, ChevronRight, Minus, Plus, Search, Trash2 } from 'lucide-react';
+import { Language } from '@eatfit/shared';
+import { ChevronLeft, ChevronRight, History, Minus, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   useOffers,
@@ -26,12 +26,12 @@ import { formatMoney, pick } from '@/lib/format';
 import { useAuthStore } from '@/store/auth.store';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { PageHeader, Toolbar, FormGrid, Field, AdminEmptyState } from '@/components/admin/ui';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -95,12 +95,12 @@ function sumSlotSurcharges(slots: ComboSlotView[] | undefined, selections: Recor
 
 function Stepper({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-lg border px-2 py-1">
-      <Button type="button" variant="ghost" size="icon" className="size-9" onClick={() => onChange(Math.max(1, value - 1))}>
+    <div className="inline-flex items-center gap-1 rounded-lg border px-1 py-0.5">
+      <Button type="button" variant="ghost" size="icon" className="size-8" onClick={() => onChange(Math.max(1, value - 1))}>
         <Minus className="size-4" />
       </Button>
-      <span className="min-w-8 text-center font-medium tabular-nums">{value}</span>
-      <Button type="button" variant="ghost" size="icon" className="size-9" onClick={() => onChange(Math.min(100, value + 1))}>
+      <span className="min-w-8 text-center text-sm font-medium tabular-nums">{value}</span>
+      <Button type="button" variant="ghost" size="icon" className="size-8" onClick={() => onChange(Math.min(100, value + 1))}>
         <Plus className="size-4" />
       </Button>
     </div>
@@ -122,6 +122,7 @@ export function OffersTab() {
   const setRecipients = useSetOfferRecipients();
   const setSegment = useSetOfferRecipientsBySegment();
 
+  const [mainTab, setMainTab] = useState<'compose' | 'history'>('compose');
   const [step, setStep] = useState<'build' | 'recipients' | 'review'>('build');
   const [composition, setComposition] = useState<ComposeLine[]>([]);
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -266,7 +267,9 @@ export function OffersTab() {
         modifierIds,
         quantity: draftQty,
         unitExtra,
-        label: item ? `${pick(lang, item.nameRu, item.nameUz)}${modifierLabel(pickGroups, modifierIds) ? ` (${modifierLabel(pickGroups, modifierIds)})` : ''}` : undefined,
+        label: item
+          ? `${pick(lang, item.nameRu, item.nameUz)}${modifierLabel(pickGroups, modifierIds) ? ` (${modifierLabel(pickGroups, modifierIds)})` : ''}`
+          : undefined,
       },
     ]);
     setPickDishId(null);
@@ -327,6 +330,7 @@ export function OffersTab() {
         setComposition([]);
         setSelected(new Set());
         setStep('build');
+        setMainTab('history');
       },
     });
   };
@@ -337,302 +341,345 @@ export function OffersTab() {
     return defaultSlotSelections(pickCombo.slots);
   }, [pickCombo, comboSlotSelections]);
 
-  const segments: { id: OfferRecipientSegment; labelKey: 'bo_segment_all' | 'bo_segment_balance' | 'bo_segment_recent' | 'bo_segment_never' }[] = [
+  const segments: {
+    id: OfferRecipientSegment;
+    labelKey: 'bo_segment_all' | 'bo_segment_balance' | 'bo_segment_recent' | 'bo_segment_never';
+  }[] = [
     { id: 'all', labelKey: 'bo_segment_all' },
     { id: 'has_balance', labelKey: 'bo_segment_balance' },
     { id: 'ordered_30d', labelKey: 'bo_segment_recent' },
     { id: 'never_ordered', labelKey: 'bo_segment_never' },
   ];
 
+  const stepLabels = [
+    { id: 'build' as const, label: t('bo_step_build') },
+    { id: 'recipients' as const, label: t('bo_step_recipients') },
+    { id: 'review' as const, label: t('bo_step_review') },
+  ];
+
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold">{t('bo_offers')}</h2>
-        <p className="text-sm text-muted-foreground">{t('bo_offers_hint')}</p>
-      </div>
+      <PageHeader title={t('bo_offers')} description={t('bo_offers_hint')} />
 
-      <Tabs value={step} onValueChange={(v) => setStep(v as typeof step)}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="build">{t('bo_step_build')}</TabsTrigger>
-          <TabsTrigger value="recipients" disabled={composition.length === 0}>
-            {t('bo_step_recipients')}
-          </TabsTrigger>
-          <TabsTrigger value="review" disabled={selected.size === 0}>
-            {t('bo_step_review')}
-          </TabsTrigger>
+      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as typeof mainTab)}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="compose">{t('bo_tab_compose')}</TabsTrigger>
+          <TabsTrigger value="history">{t('bo_tab_history')}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="build" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">{t('bo_compose')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Popover open={pickOpen} onOpenChange={setPickOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start min-h-11">
-                    <Search className="mr-2 size-4 opacity-50" />
-                    {t('bo_pick_product')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[min(100vw-2rem,400px)] p-0" align="start">
-                  <div className="flex gap-1 border-b p-2">
-                    <Button size="sm" variant={pickKind === 'dish' ? 'default' : 'ghost'} onClick={() => setPickKind('dish')}>
-                      {t('bo_add_dish')}
-                    </Button>
-                    <Button size="sm" variant={pickKind === 'combo' ? 'default' : 'ghost'} onClick={() => setPickKind('combo')}>
-                      {t('bo_add_combo')}
-                    </Button>
-                  </div>
-                  <Command>
-                    <CommandInput placeholder={t('search_ph')} />
-                    <CommandList>
-                      <CommandEmpty>{t('nothing_found')}</CommandEmpty>
-                      <CommandGroup>
-                        {pickKind === 'dish'
-                          ? menu?.filter((m) => m.isActive).map((m) => (
-                              <CommandItem
-                                key={m.id}
-                                value={pick(lang, m.nameRu, m.nameUz)}
-                                onSelect={() => {
-                                  setPickDishId(m.id);
-                                  setPickComboId(null);
-                                  setDraftLine((d) => ({ ...d, menuItemId: m.id, modifierIds: [] }));
-                                }}
-                              >
-                                {pick(lang, m.nameRu, m.nameUz)} · {formatMoney(m.price)}
-                              </CommandItem>
-                            ))
-                          : combos?.filter((c) => c.isActive).map((c) => (
-                              <CommandItem
-                                key={c.id}
-                                value={pick(lang, c.nameRu, c.nameUz)}
-                                onSelect={() => {
-                                  setPickComboId(c.id);
-                                  setPickDishId(null);
-                                  setComboSlotSelections({});
-                                  setComboModifierIds([]);
-                                }}
-                              >
-                                {pick(lang, c.nameRu, c.nameUz)} · {formatMoney(c.price)}
-                              </CommandItem>
-                            ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+        <TabsContent value="compose" className="mt-4 space-y-4">
+          <Toolbar>
+            <div className="flex flex-wrap gap-1">
+              {stepLabels.map((s, idx) => (
+                <Button
+                  key={s.id}
+                  type="button"
+                  size="sm"
+                  variant={step === s.id ? 'default' : 'outline'}
+                  disabled={
+                    (s.id === 'recipients' && composition.length === 0) ||
+                    (s.id === 'review' && selected.size === 0)
+                  }
+                  onClick={() => setStep(s.id)}
+                >
+                  <span className="mr-1.5 text-xs opacity-70">{idx + 1}</span>
+                  {s.label}
+                </Button>
+              ))}
+            </div>
+            {savingDraft ? <span className="text-xs text-muted-foreground">{t('loading')}</span> : null}
+          </Toolbar>
 
-              {(pickDishId || pickComboId) && (
-                <div className="space-y-3 rounded-lg border p-3">
-                  {pickDishId && pickGroups && (
-                    <>
-                      {pickGroups.length > 0 && (
-                        <ModifierPicker
-                          groups={pickGroups}
-                          selectedIds={draftLine.modifierIds ?? []}
-                          onChange={(ids) => setDraftLine((d) => ({ ...d, modifierIds: ids }))}
-                        />
-                      )}
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Label>{t('detail_portion')}</Label>
-                        <div className="flex gap-2">
-                          {[1, 2].map((p) => (
-                            <Button
-                              key={p}
-                              type="button"
-                              size="sm"
-                              variant={draftLine.portion === p ? 'default' : 'outline'}
-                              onClick={() => setDraftLine((d) => ({ ...d, portion: p }))}
-                            >
-                              {p}
-                            </Button>
-                          ))}
-                        </div>
+          {step === 'build' ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">{t('bo_compose')}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Popover open={pickOpen} onOpenChange={setPickOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full min-h-10 justify-start">
+                        <Search className="mr-2 size-4 opacity-50" />
+                        {t('bo_pick_product')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[min(100vw-2rem,400px)] p-0" align="start">
+                      <div className="flex gap-1 border-b p-2">
+                        <Button size="sm" variant={pickKind === 'dish' ? 'default' : 'ghost'} onClick={() => setPickKind('dish')}>
+                          {t('bo_add_dish')}
+                        </Button>
+                        <Button size="sm" variant={pickKind === 'combo' ? 'default' : 'ghost'} onClick={() => setPickKind('combo')}>
+                          {t('bo_add_combo')}
+                        </Button>
                       </div>
-                    </>
-                  )}
-                  {pickComboId && pickCombo && (
-                    <>
-                      <SlotPicker slots={pickCombo.slots} selections={resolvedComboSelections} onChange={setComboSlotSelections} />
-                      {pickComboModGroups && pickComboModGroups.length > 0 && (
-                        <ModifierPicker groups={pickComboModGroups} selectedIds={comboModifierIds} onChange={setComboModifierIds} />
-                      )}
-                    </>
-                  )}
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Label>{t('bo_quantity')}</Label>
-                      <Stepper value={draftQty} onChange={setDraftQty} />
+                      <Command>
+                        <CommandInput placeholder={t('search_ph')} />
+                        <CommandList>
+                          <CommandEmpty>{t('nothing_found')}</CommandEmpty>
+                          <CommandGroup>
+                            {pickKind === 'dish'
+                              ? menu?.filter((m) => m.isActive).map((m) => (
+                                  <CommandItem
+                                    key={m.id}
+                                    value={pick(lang, m.nameRu, m.nameUz)}
+                                    onSelect={() => {
+                                      setPickDishId(m.id);
+                                      setPickComboId(null);
+                                      setDraftLine((d) => ({ ...d, menuItemId: m.id, modifierIds: [] }));
+                                    }}
+                                  >
+                                    {pick(lang, m.nameRu, m.nameUz)} · {formatMoney(m.price)}
+                                  </CommandItem>
+                                ))
+                              : combos?.filter((c) => c.isActive).map((c) => (
+                                  <CommandItem
+                                    key={c.id}
+                                    value={pick(lang, c.nameRu, c.nameUz)}
+                                    onSelect={() => {
+                                      setPickComboId(c.id);
+                                      setPickDishId(null);
+                                      setComboSlotSelections({});
+                                      setComboModifierIds([]);
+                                    }}
+                                  >
+                                    {pick(lang, c.nameRu, c.nameUz)} · {formatMoney(c.price)}
+                                  </CommandItem>
+                                ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+
+                  {(pickDishId || pickComboId) ? (
+                    <div className="space-y-3 rounded-lg border p-3">
+                      {pickDishId && pickGroups ? (
+                        <>
+                          {pickGroups.length > 0 ? (
+                            <ModifierPicker
+                              groups={pickGroups}
+                              selectedIds={draftLine.modifierIds ?? []}
+                              onChange={(ids) => setDraftLine((d) => ({ ...d, modifierIds: ids }))}
+                            />
+                          ) : null}
+                          <Field label={t('detail_portion')} compact>
+                            <div className="flex gap-2">
+                              {[1, 2].map((p) => (
+                                <Button
+                                  key={p}
+                                  type="button"
+                                  size="sm"
+                                  variant={draftLine.portion === p ? 'default' : 'outline'}
+                                  onClick={() => setDraftLine((d) => ({ ...d, portion: p }))}
+                                >
+                                  {p}
+                                </Button>
+                              ))}
+                            </div>
+                          </Field>
+                        </>
+                      ) : null}
+                      {pickComboId && pickCombo ? (
+                        <>
+                          <SlotPicker slots={pickCombo.slots} selections={resolvedComboSelections} onChange={setComboSlotSelections} />
+                          {pickComboModGroups && pickComboModGroups.length > 0 ? (
+                            <ModifierPicker groups={pickComboModGroups} selectedIds={comboModifierIds} onChange={setComboModifierIds} />
+                          ) : null}
+                        </>
+                      ) : null}
+                      <FormGrid className="items-end">
+                        <Field label={t('bo_quantity')} compact>
+                          <Stepper value={draftQty} onChange={setDraftQty} />
+                        </Field>
+                        <Button type="button" className="min-h-10" onClick={pickDishId ? addDishLine : addComboLine}>
+                          {t('bo_add_line')}
+                        </Button>
+                      </FormGrid>
                     </div>
-                    <Button type="button" onClick={pickDishId ? addDishLine : addComboLine}>
-                      {t('bo_add_line')}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  ) : null}
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-base">{t('bo_cart_preview')}</CardTitle>
-              <span className="font-semibold tabular-nums">
-                {formatMoney(String(estimatedTotal))} {t('currency')}
-              </span>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {composition.length === 0 && <p className="text-sm text-muted-foreground">{t('bo_cart_empty')}</p>}
-              {composition.map((line, idx) => (
-                <div key={idx} className="flex items-center justify-between gap-2 text-sm">
-                  <span>
-                    {line.label ?? line.menuItemId ?? line.comboId} ×{line.quantity}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-base">{t('bo_cart_preview')}</CardTitle>
+                  <span className="text-sm font-semibold tabular-nums">
+                    {formatMoney(String(estimatedTotal))} {t('currency')}
                   </span>
-                  <Button type="button" variant="ghost" size="icon" onClick={() => setComposition((p) => p.filter((_, i) => i !== idx))}>
-                    <Trash2 className="size-4" />
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {composition.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">{t('bo_cart_empty')}</p>
+                  ) : (
+                    composition.map((line, idx) => (
+                      <div key={idx} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="min-w-0 truncate">
+                          {line.label ?? line.menuItemId ?? line.comboId} ×{line.quantity}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 shrink-0"
+                          onClick={() => setComposition((p) => p.filter((_, i) => i !== idx))}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                  <Button className="w-full min-h-10" disabled={composition.length === 0} onClick={() => setStep('recipients')}>
+                    {t('bo_next')} <ChevronRight className="size-4" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          ) : null}
+
+          {step === 'recipients' ? (
+            <Card>
+              <CardContent className="space-y-3 pt-4">
+                <Input placeholder={t('search_ph')} value={userQuery} onChange={(e) => setUserQuery(e.target.value)} />
+                <div className="flex flex-wrap gap-2">
+                  {segments.map((s) => (
+                    <Button
+                      key={s.id}
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={setSegment.isPending}
+                      onClick={() => void applySegment(s.id)}
+                    >
+                      {t(s.labelKey)}
+                    </Button>
+                  ))}
+                </div>
+                <Toolbar className="mb-0">
+                  <Button type="button" variant="outline" size="sm" onClick={toggleAll}>
+                    {t('bo_select_all')}
+                  </Button>
+                  <Badge variant="secondary">
+                    {selected.size} {t('bo_recipients')}
+                  </Badge>
+                </Toolbar>
+                <div className="max-h-64 space-y-2 overflow-y-auto">
+                  {users?.map((u) => (
+                    <label key={u.id} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2">
+                      <Checkbox
+                        checked={selected.has(u.id)}
+                        onCheckedChange={() => {
+                          setSelected((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(u.id)) next.delete(u.id);
+                            else next.add(u.id);
+                            return next;
+                          });
+                        }}
+                      />
+                      <span className="flex-1 text-sm">
+                        <strong>{u.name}</strong>
+                        {u.phone ? <span className="text-muted-foreground"> · {u.phone}</span> : null}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 min-h-10" onClick={() => setStep('build')}>
+                    <ChevronLeft className="size-4" /> {t('bo_back')}
+                  </Button>
+                  <Button className="flex-1 min-h-10" disabled={selected.size === 0} onClick={() => setStep('review')}>
+                    {t('bo_next')} <ChevronRight className="size-4" />
                   </Button>
                 </div>
-              ))}
-              {savingDraft && <p className="text-xs text-muted-foreground">{t('loading')}</p>}
-              <Button className="w-full min-h-11" disabled={composition.length === 0} onClick={() => setStep('recipients')}>
-                {t('bo_next')} <ChevronRight className="size-4" />
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+          ) : null}
 
-        <TabsContent value="recipients" className="space-y-4">
-          <Card>
-            <CardContent className="space-y-3 pt-4">
-              <Input placeholder={t('search_ph')} value={userQuery} onChange={(e) => setUserQuery(e.target.value)} />
-              <div className="flex flex-wrap gap-2">
-                {segments.map((s) => (
-                  <Button key={s.id} type="button" variant="secondary" size="sm" disabled={setSegment.isPending} onClick={() => void applySegment(s.id)}>
-                    {t(s.labelKey)}
-                  </Button>
+          {step === 'review' ? (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{t('bo_review_title')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {composition.map((line, idx) => (
+                  <div key={idx} className="text-sm">
+                    {line.label ?? '—'} ×{line.quantity}
+                  </div>
                 ))}
-              </div>
-              <div className="flex items-center justify-between">
-                <Button type="button" variant="outline" size="sm" onClick={toggleAll}>
-                  {t('bo_select_all')}
-                </Button>
-                <Badge variant="secondary">
+                <div className="flex justify-between border-t pt-3 font-semibold">
+                  <span>{t('total')}</span>
+                  <span className="tabular-nums">
+                    {formatMoney(String(estimatedTotal))} {t('currency')}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
                   {selected.size} {t('bo_recipients')}
-                </Badge>
-              </div>
-              <div className="max-h-72 space-y-2 overflow-y-auto">
-                {users?.map((u) => (
-                  <label key={u.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2">
-                    <Checkbox
-                      checked={selected.has(u.id)}
-                      onCheckedChange={() => {
-                        setSelected((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(u.id)) next.delete(u.id);
-                          else next.add(u.id);
-                          return next;
-                        });
-                      }}
-                    />
-                    <span className="flex-1 text-sm">
-                      <strong>{u.name}</strong>
-                      {u.phone ? <span className="text-muted-foreground"> · {u.phone}</span> : null}
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setStep('build')}>
-                  <ChevronLeft className="size-4" /> {t('bo_back')}
-                </Button>
-                <Button className="flex-1" disabled={selected.size === 0} onClick={() => setStep('review')}>
-                  {t('bo_next')} <ChevronRight className="size-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 min-h-10" onClick={() => setStep('recipients')}>
+                    {t('bo_back')}
+                  </Button>
+                  <Button className="flex-1 min-h-10" disabled={send.isPending || selected.size === 0} onClick={() => void doSend()}>
+                    {t('bo_send_offer')}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {sendingId && sendDetail ? (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{t('bo_send_progress')}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <Badge>{sendDetail.offer.status}</Badge>
+                <div className="flex flex-wrap gap-4">
+                  <span>
+                    {t('bo_send_sent')}: {sendDetail.counts.sent ?? 0}
+                  </span>
+                  <span>
+                    {t('bo_send_failed')}: {sendDetail.counts.failed ?? 0}
+                  </span>
+                  <span>
+                    {t('bo_send_skipped')}: {sendDetail.counts.skipped_no_telegram ?? 0}
+                  </span>
+                </div>
+                {sendDetail.offer.status !== 'sending' && (sendDetail.counts.failed ?? 0) > 0 ? (
+                  <Button size="sm" disabled={resendFailed.isPending} onClick={() => resendFailed.mutate(sendingId)}>
+                    {t('bo_resend_failed')}
+                  </Button>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
         </TabsContent>
 
-        <TabsContent value="review" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('bo_review_title')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {composition.map((line, idx) => (
-                <div key={idx} className="text-sm">
-                  {line.label ?? '—'} ×{line.quantity}
-                </div>
-              ))}
-              <div className="flex justify-between border-t pt-3 font-semibold">
-                <span>{t('total')}</span>
-                <span>
-                  {formatMoney(String(estimatedTotal))} {t('currency')}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {selected.size} {t('bo_recipients')}
-              </p>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setStep('recipients')}>
-                  {t('bo_back')}
-                </Button>
-                <Button className="flex-1" disabled={send.isPending || selected.size === 0} onClick={() => void doSend()}>
-                  {t('bo_send_offer')}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="history" className="mt-4 space-y-3">
+          {!offers?.length ? (
+            <AdminEmptyState icon={History} title={t('bo_offer_history')} description={t('bo_cart_empty')} />
+          ) : (
+            offers.map((o) => (
+              <Card key={o.id}>
+                <CardContent className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <Badge variant="outline" className="mb-1">
+                      {o.status}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground">
+                      {o.sentAt ? new Date(o.sentAt).toLocaleString() : new Date(o.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <strong className="shrink-0 tabular-nums">
+                    {formatMoney(o.estimatedTotal)} {t('currency')}
+                  </strong>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </TabsContent>
       </Tabs>
-
-      {sendingId && sendDetail && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t('bo_send_progress')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <Badge>{sendDetail.offer.status}</Badge>
-            <div className="flex flex-wrap gap-4">
-              <span>
-                {t('bo_send_sent')}: {sendDetail.counts.sent ?? 0}
-              </span>
-              <span>
-                {t('bo_send_failed')}: {sendDetail.counts.failed ?? 0}
-              </span>
-              <span>
-                {t('bo_send_skipped')}: {sendDetail.counts.skipped_no_telegram ?? 0}
-              </span>
-            </div>
-            {sendDetail.offer.status !== 'sending' && (sendDetail.counts.failed ?? 0) > 0 && (
-              <Button size="sm" disabled={resendFailed.isPending} onClick={() => resendFailed.mutate(sendingId)}>
-                {t('bo_resend_failed')}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="space-y-2">
-        <h3 className="font-semibold">{t('bo_offer_history')}</h3>
-        {offers?.map((o) => (
-          <Card key={o.id}>
-            <CardContent className="flex items-center justify-between py-3">
-              <div>
-                <Badge variant="outline" className="mb-1">
-                  {o.status}
-                </Badge>
-                <p className="text-xs text-muted-foreground">
-                  {o.sentAt ? new Date(o.sentAt).toLocaleString() : new Date(o.createdAt).toLocaleString()}
-                </p>
-              </div>
-              <strong className="tabular-nums">
-                {formatMoney(o.estimatedTotal)} {t('currency')}
-              </strong>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
     </div>
   );
 }

@@ -79,7 +79,7 @@ export function PlatformAuthGate({ children, allowSetup = false }: PlatformAuthG
         <div className="adm-root adm-login-page">
           <div className="adm-login-card">
             <h1>{t('platform_denied')}</h1>
-            <p className="adm-muted" style={{ marginBottom: 16 }}>
+            <p className="adm-muted mb-4">
               {client.name} — {t('platform_staff_logged_in')}
             </p>
             <div className="adm-row-actions">

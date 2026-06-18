@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MemberRole } from '@eatfit/shared';
+import { Copy, Trash2 } from 'lucide-react';
 import {
   useStaffList,
   useInviteStaff,
@@ -9,10 +10,9 @@ import {
   useUpdateStaffRole,
 } from '@/lib/backoffice-queries';
 import { useT } from '@/lib/i18n';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader, FormSection, FormGrid, Field, DataList, type DataListColumn } from '@/components/admin/ui';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -20,8 +20,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+
+type StaffRow = NonNullable<ReturnType<typeof useStaffList>['data']>[number];
+
+const ROLE_OPTIONS = [MemberRole.Manager, MemberRole.Cook, MemberRole.Courier] as const;
+
+function roleLabel(t: (key: 'role_admin' | 'role_cook' | 'role_courier') => string, role: MemberRole): string {
+  switch (role) {
+    case MemberRole.Manager:
+      return t('role_admin');
+    case MemberRole.Cook:
+      return t('role_cook');
+    case MemberRole.Courier:
+      return t('role_courier');
+    default:
+      return role;
+  }
+}
 
 export function StaffTab() {
   const t = useT();
@@ -31,28 +47,71 @@ export function StaffTab() {
   const updateRole = useUpdateStaffRole();
   const [inviteForm, setInviteForm] = useState({ name: '', phone: '', role: MemberRole.Cook });
 
+  const columns = useMemo<DataListColumn<StaffRow>[]>(
+    () => [
+      {
+        key: 'name',
+        header: t('name'),
+        primary: true,
+        render: (m) => (
+          <div>
+            <p className="font-medium">{m.name}</p>
+            <p className="text-xs text-muted-foreground md:hidden">{m.phone ?? '—'}</p>
+          </div>
+        ),
+      },
+      {
+        key: 'phone',
+        header: t('phone'),
+        primary: false,
+        className: 'hidden md:table-cell',
+        render: (m) => <span className="text-muted-foreground">{m.phone ?? '—'}</span>,
+      },
+      {
+        key: 'role',
+        header: t('adm_role'),
+        render: (m) => (
+          <Select
+            value={m.role}
+            onValueChange={(role) =>
+              updateRole.mutate(
+                { id: m.id, role: role as MemberRole },
+                { onSuccess: () => toast.success(t('adm_role_changed')) },
+              )
+            }
+          >
+            <SelectTrigger className="h-9 w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROLE_OPTIONS.map((role) => (
+                <SelectItem key={role} value={role}>
+                  {roleLabel(t, role)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ),
+      },
+    ],
+    [t, updateRole],
+  );
+
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold">{t('bo_staff')}</h2>
-        <p className="text-sm text-muted-foreground">{t('bo_staff_hint')}</p>
-      </div>
+      <PageHeader title={t('bo_staff')} description={t('bo_staff_hint')} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t('bo_invite')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <Label>{t('name')}</Label>
-            <Input value={inviteForm.name} onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label>{t('phone')}</Label>
-            <Input value={inviteForm.phone} onChange={(e) => setInviteForm({ ...inviteForm, phone: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label>{t('adm_role')}</Label>
+      <FormSection title={t('bo_invite')}>
+        <div className="space-y-4">
+          <FormGrid>
+            <Field label={t('name')}>
+              <Input value={inviteForm.name} onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })} />
+            </Field>
+            <Field label={t('phone')}>
+              <Input value={inviteForm.phone} onChange={(e) => setInviteForm({ ...inviteForm, phone: e.target.value })} />
+            </Field>
+          </FormGrid>
+          <Field label={t('adm_role')}>
             <Select
               value={inviteForm.role}
               onValueChange={(v) => setInviteForm({ ...inviteForm, role: v as MemberRole })}
@@ -61,12 +120,14 @@ export function StaffTab() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={MemberRole.Manager}>{t('role_admin')}</SelectItem>
-                <SelectItem value={MemberRole.Cook}>{t('role_cook')}</SelectItem>
-                <SelectItem value={MemberRole.Courier}>{t('role_courier')}</SelectItem>
+                {ROLE_OPTIONS.map((role) => (
+                  <SelectItem key={role} value={role}>
+                    {roleLabel(t, role)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-          </div>
+          </Field>
           <Button
             className="w-full min-h-11"
             disabled={invite.isPending || !inviteForm.name || !inviteForm.phone}
@@ -82,52 +143,40 @@ export function StaffTab() {
           >
             {t('bo_invite')}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </FormSection>
 
-      <div className="space-y-3">
-        {staff?.map((m) => (
-          <Card key={m.id}>
-            <CardContent className="py-3 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <strong>{m.name}</strong>
-                  <p className="text-sm text-muted-foreground">{m.phone ?? '—'}</p>
-                </div>
-                <Badge variant="outline">{m.role}</Badge>
-              </div>
-              {m.inviteLink && (
-                <Button variant="secondary" size="sm" className="w-full" onClick={() => void navigator.clipboard.writeText(m.inviteLink!)}>
-                  {t('bo_invite_link')}
-                </Button>
-              )}
-              <div className="flex gap-2">
-                <Select
-                  value={m.role}
-                  onValueChange={(role) =>
-                    updateRole.mutate(
-                      { id: m.id, role: role as MemberRole },
-                      { onSuccess: () => toast.success(t('adm_role_changed')) },
-                    )
-                  }
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={MemberRole.Manager}>{t('role_admin')}</SelectItem>
-                    <SelectItem value={MemberRole.Cook}>{t('role_cook')}</SelectItem>
-                    <SelectItem value={MemberRole.Courier}>{t('role_courier')}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="destructive" size="sm" disabled={remove.isPending} onClick={() => remove.mutate(m.id)}>
-                  {t('adm_delete')}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <DataList
+        columns={columns}
+        rows={staff ?? []}
+        keyFn={(m) => m.id}
+        empty={<p className="text-sm text-muted-foreground">{t('nothing_found')}</p>}
+        actions={(m) => (
+          <div className="flex items-center gap-1">
+            {m.inviteLink ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                aria-label={t('bo_invite_link')}
+                onClick={() => void navigator.clipboard.writeText(m.inviteLink!)}
+              >
+                <Copy className="size-4" />
+              </Button>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-destructive hover:text-destructive"
+              aria-label={t('adm_delete')}
+              disabled={remove.isPending}
+              onClick={() => remove.mutate(m.id)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+        )}
+      />
     </div>
   );
 }

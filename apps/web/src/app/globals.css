@@ -108,6 +108,10 @@
   --adm-topbar-h: 56px;
   --adm-radius: 10px;
   --adm-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --adm-row-h: 40px;
+  --adm-field-gap: 12px;
+  --adm-section-gap: 20px;
+  --adm-drawer-w: 560px;
 }
 
 html[data-theme='dark'] {
@@ -1846,6 +1850,43 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+.adm-sidebar-footer {
+  margin-top: auto;
+  padding: 8px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.adm-sidebar-logout {
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
+.adm-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--adm-topbar-h);
+  padding: 0 16px;
+  border-bottom: 1px solid var(--adm-border);
+}
+
+.adm-kbd {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--adm-border);
+  background: var(--adm-surface-2);
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--adm-text-muted);
+}
+
 .adm-main {
   flex: 1;
   min-width: 0;
@@ -1902,10 +1943,16 @@ textarea:focus-visible {
 
 .adm-content {
   flex: 1;
-  padding: 20px 16px calc(32px + env(safe-area-inset-bottom, 0px));
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px));
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+  .adm-content {
+    padding: 20px 24px 32px;
+  }
 }
 
 @media (max-width: 1023px) {

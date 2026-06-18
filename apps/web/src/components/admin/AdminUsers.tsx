@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { MoreHorizontal, Users } from 'lucide-react';
 import { useAdminUsers, useDeposit, useWithdraw, useCreateAdminClient } from '@/lib/admin-queries';
 import { useClientCrm, useClientOrders } from '@/lib/offers-queries';
 import { useT, useStatusText } from '@/lib/i18n';
@@ -10,35 +11,66 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  DataList,
+  EditDrawer,
+  AdminEmptyState,
+  PageHeader,
+  Field,
+  type DataListColumn,
+} from '@/components/admin/ui';
+import type { ClientDto } from '@/lib/types';
 import { toast } from 'sonner';
 
-export function AdminUsers() {
+type BalanceAction = 'deposit' | 'withdraw' | null;
+
+function UserDetailDrawer({
+  clientId,
+  open,
+  onOpenChange,
+  balanceAction,
+  onBalanceActionHandled,
+}: {
+  clientId: string | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  balanceAction: BalanceAction;
+  onBalanceActionHandled: () => void;
+}) {
   const t = useT();
   const st = useStatusText();
-  const [q, setQ] = useState('');
-  const { data: users } = useAdminUsers(q);
   const deposit = useDeposit();
   const withdraw = useWithdraw();
-  const createClient = useCreateAdminClient();
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const { data: crm } = useClientCrm(clientId);
+  const { data: clientOrders } = useClientOrders(clientId);
   const [amount, setAmount] = useState('');
-  const [addOpen, setAddOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newAddress, setNewAddress] = useState('');
+  const amountRef = useRef<HTMLInputElement>(null);
 
-  const { data: crm } = useClientCrm(detailId);
-  const { data: clientOrders } = useClientOrders(detailId);
+  useEffect(() => {
+    if (!open) {
+      setAmount('');
+      return;
+    }
+    if (balanceAction && amountRef.current) {
+      amountRef.current.focus();
+      onBalanceActionHandled();
+    }
+  }, [open, balanceAction, onBalanceActionHandled]);
 
   const applyPreset = (v: number) => setAmount(String(v));
 
-  const doDeposit = (clientId: string) => {
+  const doDeposit = () => {
+    if (!crm) return;
     const n = Number(amount);
     if (!n) return;
     deposit.mutate(
-      { clientId, amount: n },
+      { clientId: crm.id, amount: n },
       {
         onSuccess: () => {
           toast.success(t('adm_deposit_done'));
@@ -48,11 +80,12 @@ export function AdminUsers() {
     );
   };
 
-  const doWithdraw = (clientId: string) => {
+  const doWithdraw = () => {
+    if (!crm) return;
     const n = Number(amount);
     if (!n) return;
     withdraw.mutate(
-      { clientId, amount: n },
+      { clientId: crm.id, amount: n },
       {
         onSuccess: () => {
           toast.success(t('saved'));
@@ -61,6 +94,173 @@ export function AdminUsers() {
       },
     );
   };
+
+  return (
+    <EditDrawer
+      open={open}
+      onOpenChange={onOpenChange}
+      title={crm?.name ?? t('profile')}
+    >
+      {crm ? (
+        <div className="space-y-4 text-sm">
+          <Button className="w-full min-h-10" asChild>
+            <Link href={`/b/orders/new/?clientId=${crm.id}`}>{t('crm_create_order')}</Link>
+          </Button>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Card>
+              <CardContent className="py-3">
+                <p className="text-xs text-muted-foreground">{t('balance')}</p>
+                <p className="font-bold tabular-nums">
+                  {formatMoney(crm.balance)} {t('currency')}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="py-3">
+                <p className="text-xs text-muted-foreground">{t('crm_lifetime')}</p>
+                <p className="font-bold tabular-nums">
+                  {formatMoney(crm.lifetimeSpend)} {t('currency')}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <p>
+            {t('crm_orders_count')}: <strong>{crm.ordersCount}</strong>
+            {crm.lastOrderAt && (
+              <>
+                {' '}
+                · {t('crm_last_order')}: {new Date(crm.lastOrderAt).toLocaleString()}
+              </>
+            )}
+          </p>
+          {crm.address && (
+            <p>
+              {t('address')}: {crm.address}
+            </p>
+          )}
+
+          <div className="space-y-3 rounded-lg border p-4">
+            <p className="font-medium">{t('balance')}</p>
+            <div className="flex flex-wrap gap-2">
+              {[50000, 100000, 200000].map((v) => (
+                <Button key={v} type="button" variant="secondary" size="sm" onClick={() => applyPreset(v)}>
+                  +{formatMoney(String(v))}
+                </Button>
+              ))}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                ref={amountRef}
+                inputMode="numeric"
+                placeholder={t('adm_amount')}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <Button disabled={deposit.isPending || !Number(amount)} onClick={doDeposit}>
+                {t('adm_deposit')}
+              </Button>
+              <Button variant="outline" disabled={withdraw.isPending || !Number(amount)} onClick={doWithdraw}>
+                {t('adm_withdraw')}
+              </Button>
+            </div>
+          </div>
+
+          {crm.topItems.length > 0 && (
+            <div>
+              <h4 className="mb-2 font-medium">{t('crm_top_items')}</h4>
+              <ul className="space-y-1">
+                {crm.topItems.map((item) => (
+                  <li key={item.name} className="flex justify-between">
+                    <span>{item.name}</span>
+                    <span>×{item.quantity}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {clientOrders && clientOrders.length > 0 && (
+            <div>
+              <h4 className="mb-2 font-medium">{t('crm_order_history')}</h4>
+              <ul className="space-y-2">
+                {clientOrders.map((o) => (
+                  <li key={o.id} className="flex justify-between border-b pb-2">
+                    <span>
+                      #{o.number} · {st(o.status)}
+                    </span>
+                    <span className="tabular-nums">
+                      {formatMoney(o.total)} {t('currency')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      ) : null}
+    </EditDrawer>
+  );
+}
+
+export function AdminUsers() {
+  const t = useT();
+  const [q, setQ] = useState('');
+  const { data: users } = useAdminUsers(q);
+  const createClient = useCreateAdminClient();
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [balanceAction, setBalanceAction] = useState<BalanceAction>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+
+  const openProfile = (id: string, action: BalanceAction = null) => {
+    setDetailId(id);
+    setBalanceAction(action);
+  };
+
+  const columns: DataListColumn<ClientDto>[] = useMemo(
+    () => [
+      {
+        key: 'name',
+        header: t('adm_client_name'),
+        primary: true,
+        render: (u) => (
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <strong>{u.name}</strong>
+              {!u.telegramId && (
+                <Badge variant="outline" className="text-xs">
+                  {t('crm_not_linked')}
+                </Badge>
+              )}
+            </div>
+            {u.username ? <span className="text-xs text-muted-foreground">@{u.username}</span> : null}
+          </div>
+        ),
+      },
+      {
+        key: 'phone',
+        header: t('phone'),
+        primary: true,
+        render: (u) => <span className="text-muted-foreground">{u.phone ?? '—'}</span>,
+      },
+      {
+        key: 'balance',
+        header: t('balance'),
+        primary: true,
+        className: 'text-right',
+        render: (u) => (
+          <Badge variant="secondary" className="tabular-nums">
+            {formatMoney(u.balance)} {t('currency')}
+          </Badge>
+        ),
+      },
+    ],
+    [t],
+  );
 
   const submitNewClient = () => {
     if (!newName.trim() || !newPhone.trim()) return;
@@ -80,181 +280,98 @@ export function AdminUsers() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
-        <Input
-          className="flex-1"
-          placeholder={t('adm_search_user')}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <Button variant="default" className="shrink-0" onClick={() => setAddOpen(true)}>
-          {t('adm_add_client')}
-        </Button>
-      </div>
+    <div>
+      <PageHeader
+        title={t('adm_users')}
+        actions={
+          <Button onClick={() => setAddOpen(true)}>
+            {t('adm_add_client')}
+          </Button>
+        }
+        search={
+          <Input
+            placeholder={t('adm_search_user')}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        }
+      />
 
-      {users?.map((u) => (
-        <Card key={u.id}>
-          <CardContent className="py-3 space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <strong>{u.name}</strong>
-                  {!u.telegramId && (
-                    <Badge variant="outline" className="text-xs">
-                      {t('crm_not_linked')}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {(u.phone ?? '—') + (u.username ? ` · @${u.username}` : '')}
-                </p>
-                {u.address && <p className="text-xs text-muted-foreground">{u.address}</p>}
-              </div>
-              <Badge variant="secondary" className="tabular-nums shrink-0">
-                {formatMoney(u.balance)} {t('currency')}
-              </Badge>
-            </div>
-            {(u.ordersCount != null || u.lifetimeSpend) && (
-              <p className="text-xs text-muted-foreground">
-                {u.ordersCount != null && `${u.ordersCount} ${t('crm_orders_count')}`}
-                {u.lifetimeSpend && ` · ${formatMoney(u.lifetimeSpend)} ${t('crm_lifetime')}`}
-                {u.lastOrderAt && ` · ${new Date(u.lastOrderAt).toLocaleDateString()}`}
-              </p>
-            )}
-            <Button variant="outline" size="sm" className="w-full min-h-10" onClick={() => setDetailId(u.id)}>
-              {t('crm_view_profile')}
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
-
-      <Sheet open={addOpen} onOpenChange={setAddOpen}>
-        <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{t('adm_add_client')}</SheetTitle>
-          </SheetHeader>
-          <div className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <Label>{t('adm_client_name')}</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('phone')}</Label>
-              <Input inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('adm_client_address')}</Label>
-              <Input value={newAddress} onChange={(e) => setNewAddress(e.target.value)} />
-            </div>
-            <Button className="w-full min-h-11" disabled={createClient.isPending} onClick={submitNewClient}>
-              {createClient.isPending ? t('loading') : t('save')}
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={Boolean(detailId)} onOpenChange={(open) => !open && setDetailId(null)}>
-        <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{crm?.name ?? t('profile')}</SheetTitle>
-          </SheetHeader>
-          {crm && (
-            <div className="mt-4 space-y-4 text-sm">
-              <Button className="w-full min-h-10" asChild>
-                <Link href={`/b/orders/new/?clientId=${crm.id}`}>{t('crm_create_order')}</Link>
+      <DataList
+        columns={columns}
+        rows={users ?? []}
+        keyFn={(u) => u.id}
+        onRowClick={(u) => openProfile(u.id)}
+        actions={(u) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-8">
+                <MoreHorizontal className="size-4" />
+                <span className="sr-only">{t('crm_view_profile')}</span>
               </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openProfile(u.id)}>
+                {t('crm_view_profile')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openProfile(u.id, 'deposit')}>
+                {t('adm_deposit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openProfile(u.id, 'withdraw')}>
+                {t('adm_withdraw')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        empty={
+          <AdminEmptyState
+            icon={Users}
+            title={t('nothing_found')}
+            description={q.trim() ? t('adm_search_user') : undefined}
+            action={
+              !q.trim() ? (
+                <Button onClick={() => setAddOpen(true)}>{t('adm_add_client')}</Button>
+              ) : undefined
+            }
+          />
+        }
+      />
 
-              <div className="grid grid-cols-2 gap-3">
-                <Card>
-                  <CardContent className="py-3">
-                    <p className="text-muted-foreground text-xs">{t('balance')}</p>
-                    <p className="font-bold tabular-nums">
-                      {formatMoney(crm.balance)} {t('currency')}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="py-3">
-                    <p className="text-muted-foreground text-xs">{t('crm_lifetime')}</p>
-                    <p className="font-bold tabular-nums">
-                      {formatMoney(crm.lifetimeSpend)} {t('currency')}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-              <p>
-                {t('crm_orders_count')}: <strong>{crm.ordersCount}</strong>
-                {crm.lastOrderAt && (
-                  <>
-                    {' '}
-                    · {t('crm_last_order')}: {new Date(crm.lastOrderAt).toLocaleString()}
-                  </>
-                )}
-              </p>
-              {crm.address && (
-                <p>
-                  {t('address')}: {crm.address}
-                </p>
-              )}
+      <EditDrawer
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        title={t('adm_add_client')}
+        footer={
+          <Button className="min-h-10 w-full sm:w-auto" disabled={createClient.isPending} onClick={submitNewClient}>
+            {createClient.isPending ? t('loading') : t('save')}
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <Field label={t('adm_client_name')}>
+            <Input value={newName} onChange={(e) => setNewName(e.target.value)} />
+          </Field>
+          <Field label={t('phone')}>
+            <Input inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+          </Field>
+          <Field label={t('adm_client_address')}>
+            <Input value={newAddress} onChange={(e) => setNewAddress(e.target.value)} />
+          </Field>
+        </div>
+      </EditDrawer>
 
-              <div className="flex flex-wrap gap-2">
-                {[50000, 100000, 200000].map((v) => (
-                  <Button key={v} type="button" variant="secondary" size="sm" onClick={() => applyPreset(v)}>
-                    +{formatMoney(String(v))}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  inputMode="numeric"
-                  placeholder={t('adm_amount')}
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-                <Button disabled={deposit.isPending || !Number(amount)} onClick={() => doDeposit(crm.id)}>
-                  {t('adm_deposit')}
-                </Button>
-                <Button variant="outline" disabled={withdraw.isPending || !Number(amount)} onClick={() => doWithdraw(crm.id)}>
-                  {t('adm_withdraw')}
-                </Button>
-              </div>
-
-              {crm.topItems.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">{t('crm_top_items')}</h4>
-                  <ul className="space-y-1">
-                    {crm.topItems.map((item) => (
-                      <li key={item.name} className="flex justify-between">
-                        <span>{item.name}</span>
-                        <span>×{item.quantity}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {clientOrders && clientOrders.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">{t('crm_order_history')}</h4>
-                  <ul className="space-y-2">
-                    {clientOrders.map((o) => (
-                      <li key={o.id} className="flex justify-between border-b pb-2">
-                        <span>
-                          #{o.number} · {st(o.status)}
-                        </span>
-                        <span className="tabular-nums">
-                          {formatMoney(o.total)} {t('currency')}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
+      <UserDetailDrawer
+        clientId={detailId}
+        open={Boolean(detailId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailId(null);
+            setBalanceAction(null);
+          }
+        }}
+        balanceAction={balanceAction}
+        onBalanceActionHandled={() => setBalanceAction(null)}
+      />
     </div>
   );
 }

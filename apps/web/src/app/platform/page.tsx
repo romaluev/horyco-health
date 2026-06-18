@@ -3,10 +3,43 @@
 import { usePlatformMetrics } from '@/lib/backoffice-queries';
 import { useT } from '@/lib/i18n';
 import { formatMoney } from '@/lib/format';
+import { DataList, FormSection, type DataListColumn } from '@/components/admin/ui';
+
+type BizRow = {
+  id: string;
+  slug: string;
+  name: string;
+  orderCount: number;
+  gmv: string;
+};
 
 export default function PlatformDashboardPage() {
   const t = useT();
   const { data: metrics } = usePlatformMetrics(true);
+
+  const columns: DataListColumn<BizRow>[] = [
+    {
+      key: 'name',
+      header: t('platform_field_name'),
+      primary: true,
+      render: (b) => (
+        <>
+          <strong>{b.name}</strong>
+          <div className="text-xs text-muted-foreground">{b.slug}</div>
+        </>
+      ),
+    },
+    {
+      key: 'orders',
+      header: t('platform_orders_short'),
+      render: (b) => b.orderCount,
+    },
+    {
+      key: 'gmv',
+      header: t('platform_col_gmv'),
+      render: (b) => formatMoney(b.gmv),
+    },
+  ];
 
   return (
     <>
@@ -32,32 +65,9 @@ export default function PlatformDashboardPage() {
       )}
 
       {metrics && metrics.businesses.length > 0 && (
-        <div className="adm-card">
-          <h3>{t('platform_gmv_by_biz')}</h3>
-          <div className="adm-table-wrap">
-            <table className="adm-table">
-              <thead>
-                <tr>
-                  <th>{t('platform_field_name')}</th>
-                  <th>{t('platform_orders_short')}</th>
-                  <th>GMV</th>
-                </tr>
-              </thead>
-              <tbody>
-                {metrics.businesses.map((b) => (
-                  <tr key={b.id}>
-                    <td>
-                      <strong>{b.name}</strong>
-                      <div className="adm-muted">{b.slug}</div>
-                    </td>
-                    <td>{b.orderCount}</td>
-                    <td>{formatMoney(b.gmv)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <FormSection title={t('platform_gmv_by_biz')} className="mt-4">
+          <DataList columns={columns} rows={metrics.businesses} keyFn={(b) => b.id} />
+        </FormSection>
       )}
     </>
   );

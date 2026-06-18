@@ -1,88 +1,127 @@
 'use client';
 
 import Link from 'next/link';
-import { usePlatformBusinesses, useSuspendBusiness, useActivateBusiness } from '@/lib/backoffice-queries';
+import { useRouter } from 'next/navigation';
+import { Building2 } from 'lucide-react';
+import {
+  usePlatformBusinesses,
+  useSuspendBusiness,
+  useActivateBusiness,
+  type PlatformBusiness,
+} from '@/lib/backoffice-queries';
 import { useT } from '@/lib/i18n';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  AdminEmptyState,
+  DataList,
+  PageHeader,
+  type DataListColumn,
+} from '@/components/admin/ui';
 
 function botBadge(status: string, t: ReturnType<typeof useT>) {
   switch (status) {
     case 'webhook':
     case 'polling':
-      return { label: t('platform_bot_webhook'), cls: 'adm-badge-ok' };
+      return { label: t('platform_bot_webhook'), variant: 'default' as const };
     case 'error':
     case 'revoked':
-      return { label: t('platform_bot_error'), cls: 'adm-badge-warn' };
+      return { label: t('platform_bot_error'), variant: 'destructive' as const };
     default:
-      return { label: t('platform_bot_off'), cls: 'adm-badge-muted' };
+      return { label: t('platform_bot_off'), variant: 'secondary' as const };
   }
 }
 
 export default function PlatformBusinessesPage() {
   const t = useT();
+  const router = useRouter();
   const { data: businesses } = usePlatformBusinesses(true);
   const suspend = useSuspendBusiness();
   const activate = useActivateBusiness();
 
+  const columns: DataListColumn<PlatformBusiness>[] = [
+    {
+      key: 'name',
+      header: t('platform_field_name'),
+      primary: true,
+      render: (b) => (
+        <>
+          <Link
+            href={`/platform/businesses/view/?id=${b.id}`}
+            className="font-semibold text-foreground hover:underline"
+          >
+            {b.name}
+          </Link>
+          <div className="text-xs text-muted-foreground">
+            {b.slug} · @{b.botUsername ?? '—'}
+          </div>
+        </>
+      ),
+    },
+    {
+      key: 'status',
+      header: t('platform_col_status'),
+      render: (b) => (
+        <Badge variant={b.status === 'active' ? 'default' : 'secondary'}>{b.status}</Badge>
+      ),
+    },
+    {
+      key: 'bot',
+      header: t('platform_col_bot'),
+      primary: false,
+      render: (b) => {
+        const badge = botBadge(b.botStatus, t);
+        return <Badge variant={badge.variant}>{badge.label}</Badge>;
+      },
+    },
+  ];
+
   return (
     <>
-      <div style={{ marginBottom: 16 }}>
-        <Link href="/platform/businesses/new/" className="adm-btn adm-btn-primary">
-          {t('platform_create_btn')}
-        </Link>
-      </div>
+      <PageHeader
+        title={t('platform_list')}
+        actions={
+          <Button asChild>
+            <Link href="/platform/businesses/new/">{t('platform_create_btn')}</Link>
+          </Button>
+        }
+      />
 
-      <div className="adm-card">
-        <h3>{t('platform_list')}</h3>
-        {!businesses?.length && <p className="adm-muted">{t('menu_empty')}</p>}
-        <div className="adm-table-wrap">
-          <table className="adm-table">
-            <thead>
-              <tr>
-                <th>{t('platform_field_name')}</th>
-                <th>Status</th>
-                <th>Bot</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {businesses?.map((b) => {
-                const badge = botBadge(b.botStatus, t);
-                return (
-                  <tr key={b.id}>
-                    <td>
-                      <Link href={`/platform/businesses/view/?id=${b.id}`} style={{ fontWeight: 600 }}>
-                        {b.name}
-                      </Link>
-                      <div className="adm-muted">{b.slug} · @{b.botUsername ?? '—'}</div>
-                    </td>
-                    <td>
-                      <span className={`adm-badge ${b.status === 'active' ? 'adm-badge-ok' : 'adm-badge-muted'}`}>
-                        {b.status}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`adm-badge ${badge.cls}`}>{badge.label}</span>
-                    </td>
-                    <td>
-                      <div className="adm-row-actions">
-                        {b.status === 'active' ? (
-                          <button type="button" className="adm-btn adm-btn-sm adm-btn-danger" disabled={suspend.isPending} onClick={() => suspend.mutate(b.id)}>
-                            {t('platform_suspend')}
-                          </button>
-                        ) : (
-                          <button type="button" className="adm-btn adm-btn-sm adm-btn-primary" disabled={activate.isPending} onClick={() => activate.mutate(b.id)}>
-                            {t('platform_activate')}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataList
+        columns={columns}
+        rows={businesses ?? []}
+        keyFn={(b) => b.id}
+        onRowClick={(b) => router.push(`/platform/businesses/view/?id=${b.id}`)}
+        actions={(b) => (
+          <div className="flex justify-end gap-2">
+            {b.status === 'active' ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={suspend.isPending}
+                onClick={() => suspend.mutate(b.id)}
+              >
+                {t('platform_suspend')}
+              </Button>
+            ) : (
+              <Button size="sm" disabled={activate.isPending} onClick={() => activate.mutate(b.id)}>
+                {t('platform_activate')}
+              </Button>
+            )}
+          </div>
+        )}
+        empty={
+          <AdminEmptyState
+            icon={Building2}
+            title={t('menu_empty')}
+            action={
+              <Button asChild>
+                <Link href="/platform/businesses/new/">{t('platform_create_btn')}</Link>
+              </Button>
+            }
+          />
+        }
+      />
     </>
   );
 }

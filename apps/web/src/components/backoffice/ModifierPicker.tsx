@@ -73,18 +73,18 @@ export function ModifierPicker({ groups, selectedIds, onChange }: ModifierPicker
         const max = group.maxSelect ?? null;
         const minUnmet = countInGroup < min;
         return (
-        <div className="card" key={group.id} style={{ marginBottom: 8 }}>
+        <div className="card u-mb-2" key={group.id}>
           <div className="dish-desc">
             {pick(lang, group.nameRu, group.nameUz)}
             {group.isRequired ? ` · ${t('mod_required')}` : ''}
             {max != null ? ` · ${t('mod_max')} ${max}` : ''}
           </div>
           {minUnmet && (
-            <div className="err" role="alert" style={{ marginTop: 4 }}>
+            <div className="err u-mt-1" role="alert">
               {t('mod_min_hint')} {min}
             </div>
           )}
-          <div className="seg" style={{ flexWrap: 'wrap', marginTop: 8 }}>
+          <div className="seg wrap u-mt-2">
             {group.modifiers.map((mod) => {
               const active = selectedIds.includes(mod.id);
               const showPrice =

@@ -9,6 +9,10 @@ import {
   useUpdatePlatformBusiness,
 } from '@/lib/backoffice-queries';
 import { useT } from '@/lib/i18n';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Field, FormGrid, FormSection, PageHeader } from '@/components/admin/ui';
 
 function BusinessViewInner() {
   const t = useT();
@@ -39,45 +43,57 @@ function BusinessViewInner() {
 
   return (
     <>
-      <Link href="/platform/businesses/" className="adm-btn adm-btn-sm" style={{ marginBottom: 16 }}>
-        {t('platform_back_list')}
-      </Link>
-      <div className="adm-card">
-        <h3>{business.name}</h3>
-        <p className="adm-muted">{business.slug} · {business.status}</p>
-        {health && (
-          <p style={{ marginTop: 8 }}>
-            {t('platform_health')}:{' '}
-            <span className={`adm-badge ${health.connected ? 'adm-badge-ok' : 'adm-badge-muted'}`}>
-              {health.botStatus} {health.connected ? '(connected)' : ''}
-            </span>
-            {health.botUsername && <span className="adm-muted"> @{health.botUsername}</span>}
+      <PageHeader
+        title={business.name}
+        description={`${business.slug} · ${business.status}`}
+        actions={
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/platform/businesses/">{t('platform_back_list')}</Link>
+          </Button>
+        }
+      />
+
+      {health && (
+        <FormSection title={t('platform_health')} className="mb-4">
+          <p className="flex flex-wrap items-center gap-2">
+            <Badge variant={health.connected ? 'default' : 'secondary'}>
+              {health.botStatus}
+              {health.connected ? ` (${t('platform_connected')})` : ''}
+            </Badge>
+            {health.botUsername ? (
+              <span className="text-sm text-muted-foreground">@{health.botUsername}</span>
+            ) : null}
           </p>
-        )}
-      </div>
-      <div className="adm-card">
-        <h3>{t('platform_edit_business')}</h3>
-        <div className="adm-field">
-          <label>{t('platform_field_name')}</label>
-          <input className="adm-input" value={name} onChange={(e) => setName(e.target.value)} />
+        </FormSection>
+      )}
+
+      <FormSection title={t('platform_edit_business')}>
+        <div className="space-y-4">
+          <FormGrid>
+            <Field label={t('platform_field_name')}>
+              <Input value={name} onChange={(e) => setName(e.target.value)} />
+            </Field>
+            <Field label={t('platform_field_tz')}>
+              <Input type="number" value={tz} onChange={(e) => setTz(Number(e.target.value))} />
+            </Field>
+            <Field label={t('platform_field_report')}>
+              <Input
+                type="number"
+                min={0}
+                max={23}
+                value={hour}
+                onChange={(e) => setHour(Number(e.target.value))}
+              />
+            </Field>
+          </FormGrid>
+          <Button
+            disabled={update.isPending}
+            onClick={() => update.mutate({ id, name, tzOffsetHours: tz, dailyReportHour: hour })}
+          >
+            {t('platform_save')}
+          </Button>
         </div>
-        <div className="adm-field">
-          <label>{t('platform_field_tz')}</label>
-          <input className="adm-input" type="number" value={tz} onChange={(e) => setTz(Number(e.target.value))} />
-        </div>
-        <div className="adm-field">
-          <label>{t('platform_field_report')}</label>
-          <input className="adm-input" type="number" min={0} max={23} value={hour} onChange={(e) => setHour(Number(e.target.value))} />
-        </div>
-        <button
-          type="button"
-          className="adm-btn adm-btn-primary"
-          disabled={update.isPending}
-          onClick={() => update.mutate({ id, name, tzOffsetHours: tz, dailyReportHour: hour })}
-        >
-          {t('platform_save')}
-        </button>
-      </div>
+      </FormSection>
     </>
   );
 }

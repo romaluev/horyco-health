@@ -25,6 +25,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { CommandPalette, useCommandPalette } from '@/components/admin/ui/CommandPalette';
 import { cn } from '@/lib/utils';
 
 interface AdminShellProps {
@@ -135,6 +136,7 @@ export function AdminShell({
   const [booted, setBooted] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const { open: cmdOpen, setOpen: setCmdOpen } = useCommandPalette();
 
   useEffect(() => {
     if (status === 'idle') {
@@ -175,19 +177,14 @@ export function AdminShell({
         <span>{t(brandSubtitleKey)}</span>
       </div>
       <NavLinks items={visibleNav} pathname={pathname} onNavigate={() => setDrawerOpen(false)} />
-      <div style={{ padding: '8px 12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="adm-sidebar-footer">
         {platformLink && (
           <Link href="/platform/" className="adm-nav-link">
             <ExternalLink size={18} aria-hidden />
             {t('platform_nav_console')}
           </Link>
         )}
-        <button
-          type="button"
-          className="adm-nav-link adm-btn-ghost"
-          onClick={() => logout()}
-          style={{ border: 'none', width: '100%', cursor: 'pointer' }}
-        >
+        <button type="button" className="adm-nav-link adm-sidebar-logout" onClick={() => logout()}>
           <LogOut size={18} aria-hidden />
           {t('logout')}
         </button>
@@ -212,6 +209,10 @@ export function AdminShell({
             </button>
             <h1 className="adm-topbar-title">{t(titleKey)}</h1>
             <div className="adm-topbar-actions adm-switcher">
+              <Button variant="outline" size="sm" className="hidden md:inline-flex" onClick={() => setCmdOpen(true)}>
+                {t('cmd_palette_placeholder').slice(0, 12)}…
+                <kbd className="adm-kbd">{t('adm_cmd_hint')}</kbd>
+              </Button>
               <BusinessSwitcher />
             </div>
           </header>
@@ -233,7 +234,7 @@ export function AdminShell({
             aria-modal="true"
             aria-label={t('adm_open_menu')}
           >
-            <div className="adm-topbar" style={{ borderBottom: '1px solid var(--adm-border)' }}>
+            <div className="adm-drawer-head">
               <span className="adm-topbar-title">{t('adm_open_menu')}</span>
               <button type="button" className="adm-menu-btn" aria-label={t('bo_close')} onClick={() => setDrawerOpen(false)}>
                 <X size={22} />
@@ -277,6 +278,8 @@ export function AdminShell({
           </div>
         </SheetContent>
       </Sheet>
+
+      <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} navItems={visibleNav} />
     </div>
   );
 }

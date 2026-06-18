@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Language } from '@eatfit/shared';
+import { Layers, MoreHorizontal, Plus } from 'lucide-react';
 import {
   useModifierGroupsAdmin,
   useCreateModifierGroup,
@@ -18,6 +19,28 @@ import {
 import { useT } from '@/lib/i18n';
 import { formatMoney, pick } from '@/lib/format';
 import { useAuthStore } from '@/store/auth.store';
+import {
+  PageHeader,
+  DataList,
+  EditDrawer,
+  FormSection,
+  FormGrid,
+  Field,
+  AdminEmptyState,
+  type DataListColumn,
+} from '@/components/admin/ui';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 function emptyGroup(): ModifierGroupBody {
   return {
@@ -34,6 +57,32 @@ function emptyGroup(): ModifierGroupBody {
   };
 }
 
+function SegmentButtons<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {options.map((opt) => (
+        <Button
+          key={opt.value}
+          type="button"
+          variant={value === opt.value ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onChange(opt.value)}
+        >
+          {opt.label}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 export function ModifiersTab() {
   const t = useT();
   const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
@@ -42,199 +91,308 @@ export function ModifiersTab() {
   const updateGroup = useUpdateModifierGroup();
   const deleteGroup = useDeleteModifierGroup();
 
-  // null — список; объект-форма — создание/редактирование.
   const [editing, setEditing] = useState<{ id: string | null; body: ModifierGroupBody } | null>(
     null,
   );
 
-  if (isLoading) return <div className="center">{t('loading')}</div>;
+  const openEdit = (group: ModifierGroupRow) => {
+    setEditing({
+      id: group.id,
+      body: {
+        nameRu: group.nameRu,
+        nameUz: group.nameUz,
+        kind: group.kind,
+        selectionType: group.selectionType,
+        pricingType: group.pricingType,
+        minSelect: group.minSelect,
+        maxSelect: group.maxSelect,
+        isRequired: group.isRequired,
+        isActive: group.isActive,
+        sortOrder: group.sortOrder,
+      },
+    });
+  };
 
   const saveGroup = () => {
     if (!editing) return;
     const body = editing.body;
-    const opts = {
-      onSuccess: () => setEditing(null),
-    };
+    const opts = { onSuccess: () => setEditing(null) };
     if (editing.id) updateGroup.mutate({ id: editing.id, body }, opts);
     else createGroup.mutate(body, opts);
   };
 
-  if (editing) {
-    const b = editing.body;
-    const set = (patch: Partial<ModifierGroupBody>) =>
-      setEditing((e) => (e ? { ...e, body: { ...e.body, ...patch } } : e));
-    return (
-      <div>
-        <button className="btn" type="button" onClick={() => setEditing(null)}>
-          ← {t('detail_back')}
-        </button>
-        <h3>{editing.id ? t('bo_mod_edit_group') : t('bo_mod_new_group')}</h3>
-        <div className="field">
-          <label>{t('adm_name_ru')}</label>
-          <input className="input" value={b.nameRu} onChange={(e) => set({ nameRu: e.target.value })} />
+  const columns: DataListColumn<ModifierGroupRow>[] = [
+    {
+      key: 'name',
+      header: t('adm_name_ru'),
+      render: (g) => (
+        <div>
+          <div className="font-medium">{pick(lang, g.nameRu, g.nameUz)}</div>
+          {g.nameUz && g.nameRu !== g.nameUz ? (
+            <div className="text-xs text-muted-foreground">{g.nameUz}</div>
+          ) : null}
         </div>
-        <div className="field">
-          <label>{t('adm_name_uz')}</label>
-          <input className="input" value={b.nameUz} onChange={(e) => set({ nameUz: e.target.value })} />
+      ),
+    },
+    {
+      key: 'type',
+      header: t('bo_mod_selection'),
+      primary: false,
+      render: (g) => (
+        <div className="flex flex-wrap gap-1">
+          <Badge variant="secondary">
+            {g.selectionType === 'SINGLE' ? t('bo_mod_single') : t('bo_mod_multiple')}
+          </Badge>
+          {g.kind === 'addition' ? (
+            <Badge variant="outline">{t('bo_mod_kind_addition')}</Badge>
+          ) : null}
+          {g.pricingType !== 'PAID' ? (
+            <Badge variant="outline">
+              {g.pricingType === 'FREE' ? t('bo_mod_free') : t('bo_mod_included')}
+            </Badge>
+          ) : null}
         </div>
-        <div className="field">
-          <label>{t('bo_mod_kind')}</label>
-          <div className="seg">
-            {(['modifier', 'addition'] as const).map((k) => (
-              <button
-                key={k}
-                type="button"
-                className={b.kind === k ? 'active' : ''}
-                onClick={() => set({ kind: k })}
-              >
-                {k === 'modifier' ? t('bo_mod_kind_modifier') : t('bo_mod_kind_addition')}
-              </button>
-            ))}
-          </div>
+      ),
+    },
+    {
+      key: 'items',
+      header: t('bo_mod_add_item'),
+      primary: false,
+      className: 'hidden lg:table-cell',
+      render: (g) => <span className="tabular-nums">{g.modifiers.length}</span>,
+    },
+    {
+      key: 'status',
+      header: t('adm_active'),
+      primary: false,
+      className: 'hidden sm:table-cell',
+      render: (g) => (
+        <div className="flex flex-wrap gap-1">
+          {g.isRequired ? <Badge>{t('mod_required')}</Badge> : null}
+          {!g.isActive ? (
+            <Badge variant="secondary">{t('adm_hidden')}</Badge>
+          ) : (
+            <Badge variant="outline">{t('adm_active')}</Badge>
+          )}
         </div>
-        <div className="field">
-          <label>{t('bo_mod_pricing')}</label>
-          <div className="seg">
-            {(['FREE', 'PAID', 'INCLUDED'] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                className={b.pricingType === p ? 'active' : ''}
-                onClick={() => set({ pricingType: p })}
-              >
-                {p === 'FREE' ? t('bo_mod_free') : p === 'PAID' ? t('bo_mod_paid') : t('bo_mod_included')}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="field">
-          <label>{t('bo_mod_sort')}</label>
-          <input
-            className="input"
-            type="number"
-            value={b.sortOrder ?? 0}
-            onChange={(e) => set({ sortOrder: Number(e.target.value) || 0 })}
-          />
-        </div>
-        <div className="field">
-          <label>{t('bo_mod_selection')}</label>
-          <div className="seg">
-            {(['SINGLE', 'MULTIPLE'] as ModifierSelectionType[]).map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={b.selectionType === s ? 'active' : ''}
-                onClick={() => set({ selectionType: s })}
-              >
-                {s === 'SINGLE' ? t('bo_mod_single') : t('bo_mod_multiple')}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="row" style={{ gap: 8 }}>
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t('bo_mod_min')}</label>
-            <input
-              className="input"
-              type="number"
-              value={b.minSelect ?? 0}
-              onChange={(e) => set({ minSelect: Number(e.target.value) || 0 })}
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t('bo_mod_max')}</label>
-            <input
-              className="input"
-              type="number"
-              value={b.maxSelect ?? ''}
-              onChange={(e) =>
-                set({ maxSelect: e.target.value.trim() === '' ? null : Number(e.target.value) })
-              }
-            />
-          </div>
-        </div>
-        <label className="row" style={{ cursor: 'pointer', marginBottom: 12 }}>
-          <input
-            type="checkbox"
-            checked={b.isRequired ?? false}
-            onChange={(e) => set({ isRequired: e.target.checked })}
-          />
-          <span>{t('mod_required')}</span>
-        </label>
-        <label className="row" style={{ cursor: 'pointer', marginBottom: 12 }}>
-          <input
-            type="checkbox"
-            checked={b.isActive ?? true}
-            onChange={(e) => set({ isActive: e.target.checked })}
-          />
-          <span>{t('adm_active')}</span>
-        </label>
-        <button
-          className="btn btn-primary"
-          disabled={createGroup.isPending || updateGroup.isPending || !b.nameRu.trim()}
-          onClick={saveGroup}
-        >
-          {t('save')}
-        </button>
-      </div>
-    );
+      ),
+    },
+  ];
+
+  const editingGroup = editing?.id ? groups?.find((g) => g.id === editing.id) : undefined;
+
+  if (isLoading) {
+    return <p className="py-8 text-center text-muted-foreground">{t('loading')}</p>;
   }
 
   return (
-    <div>
-      <div className="row" style={{ marginBottom: 12 }}>
-        <h3>{t('bo_modifiers')}</h3>
-        <button
-          className="btn btn-primary"
-          type="button"
-          onClick={() => setEditing({ id: null, body: emptyGroup() })}
-        >
-          {t('bo_mod_new_group')}
-        </button>
-      </div>
-      {!groups?.length && <p className="muted">{t('bo_modifiers_empty')}</p>}
-      {groups?.map((g) => (
-        <GroupCard
-          key={g.id}
-          group={g}
-          lang={lang}
-          onEdit={() =>
-            setEditing({
-              id: g.id,
-              body: {
-                nameRu: g.nameRu,
-                nameUz: g.nameUz,
-                kind: g.kind,
-                selectionType: g.selectionType,
-                pricingType: g.pricingType,
-                minSelect: g.minSelect,
-                maxSelect: g.maxSelect,
-                isRequired: g.isRequired,
-                isActive: g.isActive,
-                sortOrder: g.sortOrder,
-              },
-            })
-          }
-          onDelete={() => {
-            if (window.confirm(t('bo_mod_delete_group_q'))) deleteGroup.mutate(g.id);
-          }}
-        />
-      ))}
+    <div className="space-y-4">
+      <PageHeader
+        title={t('bo_modifiers')}
+        actions={
+          <Button type="button" onClick={() => setEditing({ id: null, body: emptyGroup() })}>
+            <Plus className="size-4" />
+            {t('bo_mod_new_group')}
+          </Button>
+        }
+      />
+
+      <DataList
+        columns={columns}
+        rows={groups ?? []}
+        keyFn={(g) => g.id}
+        onRowClick={openEdit}
+        actions={(g) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-8">
+                <MoreHorizontal className="size-4" />
+                <span className="sr-only">{t('adm_edit')}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openEdit(g)}>{t('adm_edit')}</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => {
+                  if (window.confirm(t('bo_mod_delete_group_q'))) deleteGroup.mutate(g.id);
+                }}
+              >
+                {t('adm_delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        empty={
+          <AdminEmptyState
+            icon={Layers}
+            title={t('bo_modifiers_empty')}
+            action={
+              <Button type="button" onClick={() => setEditing({ id: null, body: emptyGroup() })}>
+                <Plus className="size-4" />
+                {t('bo_mod_new_group')}
+              </Button>
+            }
+          />
+        }
+      />
+
+      <EditDrawer
+        open={editing !== null}
+        onOpenChange={(open) => !open && setEditing(null)}
+        title={editing?.id ? t('bo_mod_edit_group') : t('bo_mod_new_group')}
+        footer={
+          <div className="flex w-full gap-2 sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+              {t('detail_back')}
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                createGroup.isPending || updateGroup.isPending || !editing?.body.nameRu.trim()
+              }
+              onClick={saveGroup}
+            >
+              {t('save')}
+            </Button>
+          </div>
+        }
+      >
+        {editing ? (
+          <GroupEditor
+            body={editing.body}
+            groupId={editing.id}
+            group={editingGroup}
+            lang={lang}
+            onChange={(patch) =>
+              setEditing((e) => (e ? { ...e, body: { ...e.body, ...patch } } : e))
+            }
+          />
+        ) : null}
+      </EditDrawer>
     </div>
   );
 }
 
-function GroupCard({
+function GroupEditor({
+  body,
+  groupId,
   group,
   lang,
-  onEdit,
-  onDelete,
+  onChange,
 }: {
-  group: ModifierGroupRow;
+  body: ModifierGroupBody;
+  groupId: string | null;
+  group?: ModifierGroupRow;
   lang: Language;
-  onEdit: () => void;
-  onDelete: () => void;
+  onChange: (patch: Partial<ModifierGroupBody>) => void;
 }) {
+  const t = useT();
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-4">
+          <FormGrid>
+            <Field label={t('adm_name_ru')}>
+              <Input value={body.nameRu} onChange={(e) => onChange({ nameRu: e.target.value })} />
+            </Field>
+            <Field label={t('adm_name_uz')}>
+              <Input value={body.nameUz} onChange={(e) => onChange({ nameUz: e.target.value })} />
+            </Field>
+          </FormGrid>
+
+          <Field label={t('bo_mod_kind')}>
+            <SegmentButtons
+              value={body.kind ?? 'modifier'}
+              options={[
+                { value: 'modifier', label: t('bo_mod_kind_modifier') },
+                { value: 'addition', label: t('bo_mod_kind_addition') },
+              ]}
+              onChange={(kind) => onChange({ kind })}
+            />
+          </Field>
+
+          <Field label={t('bo_mod_pricing')}>
+            <SegmentButtons
+              value={body.pricingType ?? 'PAID'}
+              options={[
+                { value: 'FREE', label: t('bo_mod_free') },
+                { value: 'PAID', label: t('bo_mod_paid') },
+                { value: 'INCLUDED', label: t('bo_mod_included') },
+              ]}
+              onChange={(pricingType) => onChange({ pricingType })}
+            />
+          </Field>
+
+          <Field label={t('bo_mod_selection')}>
+            <SegmentButtons<ModifierSelectionType>
+              value={body.selectionType ?? 'SINGLE'}
+              options={[
+                { value: 'SINGLE', label: t('bo_mod_single') },
+                { value: 'MULTIPLE', label: t('bo_mod_multiple') },
+              ]}
+              onChange={(selectionType) => onChange({ selectionType })}
+            />
+          </Field>
+
+          <FormGrid>
+            <Field label={t('bo_mod_min')}>
+              <Input
+                type="number"
+                value={body.minSelect ?? 0}
+                onChange={(e) => onChange({ minSelect: Number(e.target.value) || 0 })}
+              />
+            </Field>
+            <Field label={t('bo_mod_max')}>
+              <Input
+                type="number"
+                value={body.maxSelect ?? ''}
+                onChange={(e) =>
+                  onChange({
+                    maxSelect: e.target.value.trim() === '' ? null : Number(e.target.value),
+                  })
+                }
+              />
+            </Field>
+          </FormGrid>
+
+          <Field label={t('bo_mod_sort')}>
+            <Input
+              type="number"
+              value={body.sortOrder ?? 0}
+              onChange={(e) => onChange({ sortOrder: Number(e.target.value) || 0 })}
+            />
+          </Field>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="mod-required"
+                checked={body.isRequired ?? false}
+                onCheckedChange={(checked) => onChange({ isRequired: checked === true })}
+              />
+              <Label htmlFor="mod-required">{t('mod_required')}</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="mod-active"
+                checked={body.isActive ?? true}
+                onCheckedChange={(checked) => onChange({ isActive: checked === true })}
+              />
+              <Label htmlFor="mod-active">{t('adm_active')}</Label>
+            </div>
+          </div>
+      </div>
+
+      {groupId && group ? (
+        <ModifierItemsSection group={group} lang={lang} />
+      ) : null}
+    </div>
+  );
+}
+
+function ModifierItemsSection({ group, lang }: { group: ModifierGroupRow; lang: Language }) {
   const t = useT();
   const createModifier = useCreateModifier();
   const updateModifier = useUpdateModifier();
@@ -257,89 +415,109 @@ function GroupCard({
     );
   };
 
-  return (
-    <div className="card" style={{ marginBottom: 12 }}>
-      <div className="row">
+  const columns: DataListColumn<ModifierRow>[] = [
+    {
+      key: 'name',
+      header: t('adm_name_ru'),
+      render: (m) => (
         <div>
-          <strong>{pick(lang, group.nameRu, group.nameUz)}</strong>
-          <div className="muted">
-            {group.selectionType === 'SINGLE' ? t('bo_mod_single') : t('bo_mod_multiple')}
-            {group.kind === 'addition' ? ` · ${t('bo_mod_kind_addition')}` : ''}
-            {group.pricingType !== 'PAID' ? ` · ${group.pricingType}` : ''}
-            {group.isRequired ? ` · ${t('mod_required')}` : ''}
-            {!group.isActive ? ` · ${t('adm_hidden')}` : ''}
-          </div>
+          <span>{pick(lang, m.nameRu, m.nameUz)}</span>
+          {Number(m.priceDelta) > 0 ? (
+            <span className="ml-2 text-muted-foreground">+{formatMoney(m.priceDelta)}</span>
+          ) : null}
         </div>
-        <div className="row" style={{ gap: 6 }}>
-          <button className="btn" type="button" onClick={onEdit}>
-            {t('adm_edit')}
-          </button>
-          <button className="btn" type="button" onClick={onDelete}>
-            {t('adm_delete')}
-          </button>
-        </div>
-      </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: t('adm_active'),
+      primary: false,
+      render: (m) =>
+        m.isActive ? (
+          <Badge variant="outline">{t('adm_active')}</Badge>
+        ) : (
+          <Badge variant="secondary">{t('adm_hidden')}</Badge>
+        ),
+    },
+  ];
 
-      {group.modifiers.map((m: ModifierRow) => (
-        <div className="row" key={m.id} style={{ marginTop: 8 }}>
-          <span>
-            {pick(lang, m.nameRu, m.nameUz)}
-            {Number(m.priceDelta) > 0 ? ` · +${formatMoney(m.priceDelta)}` : ''}
-            {!m.isActive ? ` · ${t('adm_hidden')}` : ''}
-          </span>
-          <div className="row" style={{ gap: 6 }}>
-            <button
-              className="btn"
-              type="button"
-              disabled={updateModifier.isPending}
-              onClick={() => updateModifier.mutate({ groupId: group.id, id: m.id, body: { nameRu: m.nameRu, nameUz: m.nameUz, isActive: !m.isActive } })}
-            >
-              {m.isActive ? t('adm_hide') : t('adm_show')}
-            </button>
-            <button
-              className="btn"
-              type="button"
-              disabled={deleteModifier.isPending}
-              onClick={() => deleteModifier.mutate({ groupId: group.id, id: m.id })}
-            >
-              {t('adm_remove_row')}
-            </button>
-          </div>
-        </div>
-      ))}
+  return (
+    <FormSection title={t('bo_mod_add_item')} description={`${group.modifiers.length} items`}>
+      <div className="space-y-4">
+        <DataList
+          columns={columns}
+          rows={group.modifiers}
+          keyFn={(m) => m.id}
+          actions={(m) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-8">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  disabled={updateModifier.isPending}
+                  onClick={() =>
+                    updateModifier.mutate({
+                      groupId: group.id,
+                      id: m.id,
+                      body: { nameRu: m.nameRu, nameUz: m.nameUz, isActive: !m.isActive },
+                    })
+                  }
+                >
+                  {m.isActive ? t('adm_hide') : t('adm_show')}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  disabled={deleteModifier.isPending}
+                  onClick={() => deleteModifier.mutate({ groupId: group.id, id: m.id })}
+                >
+                  {t('adm_remove_row')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          empty={
+            <p className="py-4 text-center text-sm text-muted-foreground">{t('bo_modifiers_empty')}</p>
+          }
+        />
 
-      <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-        <input
-          className="input"
-          style={{ flex: '1 1 120px' }}
-          placeholder={t('adm_name_ru')}
-          value={nameRu}
-          onChange={(e) => setNameRu(e.target.value)}
-        />
-        <input
-          className="input"
-          style={{ flex: '1 1 120px' }}
-          placeholder={t('adm_name_uz')}
-          value={nameUz}
-          onChange={(e) => setNameUz(e.target.value)}
-        />
-        <input
-          className="input"
-          style={{ maxWidth: 100 }}
-          type="number"
-          placeholder={t('bo_mod_price_delta')}
-          value={priceDelta}
-          onChange={(e) => setPriceDelta(e.target.value)}
-        />
-        <button
-          className="btn btn-primary"
+        <FormGrid cols={3}>
+          <Field label={t('adm_name_ru')} compact>
+            <Input
+              placeholder={t('adm_name_ru')}
+              value={nameRu}
+              onChange={(e) => setNameRu(e.target.value)}
+            />
+          </Field>
+          <Field label={t('adm_name_uz')} compact>
+            <Input
+              placeholder={t('adm_name_uz')}
+              value={nameUz}
+              onChange={(e) => setNameUz(e.target.value)}
+            />
+          </Field>
+          <Field label={t('bo_mod_price_delta')} compact>
+            <Input
+              type="number"
+              placeholder={t('bo_mod_price_delta')}
+              value={priceDelta}
+              onChange={(e) => setPriceDelta(e.target.value)}
+            />
+          </Field>
+        </FormGrid>
+        <Button
           type="button"
+          variant="secondary"
           disabled={createModifier.isPending || !nameRu.trim()}
           onClick={addModifier}
         >
+          <Plus className="size-4" />
           {t('bo_mod_add_item')}
-        </button>
+        </Button>
       </div>
-    </div>
+    </FormSection>
   );
 }
