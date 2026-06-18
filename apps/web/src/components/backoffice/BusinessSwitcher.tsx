@@ -9,7 +9,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 
 export function BusinessSwitcher() {
@@ -31,10 +30,11 @@ export function BusinessSwitcher() {
 
   return (
     <Select value={activeSlug ?? ''} onValueChange={(v) => void onSwitch(v)}>
-      <SelectTrigger className="h-9 w-[min(180px,40vw)] border-input bg-background text-xs shadow-sm">
-        <SelectValue placeholder={t('bo_switch_business')} />
-      </SelectTrigger>
-      <SelectContent align="end">
+      <SelectTrigger
+        className="h-9 w-[min(180px,40vw)] border-input bg-background text-xs shadow-sm"
+        placeholder={t('bo_switch_business')}
+      />
+      <SelectContent>
         {businesses.map((b) => (
           <SelectItem key={b.businessId} value={b.slug}>
             {b.name}

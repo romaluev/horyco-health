@@ -10,6 +10,7 @@ import { PLATFORM_NAV, type PlatformNavItem } from '@/lib/admin-nav';
 import { PlatformAuthGate } from './PlatformAuthGate';
 import { Button } from '@/components/ui/button';
 import { CommandPalette, useCommandPalette } from '@/components/admin/ui/CommandPalette';
+import { FluidProviders } from './FluidProviders';
 import { cn } from '@/lib/utils';
 
 interface PlatformShellProps {
@@ -92,6 +93,7 @@ export function PlatformShell({ children, titleKey }: PlatformShellProps) {
 
   return (
     <PlatformAuthGate>
+      <FluidProviders>
       <div className="adm-root">
         <div className="adm-layout">
           <aside className="adm-sidebar">{sidebar}</aside>
@@ -147,6 +149,7 @@ export function PlatformShell({ children, titleKey }: PlatformShellProps) {
 
         <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} navItems={cmdNav} />
       </div>
+      </FluidProviders>
     </PlatformAuthGate>
   );
 }

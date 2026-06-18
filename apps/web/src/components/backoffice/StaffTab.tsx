@@ -18,7 +18,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 
@@ -80,9 +79,7 @@ export function StaffTab() {
               )
             }
           >
-            <SelectTrigger className="h-9 w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="h-9 w-[140px]" />
             <SelectContent>
               {ROLE_OPTIONS.map((role) => (
                 <SelectItem key={role} value={role}>
@@ -116,9 +113,7 @@ export function StaffTab() {
               value={inviteForm.role}
               onValueChange={(v) => setInviteForm({ ...inviteForm, role: v as MemberRole })}
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger placeholder={roleLabel(t, inviteForm.role)} />
               <SelectContent>
                 {ROLE_OPTIONS.map((role) => (
                   <SelectItem key={role} value={role}>

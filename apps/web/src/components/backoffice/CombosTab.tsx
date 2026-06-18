@@ -37,7 +37,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 import {
   DropdownMenu,
@@ -445,9 +444,7 @@ function ComboEditor({
                             updateSlot(sIdx, { options });
                           }}
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="—" />
-                          </SelectTrigger>
+                          <SelectTrigger placeholder="—" />
                           <SelectContent>
                             <SelectItem value="__none__">—</SelectItem>
                             {menu?.map((m) => (

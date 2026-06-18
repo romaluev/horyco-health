@@ -26,7 +26,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type ComposeLine = ComposerLine;
@@ -269,12 +270,24 @@ export function OffersTab() {
                     {selected.size} {t('bo_recipients')}
                   </Badge>
                 </Toolbar>
-                <div className="max-h-64 space-y-2 overflow-y-auto">
-                  {users?.map((u) => (
-                    <label key={u.id} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md border px-3 py-2">
-                      <Checkbox
+                <ScrollArea viewportClassName="max-h-64">
+                  <CheckboxGroup
+                    className="divide-y divide-border"
+                    checkedIndices={
+                      new Set(
+                        (users ?? [])
+                          .map((u, i) => (selected.has(u.id) ? i : -1))
+                          .filter((i) => i >= 0),
+                      )
+                    }
+                  >
+                    {users?.map((u, i) => (
+                      <CheckboxItem
+                        key={u.id}
+                        index={i}
+                        label={`${u.name}${u.phone ? ` · ${u.phone}` : ''}`}
                         checked={selected.has(u.id)}
-                        onCheckedChange={() => {
+                        onToggle={() => {
                           setSelected((prev) => {
                             const next = new Set(prev);
                             if (next.has(u.id)) next.delete(u.id);
@@ -283,13 +296,9 @@ export function OffersTab() {
                           });
                         }}
                       />
-                      <span className="flex-1 text-sm">
-                        <strong>{u.name}</strong>
-                        {u.phone ? <span className="text-muted-foreground"> · {u.phone}</span> : null}
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                    ))}
+                  </CheckboxGroup>
+                </ScrollArea>
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => setStep('build')}>
                     <ChevronLeft className="size-4" /> {t('bo_back')}

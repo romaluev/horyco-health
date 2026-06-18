@@ -1,46 +1,216 @@
-import * as React from 'react';
-import { Slot } from '@radix-ui/react-slot';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+"use client";
 
+import { forwardRef, type ButtonHTMLAttributes } from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
+import type { IconComponent } from "@/lib/icon-context";
+import { cn } from "@/lib/utils";
+import { useShape } from "@/lib/shape-context";
+
+/*
+ * Variant mapping (shadcn → Fluid Functionalism):
+ *   default     → primary
+ *   outline     → tertiary (bordered)
+ *   destructive → destructive
+ *   link        → ghost + underline
+ *   secondary   → secondary
+ *   ghost       → ghost
+ *   primary     → primary (native FF)
+ */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  [
+    "group relative isolate inline-flex items-center justify-center outline-none cursor-pointer",
+    "text-box-trim-both text-box-edge-cap-alphabetic",
+    "transition-colors duration-80",
+    "disabled:opacity-50 disabled:pointer-events-none",
+    "focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
+  ],
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90',
-        destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
-        outline: 'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+        primary: "text-background",
+        default: "text-background",
+        secondary: "text-foreground",
+        tertiary: "border border-border text-foreground",
+        outline: "border border-border text-foreground",
+        ghost: "text-muted-foreground hover:text-foreground",
+        destructive: "text-destructive-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: 'min-h-11 px-4 py-2 md:min-h-9',
-        sm: 'min-h-9 rounded-md px-3 text-xs md:min-h-8',
-        lg: 'min-h-12 rounded-md px-8 md:min-h-10',
-        icon: 'size-11 md:size-9',
+        sm: "h-7 px-3 text-[12px] gap-1",
+        md: "h-8 px-4 text-[13px] gap-1.5",
+        lg: "h-9 px-5 text-[14px] gap-1.5",
+        "icon-sm": "h-8 w-8 p-0 [&_svg]:h-3.5 [&_svg]:w-3.5",
+        icon: "h-9 w-9 p-0 [&_svg]:h-4 [&_svg]:w-4",
+        "icon-lg": "h-10 w-10 p-0 [&_svg]:h-5 [&_svg]:w-5",
       },
+      iconLeft: { true: "" },
+      iconRight: { true: "" },
     },
+    compoundVariants: [
+      { size: "sm", iconLeft: true, className: "pl-[6px]" },
+      { size: "md", iconLeft: true, className: "pl-[10px]" },
+      { size: "lg", iconLeft: true, className: "pl-[14px]" },
+      { size: "sm", iconRight: true, className: "pr-[6px]" },
+      { size: "md", iconRight: true, className: "pr-[10px]" },
+      { size: "lg", iconRight: true, className: "pr-[14px]" },
+    ],
     defaultVariants: {
-      variant: 'default',
-      size: 'default',
+      variant: "primary",
+      size: "md",
     },
-  },
+  }
 );
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+interface ButtonProps
+  extends ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  loading?: boolean;
+  leadingIcon?: IconComponent;
+  trailingIcon?: IconComponent;
+  /** Force the visual pressed/held state. Useful when the button drives an
+   *  external open piece of UI (a popover, dropdown, etc.) so it reads as
+   *  engaged while the menu is showing. */
+  active?: boolean;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button';
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
-  },
+const bgVariants: Record<string, string> = {
+  primary: "bg-foreground group-hover:bg-foreground/90 group-active:bg-foreground/80",
+  default: "bg-foreground group-hover:bg-foreground/90 group-active:bg-foreground/80",
+  secondary: "bg-accent group-hover:bg-accent/80 group-active:bg-accent",
+  tertiary: "bg-transparent group-hover:bg-hover group-active:bg-active",
+  outline: "bg-transparent group-hover:bg-hover group-active:bg-active",
+  ghost: "bg-transparent group-hover:bg-hover group-active:bg-active",
+  destructive: "bg-destructive group-hover:bg-destructive/90 group-active:bg-destructive/80",
+  link: "bg-transparent",
+};
+
+const activeBgVariants: Record<string, string> = {
+  primary: "bg-foreground/80",
+  default: "bg-foreground/80",
+  secondary: "bg-accent",
+  tertiary: "bg-active",
+  outline: "bg-active",
+  ghost: "bg-active",
+  destructive: "bg-destructive/80",
+  link: "bg-transparent",
+};
+
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      loading = false,
+      leadingIcon: LeadingIcon,
+      trailingIcon: TrailingIcon,
+      active = false,
+      disabled,
+      children,
+      style,
+      ...props
+    },
+    ref
+  ) => {
+    const Comp = asChild ? Slot : "button";
+    const isIconOnly = size === "icon" || size === "icon-sm" || size === "icon-lg";
+    const iconSize = size === "sm" ? 14 : size === "lg" ? 20 : 16;
+    const shape = useShape();
+    const resolvedVariant = variant === "default" ? "primary" : variant;
+    const bgClass = active
+      ? activeBgVariants[resolvedVariant ?? "primary"]
+      : bgVariants[resolvedVariant ?? "primary"];
+
+    return (
+      <Comp
+        ref={ref}
+        className={cn(
+          buttonVariants({
+            variant,
+            size,
+            iconLeft: !isIconOnly && !!LeadingIcon,
+            iconRight: !isIconOnly && !!TrailingIcon,
+          }),
+          shape.button,
+          className
+        )}
+        disabled={disabled || loading}
+        style={style}
+        {...props}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-0 rounded-[inherit] transition-[background-color,transform] duration-80 group-active:scale-[0.98]",
+            bgClass
+          )}
+        />
+        <span className="relative inline-flex items-center justify-center gap-[inherit]">
+          {loading ? (
+            <>
+              <span className="flex items-center justify-center gap-[inherit] opacity-0">
+                {LeadingIcon && !isIconOnly && (
+                  <LeadingIcon size={iconSize} strokeWidth={2} />
+                )}
+                {children}
+                {TrailingIcon && !isIconOnly && (
+                  <TrailingIcon size={iconSize} strokeWidth={2} />
+                )}
+              </span>
+              <span className="absolute inset-0 flex items-center justify-center">
+                <svg
+                  className="h-8 w-8"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <path
+                    d="M 12 12 C 14 8.5 19 8.5 19 12 C 19 15.5 14 15.5 12 12 C 10 8.5 5 8.5 5 12 C 5 15.5 10 15.5 12 12 Z"
+                    stroke="currentColor"
+                    strokeWidth="1.125"
+                    strokeLinecap="round"
+                    pathLength="100"
+                    style={{
+                      strokeDasharray: "15 85",
+                      animation: "spinner-move 2s linear infinite, spinner-dash 4s ease-in-out infinite",
+                    }}
+                  />
+                </svg>
+              </span>
+            </>
+          ) : isIconOnly ? (
+            <span className="[&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
+              {children}
+            </span>
+          ) : (
+            <>
+              {LeadingIcon && (
+                <LeadingIcon
+                  size={iconSize}
+                  strokeWidth={1.5}
+                  className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
+                />
+              )}
+              <span>{children}</span>
+              {TrailingIcon && (
+                <TrailingIcon
+                  size={iconSize}
+                  strokeWidth={1.5}
+                  className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
+                />
+              )}
+            </>
+          )}
+        </span>
+      </Comp>
+    );
+  }
 );
-Button.displayName = 'Button';
+
+Button.displayName = "Button";
 
 export { Button, buttonVariants };
+export type { ButtonProps };

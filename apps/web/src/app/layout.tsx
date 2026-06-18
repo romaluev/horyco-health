@@ -14,7 +14,6 @@ const karla = Karla({
 const inter = Inter({
   subsets: ['latin', 'cyrillic'],
   variable: '--font-admin',
-  weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
 

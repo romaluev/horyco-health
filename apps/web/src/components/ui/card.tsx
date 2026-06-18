@@ -1,11 +1,16 @@
+'use client';
+
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { Elevated } from '@/lib/elevated';
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div
+    <Elevated
       ref={ref}
-      className={cn('rounded-lg border bg-card text-card-foreground shadow-sm', className)}
+      offset={1}
+      shadowLevel={2}
+      className={cn('rounded-lg text-card-foreground', className)}
       {...props}
     />
   ),

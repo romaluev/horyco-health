@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface DataListColumn<T> {
   key: string;
@@ -61,9 +62,10 @@ export function DataList<T>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => (
+            {rows.map((row, rowIndex) => (
               <TableRow
                 key={keyFn(row)}
+                index={rowIndex}
                 className={onRowClick ? 'cursor-pointer' : undefined}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
@@ -84,7 +86,8 @@ export function DataList<T>({
       </div>
 
       {/* Mobile cards */}
-      <div className="flex flex-col gap-2 md:hidden">
+      <ScrollArea className="md:hidden" viewportClassName="max-h-[70vh]">
+        <div className="flex flex-col gap-2 pr-2">
         {rows.map((row) => (
           <Card
             key={keyFn(row)}
@@ -117,7 +120,8 @@ export function DataList<T>({
             </CardContent>
           </Card>
         ))}
-      </div>
+        </div>
+      </ScrollArea>
     </div>
   );
 }

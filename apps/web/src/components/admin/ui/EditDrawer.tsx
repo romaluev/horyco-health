@@ -10,6 +10,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 /** Right-side edit drawer for in-place editing without leaving the list. */
 export function EditDrawer({
@@ -39,7 +40,9 @@ export function EditDrawer({
           <SheetTitle>{title}</SheetTitle>
           {description ? <SheetDescription>{description}</SheetDescription> : null}
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto px-6 py-4">{children}</div>
+        <ScrollArea className="flex-1" viewportClassName="px-6 py-4">
+          {children}
+        </ScrollArea>
         {footer ? (
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             {footer}

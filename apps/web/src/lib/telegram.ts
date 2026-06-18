@@ -98,6 +98,7 @@ export function applyTheme(): void {
     wa?.colorScheme ??
     (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   document.documentElement.dataset.theme = scheme;
+  document.documentElement.classList.toggle('dark', scheme === 'dark');
 
   const tp = wa?.themeParams ?? {};
   for (const [k, v] of Object.entries(tp)) {

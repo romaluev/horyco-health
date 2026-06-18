@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 export interface ComposerLine {
@@ -278,35 +279,38 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-border p-1">
+          <ScrollArea className="rounded-md border border-border" viewportClassName="max-h-48">
+            <div className="divide-y divide-border">
             {pickKind === 'dish'
               ? filteredDishes.map((m) => (
-                  <button
+                  <Button
                     key={m.id}
                     type="button"
+                    variant="ghost"
                     className={cn(
-                      'flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
+                      'flex h-auto w-full items-center justify-between gap-2 rounded-none px-3 py-2.5 text-left text-sm font-normal',
                       selectedDishId === m.id && 'bg-accent text-accent-foreground',
                     )}
                     onClick={() => selectDish(m.id)}
                   >
                     <span className="min-w-0 truncate">{pick(lang, m.nameRu, m.nameUz)}</span>
                     <span className="shrink-0 tabular-nums text-muted-foreground">{formatMoney(m.price)}</span>
-                  </button>
+                  </Button>
                 ))
               : filteredCombos.map((c) => (
-                  <button
+                  <Button
                     key={c.id}
                     type="button"
+                    variant="ghost"
                     className={cn(
-                      'flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
+                      'flex h-auto w-full items-center justify-between gap-2 rounded-none px-3 py-2.5 text-left text-sm font-normal',
                       selectedComboId === c.id && 'bg-accent text-accent-foreground',
                     )}
                     onClick={() => selectCombo(c.id)}
                   >
                     <span className="min-w-0 truncate">{pick(lang, c.nameRu, c.nameUz)}</span>
                     <span className="shrink-0 tabular-nums text-muted-foreground">{formatMoney(c.price)}</span>
-                  </button>
+                  </Button>
                 ))}
             {pickKind === 'dish' && filteredDishes.length === 0 ? (
               <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t('nothing_found')}</p>
@@ -314,10 +318,11 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
             {pickKind === 'combo' && filteredCombos.length === 0 ? (
               <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t('nothing_found')}</p>
             ) : null}
-          </div>
+            </div>
+          </ScrollArea>
 
           {(selectedDishId || selectedComboId) && selectedItemLabel ? (
-            <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+            <div className="space-y-3 rounded-md bg-muted/20 p-3">
               <p className="text-sm font-medium">{selectedItemLabel}</p>
 
               {selectedDishId && dishGroups && dishGroups.length > 0 ? (

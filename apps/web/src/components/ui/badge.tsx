@@ -1,30 +1,128 @@
-import * as React from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+"use client";
+
+import { forwardRef, type HTMLAttributes } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+import { useShape } from "@/lib/shape-context";
+
+const badgeColors = {
+  gray: "#a3a3a3",
+  red: "#ef4444",
+  orange: "#f97316",
+  amber: "#f59e0b",
+  yellow: "#eab308",
+  lime: "#84cc16",
+  green: "#22c55e",
+  emerald: "#10b981",
+  teal: "#14b8a6",
+  cyan: "#06b6d4",
+  blue: "#3b82f6",
+  indigo: "#6366f1",
+  violet: "#8b5cf6",
+  purple: "#a855f7",
+  fuchsia: "#d946ef",
+  pink: "#ec4899",
+  rose: "#f43f5e",
+} as const;
+
+type BadgeColor = keyof typeof badgeColors;
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  "inline-flex items-center font-medium whitespace-nowrap",
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground',
-        destructive: 'border-transparent bg-destructive text-destructive-foreground',
-        outline: 'text-foreground',
+        solid: "",
+        default: "",
+        secondary: "border border-border text-foreground",
+        dot: "border border-border text-foreground",
+        outline: "border border-border text-foreground bg-transparent",
+        destructive: "",
+      },
+      size: {
+        sm: "h-5 px-2 text-[11px] gap-1",
+        md: "h-6 px-2.5 text-[12px] gap-1.5",
+        lg: "h-7 px-3 text-[13px] gap-1.5",
       },
     },
     defaultVariants: {
-      variant: 'default',
+      variant: "solid",
+      size: "md",
     },
-  },
+  }
 );
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+interface BadgeProps
+  extends Omit<HTMLAttributes<HTMLSpanElement>, "color">,
+    VariantProps<typeof badgeVariants> {
+  color?: BadgeColor;
 }
 
-export { Badge, badgeVariants };
+const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
+  (
+    {
+      className,
+      variant = "solid",
+      size = "md",
+      color = "gray",
+      children,
+      style,
+      ...props
+    },
+    ref
+  ) => {
+    const shape = useShape();
+    const colorValue = badgeColors[color];
+    const resolvedVariant = variant === "default" ? "solid" : variant;
+    const isSolid = resolvedVariant === "solid" || resolvedVariant === "destructive";
+    const isOutline = resolvedVariant === "outline";
+    const isDot = resolvedVariant === "dot";
+    const dotSize = size === "sm" ? 6 : size === "lg" ? 8 : 7;
+
+    const colorStyle = isSolid
+      ? resolvedVariant === "destructive"
+        ? {
+            color: "var(--destructive-foreground)",
+            backgroundColor: "color-mix(in srgb, var(--destructive) 15%, var(--background))",
+          }
+        : color === "gray"
+        ? { backgroundColor: "var(--accent)", color: "var(--foreground)" }
+        : {
+            color: "var(--foreground)",
+            backgroundColor: `color-mix(in srgb, ${colorValue} 15%, var(--background))`,
+          }
+      : resolvedVariant === "secondary"
+        ? { backgroundColor: "var(--accent)", color: "var(--foreground)" }
+        : isOutline
+          ? { color: "var(--foreground)" }
+          : {};
+
+    const dotColor = color === "gray" ? "var(--muted-foreground)" : colorValue;
+
+    return (
+      <span
+        ref={ref}
+        className={cn(badgeVariants({ variant: resolvedVariant as typeof variant, size }), shape.item, className)}
+        style={{ ...colorStyle, ...style }}
+        {...props}
+      >
+        {!isSolid && !isOutline && isDot && (
+          <span
+            className="shrink-0 rounded-full"
+            style={{
+              width: dotSize,
+              height: dotSize,
+              backgroundColor: dotColor,
+            }}
+          />
+        )}
+        {children}
+      </span>
+    );
+  }
+);
+
+Badge.displayName = "Badge";
+
+export { Badge, badgeVariants, badgeColors };
+export type { BadgeProps, BadgeColor };

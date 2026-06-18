@@ -10,7 +10,7 @@ import { formatMoney } from '@/lib/format';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsSubtle, TabsSubtleItem } from '@/components/ui/tabs-subtle';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -372,21 +372,15 @@ export function AdminOrders() {
       />
 
       <Toolbar>
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)} className="w-full">
-          <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
-            {filterTabs.map((tab) => (
-              <TabsTrigger
-                key={tab.key}
-                value={tab.key}
-                className={cn(
-                  'min-h-9 rounded-full border px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground',
-                )}
-              >
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <TabsSubtle
+          selectedIndex={Math.max(0, filterTabs.findIndex((tab) => tab.key === filter))}
+          onSelect={(i) => setFilter(filterTabs[i]?.key ?? 'active')}
+          className="w-full overflow-x-auto"
+        >
+          {filterTabs.map((tab, i) => (
+            <TabsSubtleItem key={tab.key} index={i} label={tab.label} />
+          ))}
+        </TabsSubtle>
       </Toolbar>
 
       <DataList

@@ -21,9 +21,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { ClientDto } from '@/lib/types';
 
 type ComposeLine = ComposerLine;
 
@@ -139,11 +139,28 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
         <TabsContent value="clients" className="space-y-3">
           <Input placeholder={t('adm_search_user')} value={userQuery} onChange={(e) => setUserQuery(e.target.value)} />
           <Badge variant="secondary">{selected.size} {t('bo_recipients')}</Badge>
-          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
-            {users?.map((u) => (
-              <ClientPickRow key={u.id} user={u} checked={selected.has(u.id)} onToggle={() => toggleClient(u.id)} t={t} />
-            ))}
-          </div>
+          <ScrollArea viewportClassName="max-h-[60vh]">
+            <CheckboxGroup
+              className="divide-y divide-border"
+              checkedIndices={
+                new Set(
+                  (users ?? [])
+                    .map((u, i) => (selected.has(u.id) ? i : -1))
+                    .filter((i) => i >= 0),
+                )
+              }
+            >
+              {users?.map((u, i) => (
+                <CheckboxItem
+                  key={u.id}
+                  index={i}
+                  label={`${u.name}${u.phone ? ` · ${u.phone}` : ''}`}
+                  checked={selected.has(u.id)}
+                  onToggle={() => toggleClient(u.id)}
+                />
+              ))}
+            </CheckboxGroup>
+          </ScrollArea>
           <Button className="w-full" disabled={selected.size === 0} onClick={() => setStep('basket')}>
             {t('bo_next')} <ChevronRight className="size-4" />
           </Button>
@@ -188,7 +205,8 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
                 </Button>
               </div>
               <Input placeholder={t('comment_ph')} value={comment} onChange={(e) => setComment(e.target.value)} />
-              <div className="max-h-64 space-y-2 overflow-y-auto text-sm">
+              <ScrollArea viewportClassName="max-h-64">
+                <div className="space-y-2 text-sm pr-2">
                 {selectedUsers.map((u) => (
                   <div key={u.id} className="rounded-md border px-3 py-2">
                     <strong>{u.name}</strong>
@@ -202,7 +220,8 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
                     </p>
                   </div>
                 ))}
-              </div>
+                </div>
+              </ScrollArea>
               <Button className="w-full" disabled={createOrders.isPending} onClick={submit}>
                 {createOrders.isPending ? t('loading') : t('adm_order_submit')}
               </Button>
@@ -211,34 +230,5 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
         </TabsContent>
       </Tabs>
     </div>
-  );
-}
-
-function ClientPickRow({
-  user,
-  checked,
-  onToggle,
-  t,
-}: {
-  user: ClientDto;
-  checked: boolean;
-  onToggle: () => void;
-  t: (k: import('@/lib/i18n').I18nKey) => string;
-}) {
-  return (
-    <label className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md border px-3 py-2">
-      <Checkbox checked={checked} onCheckedChange={onToggle} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-medium truncate">{user.name}</span>
-          {!user.telegramId && (
-            <Badge variant="outline" className="text-xs shrink-0">
-              {t('crm_not_linked')}
-            </Badge>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground truncate">{user.phone ?? '—'}</p>
-      </div>
-    </label>
   );
 }

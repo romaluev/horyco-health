@@ -189,9 +189,10 @@ export function OnboardingWizardPage() {
             >
               <div className="adm-step-icon">{step.done ? <Check className="size-4" /> : idx + 1}</div>
               <div className="adm-step-body min-w-0 flex-1">
-                <button
+                <Button
                   type="button"
-                  className="flex w-full items-center justify-between gap-2 text-left"
+                  variant="ghost"
+                  className="flex h-auto w-full items-center justify-between gap-2 px-0 text-left hover:bg-transparent"
                   onClick={() => toggleStep(step.id)}
                   aria-expanded={isExpanded}
                 >
@@ -200,7 +201,7 @@ export function OnboardingWizardPage() {
                     className={cn('size-4 shrink-0 text-muted-foreground transition-transform', isExpanded && 'rotate-180')}
                     aria-hidden
                   />
-                </button>
+                </Button>
                 {step.done && !isExpanded ? (
                   <p className="text-xs text-emerald-600">{t('bo_onboarding_step_complete')}</p>
                 ) : null}

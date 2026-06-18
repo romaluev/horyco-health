@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { CommandPalette, useCommandPalette } from '@/components/admin/ui/CommandPalette';
+import { FluidProviders } from './FluidProviders';
 import { cn } from '@/lib/utils';
 
 interface AdminShellProps {
@@ -193,6 +194,7 @@ export function AdminShell({
   );
 
   return (
+    <FluidProviders>
     <div className="adm-root">
       <div className="adm-layout">
         <aside className="adm-sidebar">{sidebar}</aside>
@@ -281,5 +283,6 @@ export function AdminShell({
 
       <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} navItems={visibleNav} />
     </div>
+    </FluidProviders>
   );
 }
