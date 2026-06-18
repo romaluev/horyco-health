@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { OrderStatus, PaymentMethod } from '@eatfit/shared';
 import { MapPin, Phone } from 'lucide-react';
 import { useAdminOrders, useTransition } from '@/lib/admin-queries';
@@ -269,7 +270,16 @@ export function AdminOrders() {
     );
   }
 
-  if (!orders?.length) return <p className="text-center text-muted-foreground py-10">{t('no_orders')}</p>;
+  if (!orders?.length) {
+    return (
+      <div className="space-y-4">
+        <Button className="w-full min-h-11" asChild>
+          <Link href="/b/orders/new/">{t('adm_create_order')}</Link>
+        </Button>
+        <p className="text-center text-muted-foreground py-10">{t('no_orders')}</p>
+      </div>
+    );
+  }
 
   const filterTabs: { key: FilterKey; label: string }[] = [
     { key: 'active', label: `${t('bo_orders_filter_active')} (${counts.active ?? 0})` },
@@ -282,6 +292,9 @@ export function AdminOrders() {
 
   return (
     <div className="space-y-4">
+      <Button className="w-full min-h-11" asChild>
+        <Link href="/b/orders/new/">{t('adm_create_order')}</Link>
+      </Button>
       <Input placeholder={t('search_ph')} value={q} onChange={(e) => setQ(e.target.value)} />
 
       <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>

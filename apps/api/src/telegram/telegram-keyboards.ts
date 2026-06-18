@@ -36,9 +36,16 @@ export function languageKeyboard() {
   ]);
 }
 
-/** Reply-клавиатура «Отправить локацию». */
+/** Reply-клавиатура «Отправить локацию» + fallback текстовый адрес. */
 export function shareLocationKeyboard(lang: Lang) {
   return Markup.keyboard([[Markup.button.locationRequest(t(lang, 'share_location'))]]).resize();
+}
+
+export function shareLocationWithAddressFallbackKeyboard(lang: Lang) {
+  return Markup.keyboard([
+    [Markup.button.locationRequest(t(lang, 'share_location'))],
+    [Markup.button.text(t(lang, 'btn_enter_address_text'))],
+  ]).resize();
 }
 
 /** Пропустить ввод ориентира после локации. */

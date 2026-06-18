@@ -22,17 +22,22 @@ const dict = {
   share_contact: { ru: '📱 Поделиться контактом', uz: '📱 Kontaktni ulashish' },
   ask_address: { ru: 'Введите адрес доставки:', uz: 'Yetkazib berish manzilini kiriting:' },
   ask_location: {
-    ru: 'Отправьте точку доставки на карте — нажмите кнопку ниже:',
-    uz: 'Yetkazib berish nuqtasini xaritada yuboring — pastdagi tugmani bosing:',
+    ru: 'Отправьте точку доставки на карте или введите адрес текстом:',
+    uz: 'Yetkazib berish nuqtasini xaritada yuboring yoki manzilni matn bilan kiriting:',
   },
   share_location: { ru: '📍 Отправить локацию', uz: '📍 Lokatsiyani yuborish' },
+  btn_enter_address_text: { ru: '✏️ Ввести адрес текстом', uz: '✏️ Manzilni matn bilan kiritish' },
+  ask_delivery_address_text: {
+    ru: 'Введите полный адрес доставки (улица, дом, подъезд):',
+    uz: 'To‘liq yetkazib berish manzilini kiriting (ko‘cha, uy, kirish):',
+  },
   location_saved: {
     ru: 'Точка на карте сохранена ✅',
     uz: 'Xaritadagi nuqta saqlandi ✅',
   },
   invalid_location: {
-    ru: 'Нужна геолокация. Нажмите кнопку «Отправить локацию» ниже:',
-    uz: 'Geolokatsiya kerak. Pastdagi «Lokatsiyani yuborish» tugmasini bosing:',
+    ru: 'Нужна геолокация или текстовый адрес. Нажмите «Отправить локацию» или «Ввести адрес текстом»:',
+    uz: 'Geolokatsiya yoki matnli manzil kerak. «Lokatsiyani yuborish» yoki «Manzilni matn bilan kiritish»ni bosing:',
   },
   ask_landmark: {
     ru: 'Добавьте ориентир (подъезд, квартира, этаж) или нажмите «Пропустить»:',

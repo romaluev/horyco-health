@@ -11,7 +11,7 @@ import { useUpdateProfile } from '@/lib/queries';
 import { ApiError } from '@/lib/api';
 import { useT } from '@/lib/i18n';
 import { haptic } from '@/lib/telegram';
-import { DeliveryLocationFields, hasDeliveryLocation } from '@/components/DeliveryLocationFields';
+import { DeliveryLocationFields, hasDeliveryInfo } from '@/components/DeliveryLocationFields';
 import { Button, PriceTag } from '@/components/consumer';
 
 const schema = z.object({
@@ -20,7 +20,7 @@ const schema = z.object({
   address: z.string().trim().optional(),
   deliveryLat: z.number().nullable(),
   deliveryLng: z.number().nullable(),
-}).refine((d) => hasDeliveryLocation(d), { message: 'location_required', path: ['deliveryLat'] });
+}).refine((d) => hasDeliveryInfo(d), { message: 'delivery_required', path: ['deliveryLat'] });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -118,7 +118,7 @@ export function ProfileScreen() {
           </div>
           <DeliveryLocationFields value={loc} onChange={syncLocation} />
           {errors.deliveryLat ? (
-            <div className="err" role="alert">{t('location_required')}</div>
+            <div className="err" role="alert">{t('delivery_required')}</div>
           ) : null}
         </div>
 

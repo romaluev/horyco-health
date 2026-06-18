@@ -6,3 +6,4 @@ export * from './order-notify-messages';
 export * from './balance-notify-messages';
 export * from './html-escape';
 export * from './phone';
+export * from './delivery';

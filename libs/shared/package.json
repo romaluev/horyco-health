@@ -6,6 +6,6 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/order-notify-messages.test.js"
+    "test": "npm run build && node --test dist/order-notify-messages.test.js dist/delivery.test.js"
   }
 }

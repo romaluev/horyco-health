@@ -11,7 +11,7 @@ import { formatMoney, menuPhotoUrl, pick } from '@/lib/format';
 import { haptic } from '@/lib/telegram';
 import { Stepper } from '@/components/Stepper';
 import { RegistrationForm } from '@/components/RegistrationForm';
-import { hasDeliveryLocation } from '@/components/DeliveryLocationFields';
+import { hasDeliveryInfo } from '@/components/DeliveryLocationFields';
 import { Button, Card, Chip, EmptyState, ListSkeleton, PriceTag, Thumb } from '@/components/consumer';
 import { ApiError } from '@/lib/api';
 
@@ -20,7 +20,7 @@ export function CartScreen() {
   const client = useAuthStore((s) => s.client);
   const lang = client?.language ?? Language.Ru;
   const balance = Number(client?.balance ?? '0');
-  const needsRegistration = !client?.phone || !hasDeliveryLocation(client ?? {});
+  const needsRegistration = !client?.phone || !hasDeliveryInfo(client ?? {});
   const { data: cart, isLoading } = useCart();
   const patchLine = usePatchCartLine();
   const checkout = useCheckout();

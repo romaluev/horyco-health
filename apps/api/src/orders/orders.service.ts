@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Transactional } from '@nestjs-cls/transactional';
-import { BusinessStatus, OrderStatus, PaymentMethod } from '@eatfit/shared';
+import { BusinessStatus, OrderStatus, PaymentMethod, Role, hasDeliveryInfo } from '@eatfit/shared';
 import { ActorContextService } from '../common/cls/actor-context.service';
 import {
   ConflictError,
@@ -22,12 +22,19 @@ import { assertTransition } from './order-status.machine';
 import { OrderNotificationService } from './order-notification.service';
 import { Order } from './entities/order.entity';
 import { LinePricingService, toOrderItemPartial } from './pricing/build-order-items';
-import { CartLine as CompositionLine } from './cart/cart-line.types';
+import { CartLine as CompositionLine, normalizeCartLine, newLineId } from './cart/cart-line.types';
+import {
+  AdminOrderFailureDto,
+  CreateAdminOrderDto,
+  CreateAdminOrdersResultDto,
+} from './dto/create-admin-order.dto';
 
 export interface CreateOrderOptions {
   lines?: CartLine[];
   offerId?: string;
   skipCartClear?: boolean;
+  /** Admin impersonation: order on behalf of this client. */
+  targetClientId?: string;
 }
 
 @Injectable()
@@ -55,7 +62,6 @@ export class OrdersService {
     return response;
   }
 
-  /** Создание заказа из composition (offers one-tap). */
   async createFromComposition(
     businessId: string,
     clientId: string,
@@ -78,6 +84,51 @@ export class OrdersService {
     );
   }
 
+  /** Admin: one or many clients, same basket — each gets a full self-service order. */
+  async createAdminOrders(dto: CreateAdminOrderDto): Promise<CreateAdminOrdersResultDto> {
+    const actor = this.actorCtx.getOrThrow();
+    if (actor.role !== Role.Admin) {
+      throw new ForbiddenError('Недостаточно прав');
+    }
+
+    const lines = dto.lines.map((l) =>
+      normalizeCartLine({
+        lineId: l.lineId ?? newLineId(),
+        kind: l.kind,
+        menuItemId: l.menuItemId,
+        portion: l.portion,
+        unitAmount: l.unitAmount,
+        comboId: l.comboId,
+        slotSelections: l.slotSelections,
+        modifierIds: l.modifierIds ?? [],
+        quantity: l.quantity,
+      }),
+    );
+
+    const created: OrderResponseDto[] = [];
+    const failed: AdminOrderFailureDto[] = [];
+
+    for (const clientId of dto.clientIds) {
+      try {
+        const order = await this.create(
+          {
+            paymentMethod: dto.paymentMethod,
+            comment: dto.comment,
+          },
+          { lines, targetClientId: clientId, skipCartClear: true },
+        );
+        created.push(order);
+      } catch (e) {
+        failed.push({
+          clientId,
+          reason: e instanceof Error ? e.message : 'Ошибка создания заказа',
+        });
+      }
+    }
+
+    return { created, failed };
+  }
+
   @Transactional()
   private async createInTransaction(
     dto: CreateOrderDto,
@@ -91,7 +142,10 @@ export class OrdersService {
     skipCartClear: boolean;
   }> {
     const actor = this.actorCtx.getOrThrow();
-    const clientId = actor.userId;
+    const clientId = opts.targetClientId ?? actor.userId;
+    if (opts.targetClientId && actor.role !== Role.Admin) {
+      throw new ForbiddenError('Недостаточно прав');
+    }
     const businessId = actor.businessId;
     const cartKey = `${businessId}:${clientId}`;
 
@@ -114,12 +168,19 @@ export class OrdersService {
     if (!client) {
       throw new NotFoundError('Клиент не найден');
     }
+    if (opts.targetClientId) {
+      const wallet = await this.businessCustomers.find(businessId, clientId);
+      if (!wallet) {
+        throw new NotFoundError('Клиент не найден в CRM');
+      }
+    }
+
     const deliveryLat = dto.deliveryLat ?? parseCoord(client.deliveryLat);
     const deliveryLng = dto.deliveryLng ?? parseCoord(client.deliveryLng);
-    if (deliveryLat == null || deliveryLng == null) {
-      throw new ConflictError('Укажите точку доставки на карте');
+    const address = (dto.address ?? client.address ?? '').trim();
+    if (!hasDeliveryInfo({ deliveryLat, deliveryLng, address })) {
+      throw new ConflictError('Укажите адрес доставки');
     }
-    const address = dto.address ?? client.address ?? '';
 
     const { items, total } = await this.linePricing.buildOrderItems(businessId, lines);
 
@@ -176,8 +237,8 @@ export class OrdersService {
       status: OrderStatus.Pending,
       total,
       address,
-      deliveryLat: String(deliveryLat),
-      deliveryLng: String(deliveryLng),
+      deliveryLat: deliveryLat != null ? String(deliveryLat) : null,
+      deliveryLng: deliveryLng != null ? String(deliveryLng) : null,
       comment: dto.comment ?? null,
       paymentMethod: dto.paymentMethod,
       offerId,

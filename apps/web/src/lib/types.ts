@@ -19,7 +19,7 @@ import {
 
 export interface ClientDto {
   id: string;
-  telegramId: string;
+  telegramId: string | null;
   name: string;
   username: string | null;
   phone: string | null;

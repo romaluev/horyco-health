@@ -15,6 +15,7 @@ const TITLE_BY_PREFIX: [string, I18nKey][] = [
   ['/b/offers/', 'bo_offers'],
   ['/b/combos/', 'bo_combos'],
   ['/b/menu/', 'adm_menu'],
+  ['/b/orders/new/', 'adm_create_order'],
   ['/b/orders/', 'adm_orders'],
   ['/b/dashboard/', 'dash_title'],
 ];

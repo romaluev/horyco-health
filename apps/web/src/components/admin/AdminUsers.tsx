@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useAdminUsers, useDeposit, useWithdraw } from '@/lib/admin-queries';
+import Link from 'next/link';
+import { useAdminUsers, useDeposit, useWithdraw, useCreateAdminClient } from '@/lib/admin-queries';
 import { useClientCrm, useClientOrders } from '@/lib/offers-queries';
 import { useT, useStatusText } from '@/lib/i18n';
 import { formatMoney } from '@/lib/format';
@@ -10,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 export function AdminUsers() {
@@ -19,8 +21,13 @@ export function AdminUsers() {
   const { data: users } = useAdminUsers(q);
   const deposit = useDeposit();
   const withdraw = useWithdraw();
+  const createClient = useCreateAdminClient();
   const [detailId, setDetailId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newAddress, setNewAddress] = useState('');
 
   const { data: crm } = useClientCrm(detailId);
   const { data: clientOrders } = useClientOrders(detailId);
@@ -55,19 +62,54 @@ export function AdminUsers() {
     );
   };
 
+  const submitNewClient = () => {
+    if (!newName.trim() || !newPhone.trim()) return;
+    createClient.mutate(
+      { name: newName.trim(), phone: newPhone.trim(), address: newAddress.trim() || undefined },
+      {
+        onSuccess: () => {
+          toast.success(t('adm_client_created'));
+          setAddOpen(false);
+          setNewName('');
+          setNewPhone('');
+          setNewAddress('');
+        },
+        onError: () => toast.error(t('error_generic')),
+      },
+    );
+  };
+
   return (
     <div className="space-y-4">
-      <Input placeholder={t('adm_search_user')} value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="flex gap-2">
+        <Input
+          className="flex-1"
+          placeholder={t('adm_search_user')}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <Button variant="default" className="shrink-0" onClick={() => setAddOpen(true)}>
+          {t('adm_add_client')}
+        </Button>
+      </div>
 
       {users?.map((u) => (
         <Card key={u.id}>
           <CardContent className="py-3 space-y-2">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <strong>{u.name}</strong>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <strong>{u.name}</strong>
+                  {!u.telegramId && (
+                    <Badge variant="outline" className="text-xs">
+                      {t('crm_not_linked')}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {(u.phone ?? '—') + (u.username ? ` · @${u.username}` : '')}
                 </p>
+                {u.address && <p className="text-xs text-muted-foreground">{u.address}</p>}
               </div>
               <Badge variant="secondary" className="tabular-nums shrink-0">
                 {formatMoney(u.balance)} {t('currency')}
@@ -87,6 +129,31 @@ export function AdminUsers() {
         </Card>
       ))}
 
+      <Sheet open={addOpen} onOpenChange={setAddOpen}>
+        <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{t('adm_add_client')}</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-4">
+            <div className="space-y-2">
+              <Label>{t('adm_client_name')}</Label>
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('phone')}</Label>
+              <Input inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('adm_client_address')}</Label>
+              <Input value={newAddress} onChange={(e) => setNewAddress(e.target.value)} />
+            </div>
+            <Button className="w-full min-h-11" disabled={createClient.isPending} onClick={submitNewClient}>
+              {createClient.isPending ? t('loading') : t('save')}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <Sheet open={Boolean(detailId)} onOpenChange={(open) => !open && setDetailId(null)}>
         <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto">
           <SheetHeader>
@@ -94,6 +161,10 @@ export function AdminUsers() {
           </SheetHeader>
           {crm && (
             <div className="mt-4 space-y-4 text-sm">
+              <Button className="w-full min-h-10" asChild>
+                <Link href={`/b/orders/new/?clientId=${crm.id}`}>{t('crm_create_order')}</Link>
+              </Button>
+
               <div className="grid grid-cols-2 gap-3">
                 <Card>
                   <CardContent className="py-3">
@@ -121,6 +192,11 @@ export function AdminUsers() {
                   </>
                 )}
               </p>
+              {crm.address && (
+                <p>
+                  {t('address')}: {crm.address}
+                </p>
+              )}
 
               <div className="flex flex-wrap gap-2">
                 {[50000, 100000, 200000].map((v) => (

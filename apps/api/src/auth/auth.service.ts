@@ -106,6 +106,15 @@ export class AuthService {
     if (existingWeb) {
       throw new ConflictError('Этот телефон уже зарегистрирован');
     }
+    const stub = await this.clients.findPhoneStub(dto.phone);
+    if (stub) {
+      stub.passwordHash = hashPassword(dto.password);
+      if (dto.name?.trim()) stub.name = dto.name.trim();
+      if (dto.address?.trim()) stub.address = dto.address.trim();
+      const saved = await this.clients.save(stub);
+      await this.customers.ensureExists(business.id, saved.id);
+      return this.issue(saved, business.id);
+    }
     const existingPhone = await this.clients.findByPhone(dto.phone);
     if (existingPhone?.telegramId && !existingPhone.passwordHash) {
       throw new ConflictError(

@@ -6,12 +6,19 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { OrdersService } from '../orders.service';
 import { OrderQueryDto } from '../dto/order-query.dto';
 import { UpdateStatusDto } from '../dto/update-status.dto';
+import { CreateAdminOrderDto } from '../dto/create-admin-order.dto';
 
 /** Управление заказами: обзор (админ) и смена статусов (персонал; права — в FSM). */
 @Controller('admin/orders')
 @SkipThrottle(SKIP_ALL_THROTTLE)
 export class OrdersAdminController {
   constructor(private readonly orders: OrdersService) {}
+
+  @Roles(Role.Admin)
+  @Post()
+  create(@Body() dto: CreateAdminOrderDto) {
+    return this.orders.createAdminOrders(dto);
+  }
 
   @Roles(Role.Admin)
   @Get()

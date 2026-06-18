@@ -180,4 +180,16 @@ export class ClientRepository extends TransactionalRepository<Client> {
       where: { phone: In(variants), telegramId: IsNull(), passwordHash: Not(IsNull()) },
     });
   }
+
+  /** CRM stub: phone set, no Telegram, no web password (admin pre-created). */
+  findPhoneStub(phone: string): Promise<Client | null> {
+    const variants = phoneLookupVariants(phone);
+    return this.repo.findOne({
+      where: { phone: In(variants), telegramId: IsNull(), passwordHash: IsNull() },
+    });
+  }
+
+  isPhoneStub(client: Client): boolean {
+    return Boolean(client.phone && !client.telegramId && !client.passwordHash);
+  }
 }

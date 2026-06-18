@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { hasDeliveryInfo, hasDeliveryLocation } from '@eatfit/shared';
 import { useT } from '@/lib/i18n';
 
 export interface DeliveryLocationValue {
@@ -14,7 +15,7 @@ interface Props {
   onChange: (next: DeliveryLocationValue) => void;
 }
 
-/** Browser geolocation + optional landmark (Mini App parity with bot location pin). */
+/** Browser geolocation + text address fallback (desktop / Telegram WebView). */
 export function DeliveryLocationFields({ value, onChange }: Props) {
   const t = useT();
   const [locError, setLocError] = useState<string | null>(null);
@@ -37,14 +38,14 @@ export function DeliveryLocationFields({ value, onChange }: Props) {
         setLoading(false);
       },
       () => {
-        setLocError(t('location_denied'));
+        setLocError(t('location_denied_or_text'));
         setLoading(false);
       },
       { enableHighAccuracy: true, timeout: 15000 },
     );
   };
 
-  const hasCoords = value.deliveryLat != null && value.deliveryLng != null;
+  const hasCoords = hasDeliveryLocation(value);
 
   return (
     <>
@@ -65,11 +66,14 @@ export function DeliveryLocationFields({ value, onChange }: Props) {
         )}
       </div>
       <div className="field">
-        <label>{t('landmark')}</label>
+        <label>{t('delivery_address_text')}</label>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
+          {t('or_enter_address')}
+        </p>
         <input
           className="input"
           value={value.address}
-          placeholder={t('landmark_placeholder')}
+          placeholder={t('delivery_address_placeholder')}
           onChange={(e) => onChange({ ...value, address: e.target.value })}
         />
       </div>
@@ -77,9 +81,4 @@ export function DeliveryLocationFields({ value, onChange }: Props) {
   );
 }
 
-export function hasDeliveryLocation(c: {
-  deliveryLat?: number | null;
-  deliveryLng?: number | null;
-}): boolean {
-  return c.deliveryLat != null && c.deliveryLng != null && Number.isFinite(c.deliveryLat) && Number.isFinite(c.deliveryLng);
-}
+export { hasDeliveryLocation, hasDeliveryInfo };

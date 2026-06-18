@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Markup } from 'telegraf';
 import type { Context } from 'telegraf';
 import type { Message, InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
-import { Language, OrderStatus, PaymentMethod, Role } from '@eatfit/shared';
+import { Language, OrderStatus, PaymentMethod, Role, hasDeliveryInfo } from '@eatfit/shared';
 import { Client } from '../../clients/entities/client.entity';
 import { ClientRepository } from '../../clients/clients.repository';
 import { MenuRepository } from '../../menu/menu.repository';
@@ -34,7 +34,7 @@ import {
   formatMoney,
   statusText,
 } from '../i18n/bot-i18n';
-import { languageKeyboard, shareContactKeyboard, shareLocationKeyboard, skipLandmarkKeyboard } from '../telegram-keyboards';
+import { languageKeyboard, shareContactKeyboard, shareLocationKeyboard, shareLocationWithAddressFallbackKeyboard, skipLandmarkKeyboard } from '../telegram-keyboards';
 import { quickOrderConfirmation } from '../message-formatters';
 import { extractActorFromClient } from '../bot-actor.util';
 import { invalidateActorCache } from '../bot-context.middleware';
@@ -366,7 +366,7 @@ export class ClientUpdate {
     }
     if (!this.hasDeliveryLocation(client)) {
       this.state.setSession(client.telegramId!, 'profile_edit', 'location');
-      await ctx.reply(t(lang, 'ask_location'), shareLocationKeyboard(lang));
+      await ctx.reply(t(lang, 'ask_location'), shareLocationWithAddressFallbackKeyboard(lang));
       return;
     }
     await this.ui.deleteMenu(ctx, client.telegramId!); // витрина исчезает
@@ -652,7 +652,23 @@ export class ClientUpdate {
         return;
       }
       case 'location': {
-        await ctx.reply(t(lang, 'invalid_location'), shareLocationKeyboard(lang));
+        if (this.isEnterAddressTextButton(text, lang)) {
+          this.state.updateSession(from.id, { step: 'address_text' });
+          await ctx.reply(t(lang, 'ask_delivery_address_text'), { reply_markup: { remove_keyboard: true } });
+          return;
+        }
+        await ctx.reply(t(lang, 'invalid_location'), shareLocationWithAddressFallbackKeyboard(lang));
+        return;
+      }
+      case 'address_text': {
+        const addr = text.trim();
+        if (addr.length < 5) {
+          await ctx.reply(t(lang, 'ask_delivery_address_text'));
+          return;
+        }
+        client.address = addr;
+        await this.clients.save(client);
+        await this.finishRegistration(ctx, client, session.data);
         return;
       }
       case 'landmark': {
@@ -705,10 +721,15 @@ export class ClientUpdate {
     if (webTwin && webTwin.id !== client.id) {
       client = await this.mergeTelegramIntoWebClient(client, webTwin, String(from.id));
     } else {
-      const other = await this.clients.findByPhone(normalized);
-      if (other && other.id !== client.id && other.telegramId && other.telegramId !== String(from.id)) {
-        await ctx.reply(t(lang, 'invalid_phone'));
-        return;
+      const stub = await this.clients.findPhoneStub(normalized);
+      if (stub && stub.id !== client.id) {
+        client = await this.mergeTelegramIntoStub(client, stub, String(from.id));
+      } else {
+        const other = await this.clients.findByPhone(normalized);
+        if (other && other.id !== client.id && other.telegramId && other.telegramId !== String(from.id)) {
+          await ctx.reply(t(lang, 'invalid_phone'));
+          return;
+        }
       }
     }
 
@@ -722,7 +743,7 @@ export class ClientUpdate {
       } else {
         this.state.setSession(from.id, 'register', 'location', cur?.data ?? {});
       }
-      await ctx.reply(t(lang, 'ask_location'), shareLocationKeyboard(lang));
+      await ctx.reply(t(lang, 'ask_location'), shareLocationWithAddressFallbackKeyboard(lang));
     } else {
       this.state.clearSession(from.id);
       await ctx.reply(t(lang, 'profile_saved'), { reply_markup: { remove_keyboard: true } });
@@ -1193,49 +1214,85 @@ export class ClientUpdate {
     webClient: Client,
     telegramId: string,
   ): Promise<Client> {
+    return this.mergeIntoTargetClient(telegramClient, webClient, telegramId, false);
+  }
+
+  private async mergeTelegramIntoStub(
+    telegramClient: Client,
+    stubClient: Client,
+    telegramId: string,
+  ): Promise<Client> {
+    return this.mergeIntoTargetClient(telegramClient, stubClient, telegramId, true);
+  }
+
+  private async mergeIntoTargetClient(
+    telegramClient: Client,
+    targetClient: Client,
+    telegramId: string,
+    preserveTargetProfile: boolean,
+  ): Promise<Client> {
     telegramClient.telegramId = null;
     await this.clients.save(telegramClient);
 
-    webClient.telegramId = telegramId;
-    webClient.username = telegramClient.username ?? webClient.username;
-    if (!webClient.name?.trim() || webClient.name === 'Гость') {
-      webClient.name = telegramClient.name;
+    targetClient.telegramId = telegramId;
+    targetClient.username = telegramClient.username ?? targetClient.username;
+    if (!preserveTargetProfile) {
+      if (!targetClient.name?.trim() || targetClient.name === 'Гость') {
+        targetClient.name = telegramClient.name;
+      }
+      if (!targetClient.deliveryLat && telegramClient.deliveryLat) {
+        targetClient.deliveryLat = telegramClient.deliveryLat;
+        targetClient.deliveryLng = telegramClient.deliveryLng;
+        targetClient.address = telegramClient.address;
+      }
+    } else if (!targetClient.deliveryLat && telegramClient.deliveryLat) {
+      targetClient.deliveryLat = telegramClient.deliveryLat;
+      targetClient.deliveryLng = telegramClient.deliveryLng;
+      if (!targetClient.address?.trim()) {
+        targetClient.address = telegramClient.address;
+      }
     }
-    if (!webClient.deliveryLat && telegramClient.deliveryLat) {
-      webClient.deliveryLat = telegramClient.deliveryLat;
-      webClient.deliveryLng = telegramClient.deliveryLng;
-      webClient.address = telegramClient.address;
-    }
-    await this.clients.save(webClient);
+    await this.clients.save(targetClient);
 
-    await this.members.mergeClientMemberships(telegramClient.id, webClient.id);
+    await this.members.mergeClientMemberships(telegramClient.id, targetClient.id);
     await this.customers.removeByClientId(telegramClient.id);
     await this.clients.removeById(telegramClient.id);
     const businessId = this.actorCtx.getBusinessIdOrThrow();
     invalidateActorCache(businessId, telegramId);
-    return webClient;
+    return targetClient;
   }
 
   private hasDeliveryLocation(client: { deliveryLat: string | null; deliveryLng: string | null }): boolean {
     return parseCoord(client.deliveryLat) != null && parseCoord(client.deliveryLng) != null;
   }
 
-  private isRegistered(client: { phone: string | null; deliveryLat: string | null; deliveryLng: string | null }): boolean {
-    return Boolean(client.phone && this.hasDeliveryLocation(client));
+  private isRegistered(client: {
+    phone: string | null;
+    deliveryLat: string | null;
+    deliveryLng: string | null;
+    address?: string | null;
+  }): boolean {
+    return Boolean(client.phone && hasDeliveryInfo(client));
+  }
+
+  private isEnterAddressTextButton(text: string, lang: Lang): boolean {
+    const trimmed = text.trim();
+    return trimmed === t(lang, 'btn_enter_address_text').trim();
   }
 
   /** После рестарта pod in-memory FSM пуст — восстанавливаем шаг по полям клиента. */
   private inferRegistrationStep(
     client: Client,
-  ): 'language' | 'phone' | 'location' | 'landmark' {
+  ): 'language' | 'phone' | 'location' | 'landmark' | 'address_text' {
     if (!client.phone) return 'phone';
-    if (!this.hasDeliveryLocation(client)) return 'location';
+    if (!hasDeliveryInfo(client)) return 'location';
+    if (!this.hasDeliveryLocation(client) && !client.address?.trim()) return 'location';
     return 'landmark';
   }
 
   private async promptRegistrationStep(ctx: Context, client: Client, session: BotSession): Promise<void> {
     const lang = this.ui.langOf(client);
-    const rawStep = session.step as 'language' | 'full_name' | 'phone' | 'location' | 'landmark' | undefined;
+    const rawStep = session.step as 'language' | 'full_name' | 'phone' | 'location' | 'landmark' | 'address_text' | undefined;
     const step = rawStep === 'full_name' ? 'phone' : (rawStep ?? this.inferRegistrationStep(client));
     switch (step) {
       case 'language':
@@ -1245,7 +1302,10 @@ export class ClientUpdate {
         await ctx.reply(t(lang, 'ask_phone'), shareContactKeyboard(lang));
         break;
       case 'location':
-        await ctx.reply(t(lang, 'ask_location'), shareLocationKeyboard(lang));
+        await ctx.reply(t(lang, 'ask_location'), shareLocationWithAddressFallbackKeyboard(lang));
+        break;
+      case 'address_text':
+        await ctx.reply(t(lang, 'ask_delivery_address_text'), { reply_markup: { remove_keyboard: true } });
         break;
       case 'landmark':
         await ctx.reply(t(lang, 'ask_landmark'), skipLandmarkKeyboard(lang));

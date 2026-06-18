@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Allergens, Category, Ingredient, Nutrition, OrderStatus, PricingMode, RecipeStep, Role, UnitKind } from '@eatfit/shared';
+import { Allergens, Category, Ingredient, Nutrition, OrderStatus, PaymentMethod, PricingMode, RecipeStep, Role, UnitKind } from '@eatfit/shared';
 import { api, apiUpload } from './api';
 import { ClientDto, MenuItemDto, OrderDto, SettingsDto } from './types';
 import { useAuthStore } from '@/store/auth.store';
@@ -243,6 +243,56 @@ export function useAdminUsers(query: string) {
     queryKey: ['admin', 'users', query],
     queryFn: () =>
       api<ClientDto[]>(`/admin/clients${query ? `?query=${encodeURIComponent(query)}` : ''}`),
+  });
+}
+
+export interface CreateAdminClientBody {
+  name: string;
+  phone: string;
+  address?: string;
+}
+
+export function useCreateAdminClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateAdminClientBody) =>
+      api<ClientDto>('/admin/clients', { method: 'POST', body }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
+  });
+}
+
+export interface AdminOrderLine {
+  kind: 'dish' | 'combo';
+  menuItemId?: string;
+  portion?: number;
+  unitAmount?: number;
+  comboId?: string;
+  slotSelections?: Record<string, string>;
+  modifierIds: string[];
+  quantity: number;
+}
+
+export interface CreateAdminOrdersBody {
+  clientIds: string[];
+  lines: AdminOrderLine[];
+  paymentMethod: PaymentMethod;
+  comment?: string;
+}
+
+export interface CreateAdminOrdersResult {
+  created: OrderDto[];
+  failed: Array<{ clientId: string; reason: string }>;
+}
+
+export function useCreateAdminOrders() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateAdminOrdersBody) =>
+      api<CreateAdminOrdersResult>('/admin/orders', { method: 'POST', body }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'orders'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
   });
 }
 export function useChangeRole() {

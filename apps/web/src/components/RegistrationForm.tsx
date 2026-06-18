@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { useAuthStore } from '@/store/auth.store';
 import { useUpdateProfile } from '@/lib/queries';
 import { useT } from '@/lib/i18n';
-import { DeliveryLocationFields, hasDeliveryLocation } from '@/components/DeliveryLocationFields';
+import { DeliveryLocationFields, hasDeliveryInfo } from '@/components/DeliveryLocationFields';
 
 const schema = z.object({
   name: z.string().trim().min(1),
@@ -15,7 +15,7 @@ const schema = z.object({
   address: z.string().trim().optional(),
   deliveryLat: z.number().nullable(),
   deliveryLng: z.number().nullable(),
-}).refine((d) => hasDeliveryLocation(d), { message: 'location_required', path: ['deliveryLat'] });
+}).refine((d) => hasDeliveryInfo(d), { message: 'delivery_required', path: ['deliveryLat'] });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -81,7 +81,7 @@ export function RegistrationForm() {
           {errors.phone && <div className="err" role="alert">{t('required')}</div>}
         </div>
         <DeliveryLocationFields value={loc} onChange={syncLocation} />
-        {errors.deliveryLat && <div className="err" role="alert">{t('location_required')}</div>}
+        {errors.deliveryLat && <div className="err" role="alert">{t('delivery_required')}</div>}
         <button className="btn btn-primary btn-block" disabled={update.isPending}>
           {t('save')}
         </button>

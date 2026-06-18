@@ -1,8 +1,9 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { Role } from '@eatfit/shared';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ClientsService } from '../clients.service';
 import { ClientSearchQueryDto } from '../dto/client-search-query.dto';
+import { CreateAdminClientDto } from '../dto/create-admin-client.dto';
 import { OrdersService } from '../../orders/orders.service';
 
 /**
@@ -22,6 +23,11 @@ export class ClientsAdminController {
   @Get()
   search(@Query() query: ClientSearchQueryDto) {
     return this.clients.search(query.query);
+  }
+
+  @Post()
+  create(@Body() dto: CreateAdminClientDto) {
+    return this.clients.createAdmin(dto);
   }
 
   @Get(':id/crm')
