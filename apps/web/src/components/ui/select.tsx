@@ -132,7 +132,7 @@ Select.displayName = "Select";
 const triggerVariants = cva(
   [
     "group inline-flex items-center justify-between gap-2 outline-none cursor-pointer",
-    "text-[13px] h-9 px-3 min-w-[160px]",
+    "text-[13px] h-8 px-3 min-w-[160px] shadow-1",
     "transition-all duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
     "focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
@@ -141,9 +141,9 @@ const triggerVariants = cva(
     variants: {
       variant: {
         bordered:
-          "border border-border bg-transparent text-foreground hover:bg-hover",
+          "bg-background text-foreground hover:bg-hover",
         borderless:
-          "border border-transparent bg-transparent text-foreground hover:bg-hover",
+          "bg-transparent text-foreground hover:bg-hover",
       },
     },
     defaultVariants: {
@@ -303,8 +303,8 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
     useEffect(() => {
       if (!open || !triggerRect) return;
       // Double rAF: first waits for React commit, second for layout
-      let outer: number;
-      let inner: number;
+      let outer: number | undefined;
+      let inner: number | undefined;
       outer = requestAnimationFrame(() => {
         inner = requestAnimationFrame(() => {
           measureItems();
@@ -326,8 +326,8 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
         });
       });
       return () => {
-        cancelAnimationFrame(outer);
-        cancelAnimationFrame(inner);
+        if (outer !== undefined) cancelAnimationFrame(outer);
+        if (inner !== undefined) cancelAnimationFrame(inner);
       };
     }, [open, triggerRect, measureItems, value]);
 

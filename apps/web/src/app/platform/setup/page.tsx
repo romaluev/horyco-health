@@ -93,7 +93,7 @@ export default function PlatformSetupPage() {
               {error}
             </div>
           )}
-          <Button className="w-full" disabled={busy} type="submit">
+          <Button variant="primary" className="w-full" disabled={busy} type="submit">
             {t('platform_setup_submit')}
           </Button>
         </form>

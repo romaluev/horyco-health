@@ -79,7 +79,7 @@ export function StaffTab() {
               )
             }
           >
-            <SelectTrigger className="h-9 w-[140px]" />
+            <SelectTrigger className="w-[140px]" />
             <SelectContent>
               {ROLE_OPTIONS.map((role) => (
                 <SelectItem key={role} value={role}>
@@ -124,7 +124,7 @@ export function StaffTab() {
             </Select>
           </Field>
           <Button
-            className="w-full min-h-11"
+            className="w-full"
             disabled={invite.isPending || !inviteForm.name || !inviteForm.phone}
             onClick={() =>
               invite.mutate(inviteForm, {
@@ -151,23 +151,22 @@ export function StaffTab() {
             {m.inviteLink ? (
               <Button
                 variant="ghost"
-                size="icon"
-                className="size-8"
+                size="icon-sm"
                 aria-label={t('bo_invite_link')}
                 onClick={() => void navigator.clipboard.writeText(m.inviteLink!)}
               >
-                <Copy className="size-4" />
+                <Copy />
               </Button>
             ) : null}
             <Button
               variant="ghost"
-              size="icon"
-              className="size-8 text-destructive hover:text-destructive"
+              size="icon-sm"
+              className="text-destructive hover:text-destructive"
               aria-label={t('adm_delete')}
               disabled={remove.isPending}
               onClick={() => remove.mutate(m.id)}
             >
-              <Trash2 className="size-4" />
+              <Trash2 />
             </Button>
           </div>
         )}

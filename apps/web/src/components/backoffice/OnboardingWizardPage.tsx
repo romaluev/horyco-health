@@ -80,8 +80,13 @@ export function OnboardingWizardPage() {
               return (
                 <li key={kind} className="flex flex-wrap items-center gap-2">
                   <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{cmd}</code>
-                  <Button type="button" variant="outline" size="sm" onClick={() => void copyCmd(cmd)}>
-                    <Copy className="mr-1.5 size-3.5" aria-hidden />
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    size="sm"
+                    leadingIcon={Copy}
+                    onClick={() => void copyCmd(cmd)}
+                  >
                     {copied === cmd ? t('bo_copied') : t('bo_bind_copy')}
                   </Button>
                   {bound ? (
@@ -125,7 +130,7 @@ export function OnboardingWizardPage() {
                 {s.inviteLink}
               </p>
             ))}
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="tertiary" size="sm" asChild>
             <Link href="/b/settings/">{t('bo_go_settings')}</Link>
           </Button>
         </>
@@ -138,7 +143,7 @@ export function OnboardingWizardPage() {
       body: (
         <>
           {checklist?.ready ? (
-            <div className="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
+            <div className="rounded-lg shadow-1 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
               {t('bo_ready')}
             </div>
           ) : (
@@ -174,7 +179,7 @@ export function OnboardingWizardPage() {
   };
 
   return (
-    <div className="rounded-lg border bg-card p-4 md:p-6">
+    <div className="rounded-lg shadow-1 bg-card p-4 md:p-6">
       <h3 className="text-lg font-semibold">{t('bo_onboarding')}</h3>
       {settings?.botUsername ? <p className="text-sm text-muted-foreground">@{settings.botUsername}</p> : null}
 
@@ -192,15 +197,15 @@ export function OnboardingWizardPage() {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="flex h-auto w-full items-center justify-between gap-2 px-0 text-left hover:bg-transparent"
+                  trailingIcon={ChevronDown}
+                  className={cn(
+                    'flex h-auto w-full items-center justify-between gap-2 px-0 text-left hover:bg-transparent',
+                    isExpanded && '[&_svg:last-child]:rotate-180 [&_svg:last-child]:transition-transform',
+                  )}
                   onClick={() => toggleStep(step.id)}
                   aria-expanded={isExpanded}
                 >
                   <h4 className="text-sm font-semibold">{step.title}</h4>
-                  <ChevronDown
-                    className={cn('size-4 shrink-0 text-muted-foreground transition-transform', isExpanded && 'rotate-180')}
-                    aria-hidden
-                  />
                 </Button>
                 {step.done && !isExpanded ? (
                   <p className="text-xs text-emerald-600">{t('bo_onboarding_step_complete')}</p>

@@ -215,7 +215,7 @@ export function OffersTab() {
                   key={s.id}
                   type="button"
                   size="sm"
-                  variant={step === s.id ? 'default' : 'outline'}
+                  variant={step === s.id ? 'primary' : 'tertiary'}
                   disabled={
                     (s.id === 'recipients' && composition.length === 0) ||
                     (s.id === 'review' && selected.size === 0)
@@ -237,8 +237,8 @@ export function OffersTab() {
               menu={menu}
               combos={combos}
               footer={
-                <Button className="w-full" disabled={composition.length === 0} onClick={() => setStep('recipients')}>
-                  {t('bo_next')} <ChevronRight className="size-4" />
+                <Button className="w-full" trailingIcon={ChevronRight} disabled={composition.length === 0} onClick={() => setStep('recipients')}>
+                  {t('bo_next')}
                 </Button>
               }
             />
@@ -263,7 +263,7 @@ export function OffersTab() {
                   ))}
                 </div>
                 <Toolbar className="mb-0">
-                  <Button type="button" variant="outline" size="sm" onClick={toggleAll}>
+                  <Button type="button" variant="tertiary" size="sm" onClick={toggleAll}>
                     {t('bo_select_all')}
                   </Button>
                   <Badge variant="secondary">
@@ -300,11 +300,11 @@ export function OffersTab() {
                   </CheckboxGroup>
                 </ScrollArea>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep('build')}>
-                    <ChevronLeft className="size-4" /> {t('bo_back')}
+                  <Button variant="tertiary" leadingIcon={ChevronLeft} className="flex-1" onClick={() => setStep('build')}>
+                    {t('bo_back')}
                   </Button>
-                  <Button className="flex-1" disabled={selected.size === 0} onClick={() => setStep('review')}>
-                    {t('bo_next')} <ChevronRight className="size-4" />
+                  <Button className="flex-1" trailingIcon={ChevronRight} disabled={selected.size === 0} onClick={() => setStep('review')}>
+                    {t('bo_next')}
                   </Button>
                 </div>
               </CardContent>
@@ -322,7 +322,7 @@ export function OffersTab() {
                     {line.label ?? '—'} ×{line.quantity}
                   </div>
                 ))}
-                <div className="flex justify-between border-t pt-3 font-semibold">
+                <div className="flex justify-between border-t border-border/60 pt-3 font-semibold">
                   <span>{t('total')}</span>
                   <span className="tabular-nums">
                     {formatMoney(String(estimatedTotal))} {t('currency')}
@@ -332,7 +332,7 @@ export function OffersTab() {
                   {selected.size} {t('bo_recipients')}
                 </p>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep('recipients')}>
+                  <Button variant="tertiary" className="flex-1" onClick={() => setStep('recipients')}>
                     {t('bo_back')}
                   </Button>
                   <Button className="flex-1" disabled={send.isPending || selected.size === 0} onClick={() => void doSend()}>

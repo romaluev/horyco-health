@@ -29,6 +29,8 @@
   --color-border: var(--adm-border);
   --color-input: var(--adm-border);
   --color-ring: var(--adm-ring);
+  --color-hover: var(--ff-hover);
+  --color-active: var(--ff-active);
   --radius-sm: calc(var(--adm-radius) - 4px);
   --radius-md: calc(var(--adm-radius) - 2px);
   --radius-lg: var(--adm-radius);
@@ -161,7 +163,7 @@
   --adm-surface-2: #f4f4f5;
   --adm-text: #18181b;
   --adm-text-muted: #71717a;
-  --adm-border: #e4e4e7;
+  --adm-border: color-mix(in srgb, var(--adm-text) 8%, transparent);
   --adm-danger: #e5484d;
   --adm-success: #30a46c;
   --adm-warning: #f5a524;
@@ -173,10 +175,14 @@
   --adm-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
   --adm-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
   --adm-shadow: var(--adm-shadow-sm);
-  --adm-row-h: 36px;
+  --adm-row-h: 32px;
+  --adm-control-h: 32px;
   --adm-field-gap: 12px;
   --adm-section-gap: 20px;
   --adm-drawer-w: 560px;
+  --adm-divider: color-mix(in srgb, var(--adm-text) 8%, transparent);
+  --ff-hover: color-mix(in srgb, var(--adm-text) 6%, transparent);
+  --ff-active: color-mix(in srgb, var(--adm-text) 10%, transparent);
   --surface-1: #FAFAFA;
   --surface-2: #FCFCFC;
   --surface-3: #FFFFFF;
@@ -230,6 +236,8 @@ html[data-theme='dark'] {
   --adm-text: #fafafa;
   --adm-text-muted: #a1a1aa;
   --adm-border: rgba(255, 255, 255, 0.08);
+  --ff-hover: rgba(255, 255, 255, 0.06);
+  --ff-active: rgba(255, 255, 255, 0.10);
   --adm-danger: #f76b6b;
   --adm-success: #3dd68c;
   --adm-warning: #f5c542;
@@ -1936,8 +1944,8 @@ body {
 .adm-root input:focus-visible,
 .adm-root textarea:focus-visible,
 .adm-root select:focus-visible {
-  outline: 2px solid var(--adm-ring);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 1px var(--adm-ring);
 }
 
 .adm-layout {
@@ -1950,13 +1958,12 @@ body {
   width: var(--adm-sidebar-w);
   flex-shrink: 0;
   background: var(--adm-surface);
-  border-right: 1px solid var(--adm-border);
   flex-direction: column;
   position: sticky;
   top: 0;
   height: 100dvh;
   overflow-y: auto;
-  box-shadow: var(--adm-shadow-sm);
+  box-shadow: var(--shadow-2);
 }
 
 .adm-sidebar-brand {
@@ -1986,9 +1993,9 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 36px;
-  padding: 8px 10px;
-  border-radius: calc(var(--adm-radius) - 2px);
+  min-height: var(--adm-control-h);
+  padding: 6px 10px;
+  border-radius: var(--adm-radius);
   color: var(--adm-text-muted);
   text-decoration: none;
   font-size: 13px;
@@ -1997,7 +2004,7 @@ body {
 }
 
 .adm-nav-link:hover {
-  background: var(--adm-surface-2);
+  background: var(--ff-hover);
   color: var(--adm-text);
 }
 
@@ -2008,8 +2015,8 @@ body {
 }
 
 .adm-nav-link:focus-visible {
-  outline: 2px solid var(--adm-ring);
-  outline-offset: 2px;
+  box-shadow: 0 0 0 1px var(--adm-ring);
+  outline: none;
 }
 
 .adm-sidebar-footer {
@@ -2035,19 +2042,18 @@ body {
   justify-content: space-between;
   min-height: var(--adm-topbar-h);
   padding: 0 16px;
-  border-bottom: 1px solid var(--adm-border);
+  border-bottom: 1px solid var(--adm-divider);
 }
 
 .adm-kbd {
   margin-left: 8px;
   padding: 2px 6px;
-  border-radius: calc(var(--adm-radius) - 4px);
-  border: 1px solid var(--adm-border);
+  border-radius: calc(var(--adm-radius) - 2px);
   background: var(--adm-surface-2);
   font-size: 11px;
   font-family: inherit;
   color: var(--adm-text-muted);
-  box-shadow: var(--adm-shadow-sm);
+  box-shadow: var(--shadow-1);
 }
 
 .adm-main {
@@ -2066,7 +2072,7 @@ body {
   padding: 0 16px;
   background: color-mix(in srgb, var(--adm-surface) 92%, transparent);
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--adm-border);
+  border-bottom: 1px solid var(--adm-divider);
   position: sticky;
   top: 0;
   z-index: 40;
@@ -2102,8 +2108,8 @@ body {
 }
 
 .adm-menu-btn:focus-visible {
-  outline: 2px solid var(--adm-ring);
-  outline-offset: 2px;
+  box-shadow: 0 0 0 1px var(--adm-ring);
+  outline: none;
 }
 
 .adm-content {
@@ -2135,8 +2141,9 @@ body {
   right: 0;
   z-index: 50;
   background: var(--adm-surface);
-  border-top: 1px solid var(--adm-border);
+  border-top: 1px solid var(--adm-divider);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: var(--shadow-2);
 }
 
 @media (min-width: 1024px) {
@@ -2167,8 +2174,8 @@ body {
 }
 
 .adm-bottom-nav-link:focus-visible {
-  outline: 2px solid var(--adm-ring);
-  outline-offset: -2px;
+  box-shadow: inset 0 0 0 1px var(--adm-ring);
+  outline: none;
 }
 
 .adm-drawer-backdrop {
@@ -2210,10 +2217,9 @@ body {
 
 .adm-card {
   background: var(--adm-surface);
-  border: 1px solid var(--adm-border);
   border-radius: var(--adm-radius);
   padding: 16px;
-  box-shadow: var(--adm-shadow-sm);
+  box-shadow: var(--shadow-1);
   margin-bottom: 16px;
 }
 
@@ -2232,10 +2238,9 @@ body {
 
 .adm-kpi {
   background: var(--adm-surface);
-  border: 1px solid var(--adm-border);
   border-radius: var(--adm-radius);
   padding: 14px 16px;
-  box-shadow: var(--adm-shadow-sm);
+  box-shadow: var(--shadow-1);
 }
 
 .adm-kpi-label {
@@ -2255,25 +2260,30 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 36px;
+  min-height: var(--adm-control-h);
   padding: 0 14px;
-  border-radius: calc(var(--adm-radius) - 2px);
-  border: 1px solid var(--adm-border);
+  border-radius: var(--adm-radius);
+  border: none;
   background: var(--adm-surface);
   color: var(--adm-text);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  box-shadow: var(--shadow-1);
+  transition: background 150ms ease, box-shadow 150ms ease;
 }
 
 .adm-btn:hover:not(:disabled) {
-  background: var(--adm-surface-2);
+  background: var(--ff-hover);
+}
+
+.adm-btn:active:not(:disabled) {
+  background: var(--ff-active);
 }
 
 .adm-btn:focus-visible {
-  outline: 2px solid var(--adm-ring);
-  outline-offset: 2px;
+  box-shadow: 0 0 0 1px var(--adm-ring);
+  outline: none;
 }
 
 .adm-btn:disabled {
@@ -2283,27 +2293,29 @@ body {
 
 .adm-btn-primary {
   background: var(--adm-primary);
-  border-color: var(--adm-primary);
   color: var(--adm-on-primary);
+  box-shadow: var(--shadow-1);
 }
 
 .adm-btn-primary:hover:not(:disabled) {
   background: var(--adm-primary-hover);
-  border-color: var(--adm-primary-hover);
 }
 
 .adm-btn-danger {
   color: var(--adm-danger);
-  border-color: color-mix(in srgb, var(--adm-danger) 30%, var(--adm-border));
 }
 
 .adm-btn-ghost {
-  border-color: transparent;
+  box-shadow: none;
   background: transparent;
 }
 
+.adm-btn-ghost:hover:not(:disabled) {
+  background: var(--ff-hover);
+}
+
 .adm-btn-sm {
-  min-height: 32px;
+  min-height: 28px;
   padding: 0 10px;
   font-size: 12px;
 }
@@ -2322,20 +2334,20 @@ body {
 
 .adm-input {
   width: 100%;
-  min-height: 36px;
-  padding: 8px 12px;
-  border: 1px solid var(--adm-border);
-  border-radius: calc(var(--adm-radius) - 2px);
+  min-height: var(--adm-control-h);
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--adm-radius);
   background: var(--adm-surface);
   color: var(--adm-text);
-  font-size: 14px;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  font-size: 13px;
+  box-shadow: var(--shadow-1);
+  transition: box-shadow 150ms ease;
 }
 
 .adm-input:focus {
   outline: none;
-  border-color: var(--adm-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--adm-primary) 18%, transparent);
+  box-shadow: 0 0 0 1px var(--adm-ring);
 }
 
 .adm-muted {
@@ -2352,19 +2364,19 @@ body {
 
 .adm-alert-error {
   background: color-mix(in srgb, var(--adm-danger) 10%, var(--adm-surface));
-  border: 1px solid color-mix(in srgb, var(--adm-danger) 30%, var(--adm-border));
+  box-shadow: var(--shadow-1);
   color: var(--adm-danger);
 }
 
 .adm-alert-info {
   background: color-mix(in srgb, var(--adm-primary) 8%, var(--adm-surface));
-  border: 1px solid color-mix(in srgb, var(--adm-primary) 25%, var(--adm-border));
+  box-shadow: var(--shadow-1);
   color: var(--adm-text);
 }
 
 .adm-alert-success {
   background: color-mix(in srgb, var(--adm-success) 10%, var(--adm-surface));
-  border: 1px solid color-mix(in srgb, var(--adm-success) 30%, var(--adm-border));
+  box-shadow: var(--shadow-1);
   color: var(--adm-success);
 }
 
@@ -2406,7 +2418,7 @@ body {
 .adm-table td {
   padding: 10px 12px;
   text-align: left;
-  border-bottom: 1px solid var(--adm-border);
+  border-bottom: 1px solid var(--adm-divider);
 }
 
 .adm-table th {
@@ -2436,10 +2448,9 @@ body {
   width: 100%;
   max-width: 420px;
   background: var(--adm-surface);
-  border: 1px solid var(--adm-border);
   border-radius: calc(var(--adm-radius) + 4px);
   padding: 28px 24px;
-  box-shadow: var(--adm-shadow-md);
+  box-shadow: var(--shadow-3);
 }
 
 .adm-login-card h1 {
@@ -2467,8 +2478,8 @@ body {
   left: 15px;
   top: 32px;
   bottom: 0;
-  width: 2px;
-  background: var(--adm-border);
+  width: 1px;
+  background: var(--adm-divider);
 }
 
 .adm-step.done:not(:last-child)::before {
@@ -2484,7 +2495,7 @@ body {
   justify-content: center;
   flex-shrink: 0;
   background: var(--adm-surface-2);
-  border: 2px solid var(--adm-border);
+  box-shadow: var(--shadow-1);
   font-size: 13px;
   font-weight: 700;
   color: var(--adm-text-muted);
@@ -2492,13 +2503,13 @@ body {
 
 .adm-step.done .adm-step-icon {
   background: color-mix(in srgb, var(--adm-success) 15%, var(--adm-surface));
-  border-color: var(--adm-success);
+  box-shadow: 0 0 0 1px var(--adm-success);
   color: var(--adm-success);
 }
 
 .adm-step.active .adm-step-icon {
   background: color-mix(in srgb, var(--adm-primary) 12%, var(--adm-surface));
-  border-color: var(--adm-primary);
+  box-shadow: 0 0 0 1px var(--adm-primary);
   color: var(--adm-primary);
 }
 
@@ -2515,14 +2526,15 @@ body {
 }
 
 .adm-switcher select {
-  min-height: 44px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--adm-border);
+  min-height: var(--adm-control-h);
+  padding: 6px 12px;
+  border-radius: var(--adm-radius);
+  border: none;
   background: var(--adm-surface);
   color: var(--adm-text);
-  font-size: 14px;
+  font-size: 13px;
   max-width: 220px;
+  box-shadow: var(--shadow-1);
 }
 
 .adm-user-menu {
@@ -2539,7 +2551,7 @@ body {
   margin-bottom: 20px;
   border-radius: var(--adm-radius);
   background: color-mix(in srgb, var(--adm-primary) 8%, var(--adm-surface));
-  border: 1px solid color-mix(in srgb, var(--adm-primary) 20%, var(--adm-border));
+  box-shadow: var(--shadow-1);
 }
 
 @media (min-width: 768px) {
@@ -2561,6 +2573,8 @@ body {
   --surface-6: #3A3A3A;
   --surface-7: #414141;
   --surface-8: #484848;
+  --ff-hover: rgba(255, 255, 255, 0.06);
+  --ff-active: rgba(255, 255, 255, 0.10);
   --dm-hi-base: rgba(255,255,255,0.01);
   --dm-hi-mid: rgba(255,255,255,0.02);
   --dm-hi-high: rgba(255,255,255,0.04);

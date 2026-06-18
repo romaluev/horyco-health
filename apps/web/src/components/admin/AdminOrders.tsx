@@ -116,7 +116,7 @@ function OrderDetailDrawer({
           <Button
             key={a.status}
             variant="secondary"
-            className="min-h-10 w-full sm:w-auto"
+            className="w-full sm:w-auto"
             disabled={pending}
             onClick={() => onTransition(order.id, a.status)}
           >
@@ -126,7 +126,7 @@ function OrderDetailDrawer({
         {canCancel && (
           <Button
             variant="destructive"
-            className="min-h-10 w-full sm:w-auto"
+            className="w-full sm:w-auto"
             disabled={pending}
             onClick={() => setCancelOpen(true)}
           >
@@ -173,12 +173,15 @@ function OrderDetailDrawer({
             <p className="mb-1 text-muted-foreground">{t('address')}</p>
             <p>{order.address}</p>
             {mapsUrl && (
-              <Button variant="link" className="mt-1 h-auto p-0" asChild>
-                <a href={mapsUrl} target="_blank" rel="noreferrer">
-                  <MapPin className="mr-1 inline size-4" />
-                  {t('bo_order_map')}
-                </a>
-              </Button>
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1.5 text-[13px] text-primary underline underline-offset-4 hover:underline"
+              >
+                <MapPin className="size-4 shrink-0" />
+                {t('bo_order_map')}
+              </a>
             )}
           </div>
           <div className="space-y-1">
@@ -188,7 +191,7 @@ function OrderDetailDrawer({
               </div>
             ))}
           </div>
-          <div className="flex justify-between border-t pt-3 font-semibold">
+          <div className="flex justify-between border-t border-border/60 pt-3 font-semibold">
             <span>{t('total')}</span>
             <span className="tabular-nums">
               {formatMoney(order.total)} {t('currency')}
@@ -209,7 +212,7 @@ function OrderDetailDrawer({
             <DialogDescription>#{order.number}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setCancelOpen(false)}>
+            <Button variant="tertiary" onClick={() => setCancelOpen(false)}>
               {t('bo_cancel_confirm_no')}
             </Button>
             <Button

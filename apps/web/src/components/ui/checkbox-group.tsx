@@ -28,20 +28,29 @@ const CheckboxGroupContext = createContext<CheckboxGroupContextValue | null>(
   null
 );
 
+const checkboxGroupFallback: CheckboxGroupContextValue = {
+  registerItem: () => {},
+  activeIndex: null,
+};
+
 function useCheckboxGroup() {
   const ctx = useContext(CheckboxGroupContext);
-  if (!ctx)
-    throw new Error("useCheckboxGroup must be used within a CheckboxGroup");
+  if (!ctx) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("useCheckboxGroup must be used within a CheckboxGroup");
+    }
+    return checkboxGroupFallback;
+  }
   return ctx;
 }
 
 interface CheckboxGroupProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
-  checkedIndices: Set<number>;
+  checkedIndices?: Set<number>;
 }
 
 const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
-  ({ children, checkedIndices, className, ...props }, ref) => {
+  ({ children, checkedIndices = new Set(), className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const groupIdCounter = useRef(0);
     const prevGroupMap = useRef(new Map<number, number>());

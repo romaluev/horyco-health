@@ -73,7 +73,7 @@ export function StaffLoginCard({
               {error}
             </div>
           )}
-          <Button className="w-full" disabled={busy} type="submit">
+          <Button variant="primary" className="w-full" disabled={busy} type="submit">
             {t('web_login')}
           </Button>
         </form>

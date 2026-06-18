@@ -159,7 +159,7 @@ export function BackofficeSettings() {
       <PageHeader title={t('adm_settings')} />
 
       {showWizardLink && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/35 bg-primary/10 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg shadow-1 bg-primary/10 px-4 py-3">
           <span className="text-sm">{t('bo_onboarding_banner')}</span>
           <Button size="sm" asChild>
             <Link href="/b/onboarding/">{t('bo_onboarding_continue')}</Link>
@@ -170,10 +170,10 @@ export function BackofficeSettings() {
       {botFeedback && (
         <div
           className={cn(
-            'rounded-lg border px-4 py-3 text-sm',
+            'rounded-lg shadow-1 px-4 py-3 text-sm',
             botFeedback.type === 'error'
-              ? 'border-destructive/50 bg-destructive/10 text-destructive'
-              : 'border-primary/35 bg-primary/10',
+              ? 'bg-destructive/10 text-destructive'
+              : 'bg-primary/10',
           )}
           role="alert"
         >
@@ -204,19 +204,19 @@ export function BackofficeSettings() {
                     {t('bo_reconnect_bot')}
                   </Button>
                   {!showReplaceToken && (
-                    <Button variant="outline" disabled={botBusy} onClick={() => setShowReplaceToken(true)}>
+                    <Button variant="tertiary" disabled={botBusy} onClick={() => setShowReplaceToken(true)}>
                       {t('bo_replace_bot')}
                     </Button>
                   )}
                   {!showDisconnectConfirm && (
-                    <Button variant="outline" disabled={botBusy} onClick={() => setShowDisconnectConfirm(true)}>
+                    <Button variant="tertiary" disabled={botBusy} onClick={() => setShowDisconnectConfirm(true)}>
                       {t('bo_disconnect_bot')}
                     </Button>
                   )}
                 </div>
 
                 {showReplaceToken && (
-                  <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+                  <div className="space-y-3 rounded-lg shadow-1 bg-card p-4">
                     <Field label={t('bo_bot_token')} hint={t('bo_replace_bot_hint')}>
                       <Input type="password" value={token} onChange={(e) => setToken(e.target.value)} />
                     </Field>
@@ -225,7 +225,7 @@ export function BackofficeSettings() {
                         {t('bo_replace_bot')}
                       </Button>
                       <Button
-                        variant="outline"
+                        variant="tertiary"
                         disabled={botBusy}
                         onClick={() => {
                           setShowReplaceToken(false);
@@ -239,7 +239,7 @@ export function BackofficeSettings() {
                 )}
 
                 {showDisconnectConfirm && (
-                  <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+                  <div className="space-y-3 rounded-lg shadow-1 bg-card p-4">
                     <p className="text-sm font-medium">{t('bo_disconnect_confirm')}</p>
                     <p className="text-sm text-muted-foreground">{t('bo_disconnect_confirm_hint')}</p>
                     <div className="flex flex-wrap gap-2">
@@ -272,7 +272,7 @@ export function BackofficeSettings() {
           <FormSection title={t('bo_chats')} description={t('bo_reset_chats_hint')}>
             <div className="space-y-4">
               <p className="text-xs text-muted-foreground">{t('bo_bind_channel_hint')}</p>
-              <div className="divide-y rounded-lg border">
+              <div className="divide-y divide-border/60 rounded-lg shadow-1">
                 {BIND_COMMANDS.map(({ kind, cmd, labelKey }) => {
                   const row = chats?.find((c) => c.kind === kind);
                   const active = row?.chatId && row.status === 'active';
@@ -291,7 +291,7 @@ export function BackofficeSettings() {
               </div>
               {settings?.hasBotToken && (
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" disabled={botBusy} onClick={() => void handleResetChats()}>
+                  <Button variant="tertiary" disabled={botBusy} onClick={() => void handleResetChats()}>
                     {t('bo_reset_chats')}
                   </Button>
                   <Button asChild>
@@ -340,7 +340,7 @@ export function BackofficeSettings() {
                   />
                 </Field>
               </FormGrid>
-              <Button className="w-full min-h-11" disabled={save.isPending} onClick={() => save.mutate(form)}>
+              <Button className="w-full" disabled={save.isPending} onClick={() => save.mutate(form)}>
                 {t('save')}
               </Button>
             </div>
@@ -370,14 +370,14 @@ export function BackofficeSettings() {
                   onChange={(e) => setForm({ ...form, supportContact: e.target.value })}
                 />
               </Field>
-              <Button className="w-full min-h-11" disabled={save.isPending} onClick={() => save.mutate(form)}>
+              <Button className="w-full" disabled={save.isPending} onClick={() => save.mutate(form)}>
                 {t('save')}
               </Button>
             </div>
           </FormSection>
 
           <FormSection title={t('bo_staff')} description={t('bo_staff_hint')}>
-            <Button className="w-full min-h-11" asChild>
+            <Button className="w-full" asChild>
               <Link href="/b/staff/">{t('bo_staff')}</Link>
             </Button>
           </FormSection>

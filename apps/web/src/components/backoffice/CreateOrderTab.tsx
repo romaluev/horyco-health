@@ -114,9 +114,9 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" asChild>
+        <Button variant="ghost" size="icon-sm" asChild>
           <Link href="/b/orders/">
-            <ChevronLeft className="size-5" />
+            <ChevronLeft />
           </Link>
         </Button>
         <div>
@@ -161,8 +161,8 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
               ))}
             </CheckboxGroup>
           </ScrollArea>
-          <Button className="w-full" disabled={selected.size === 0} onClick={() => setStep('basket')}>
-            {t('bo_next')} <ChevronRight className="size-4" />
+          <Button className="w-full" trailingIcon={ChevronRight} disabled={selected.size === 0} onClick={() => setStep('basket')}>
+            {t('bo_next')}
           </Button>
         </TabsContent>
 
@@ -173,8 +173,8 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
             menu={menu}
             combos={combos}
             footer={
-              <Button className="w-full" disabled={composition.length === 0} onClick={() => setStep('confirm')}>
-                {t('bo_next')} <ChevronRight className="size-4" />
+              <Button className="w-full" trailingIcon={ChevronRight} disabled={composition.length === 0} onClick={() => setStep('confirm')}>
+                {t('bo_next')}
               </Button>
             }
           />
@@ -191,14 +191,14 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
               <div className="flex gap-2">
                 <Button
                   size="sm"
-                  variant={paymentMethod === PaymentMethod.OnDelivery ? 'default' : 'outline'}
+                  variant={paymentMethod === PaymentMethod.OnDelivery ? 'primary' : 'tertiary'}
                   onClick={() => setPaymentMethod(PaymentMethod.OnDelivery)}
                 >
                   {t('pay_cash')}
                 </Button>
                 <Button
                   size="sm"
-                  variant={paymentMethod === PaymentMethod.Balance ? 'default' : 'outline'}
+                  variant={paymentMethod === PaymentMethod.Balance ? 'primary' : 'tertiary'}
                   onClick={() => setPaymentMethod(PaymentMethod.Balance)}
                 >
                   {t('pay_balance')}
@@ -208,7 +208,7 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
               <ScrollArea viewportClassName="max-h-64">
                 <div className="space-y-2 text-sm pr-2">
                 {selectedUsers.map((u) => (
-                  <div key={u.id} className="rounded-md border px-3 py-2">
+                  <div key={u.id} className="rounded-lg bg-card px-3 py-2 shadow-1">
                     <strong>{u.name}</strong>
                     <p className="text-muted-foreground">{u.phone ?? '—'}</p>
                     <p className="text-muted-foreground">{u.address || '—'}</p>

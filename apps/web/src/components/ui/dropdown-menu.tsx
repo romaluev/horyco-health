@@ -18,9 +18,21 @@ interface DropdownMenuContextValue {
 
 const DropdownMenuContext = React.createContext<DropdownMenuContextValue | null>(null);
 
+const dropdownMenuFallback: DropdownMenuContextValue = {
+  open: false,
+  setOpen: () => {},
+  triggerRef: { current: null },
+  itemIndex: { current: 0 },
+};
+
 function useDropdownMenu() {
   const ctx = React.useContext(DropdownMenuContext);
-  if (!ctx) throw new Error('DropdownMenu components must be used within DropdownMenu');
+  if (!ctx) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('DropdownMenu components must be used within DropdownMenu');
+    }
+    return dropdownMenuFallback;
+  }
   return ctx;
 }
 

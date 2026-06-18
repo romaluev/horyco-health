@@ -103,7 +103,7 @@ function UserDetailDrawer({
     >
       {crm ? (
         <div className="space-y-4 text-sm">
-          <Button className="w-full min-h-10" asChild>
+          <Button className="w-full" asChild>
             <Link href={`/b/orders/new/?clientId=${crm.id}`}>{t('crm_create_order')}</Link>
           </Button>
 
@@ -141,7 +141,7 @@ function UserDetailDrawer({
             </p>
           )}
 
-          <div className="space-y-3 rounded-lg border p-4">
+          <div className="space-y-3 rounded-lg shadow-1 bg-card p-4">
             <p className="font-medium">{t('balance')}</p>
             <div className="flex flex-wrap gap-2">
               {[50000, 100000, 200000].map((v) => (
@@ -161,7 +161,7 @@ function UserDetailDrawer({
               <Button disabled={deposit.isPending || !Number(amount)} onClick={doDeposit}>
                 {t('adm_deposit')}
               </Button>
-              <Button variant="outline" disabled={withdraw.isPending || !Number(amount)} onClick={doWithdraw}>
+              <Button variant="tertiary" disabled={withdraw.isPending || !Number(amount)} onClick={doWithdraw}>
                 {t('adm_withdraw')}
               </Button>
             </div>
@@ -186,7 +186,7 @@ function UserDetailDrawer({
               <h4 className="mb-2 font-medium">{t('crm_order_history')}</h4>
               <ul className="space-y-2">
                 {clientOrders.map((o) => (
-                  <li key={o.id} className="flex justify-between border-b pb-2">
+                  <li key={o.id} className="flex justify-between border-b border-border/60 pb-2">
                     <span>
                       #{o.number} · {st(o.status)}
                     </span>
@@ -305,8 +305,8 @@ export function AdminUsers() {
         actions={(u) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
-                <MoreHorizontal className="size-4" />
+              <Button variant="ghost" size="icon-sm" aria-label={t('crm_view_profile')}>
+                <MoreHorizontal />
                 <span className="sr-only">{t('crm_view_profile')}</span>
               </Button>
             </DropdownMenuTrigger>
@@ -342,7 +342,7 @@ export function AdminUsers() {
         onOpenChange={setAddOpen}
         title={t('adm_add_client')}
         footer={
-          <Button className="min-h-10 w-full sm:w-auto" disabled={createClient.isPending} onClick={submitNewClient}>
+          <Button className="w-full sm:w-auto" disabled={createClient.isPending} onClick={submitNewClient}>
             {createClient.isPending ? t('loading') : t('save')}
           </Button>
         }

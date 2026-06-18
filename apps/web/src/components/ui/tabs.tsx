@@ -46,9 +46,21 @@ interface TabsListContextValue {
 
 const TabsListContext = createContext<TabsListContextValue | null>(null);
 
+const tabsListFallback: TabsListContextValue = {
+  registerTab: () => {},
+  hoveredIndex: null,
+  selectedValue: undefined,
+  setOptimisticIdx: () => {},
+};
+
 function useTabsList() {
   const ctx = useContext(TabsListContext);
-  if (!ctx) throw new Error("TabItem must be used within a TabsList");
+  if (!ctx) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("TabItem must be used within a TabsList");
+    }
+    return tabsListFallback;
+  }
   return ctx;
 }
 

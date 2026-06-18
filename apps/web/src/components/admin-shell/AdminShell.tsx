@@ -95,16 +95,21 @@ function BottomNav({
         if (item.id === 'more') {
           const secondaryActive = BACKOFFICE_SECONDARY_NAV.some((s) => pathname.startsWith(s.href));
           return (
-            <button
+            <Button
               key={item.id}
               type="button"
-              className={cn('adm-bottom-nav-link', secondaryActive && 'active')}
+              variant="ghost"
+              leadingIcon={Icon}
+              className={cn(
+                'adm-bottom-nav-link !inline-flex !h-auto !min-h-[56px] !flex-col !items-center !justify-center !gap-0.5 !p-[6px_4px] !text-[11px] font-medium',
+                '[&>span:last-child]:flex [&>span:last-child]:flex-col [&>span:last-child]:items-center [&>span:last-child]:gap-0.5',
+                secondaryActive && 'active',
+              )}
               onClick={onMore}
               aria-label={t('bo_nav_more')}
             >
-              <Icon size={20} aria-hidden />
-              <span>{t(item.labelKey as I18nKey)}</span>
-            </button>
+              {t(item.labelKey as I18nKey)}
+            </Button>
           );
         }
         const active = pathname.startsWith(item.href);
@@ -185,10 +190,15 @@ export function AdminShell({
             {t('platform_nav_console')}
           </Link>
         )}
-        <button type="button" className="adm-nav-link adm-sidebar-logout" onClick={() => logout()}>
-          <LogOut size={18} aria-hidden />
+        <Button
+          type="button"
+          variant="ghost"
+          className="adm-nav-link adm-sidebar-logout !h-auto !min-h-[var(--adm-control-h)] !justify-start !gap-[10px] !px-[10px] !py-[6px] !text-[13px] font-medium"
+          leadingIcon={LogOut}
+          onClick={() => logout()}
+        >
           {t('logout')}
-        </button>
+        </Button>
       </div>
     </>
   );
@@ -201,17 +211,19 @@ export function AdminShell({
 
         <div className="adm-main">
           <header className="adm-topbar">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-lg"
               className="adm-menu-btn lg:hidden"
               aria-label={t('adm_open_menu')}
               onClick={() => setDrawerOpen(true)}
             >
-              <Menu size={22} />
-            </button>
+              <Menu />
+            </Button>
             <h1 className="adm-topbar-title">{t(titleKey)}</h1>
             <div className="adm-topbar-actions adm-switcher">
-              <Button variant="outline" size="sm" className="hidden md:inline-flex" onClick={() => setCmdOpen(true)}>
+              <Button variant="tertiary" size="sm" className="hidden md:inline-flex" onClick={() => setCmdOpen(true)}>
                 {t('cmd_palette_placeholder').slice(0, 12)}…
                 <kbd className="adm-kbd">{t('adm_cmd_hint')}</kbd>
               </Button>
@@ -238,9 +250,16 @@ export function AdminShell({
           >
             <div className="adm-drawer-head">
               <span className="adm-topbar-title">{t('adm_open_menu')}</span>
-              <button type="button" className="adm-menu-btn" aria-label={t('bo_close')} onClick={() => setDrawerOpen(false)}>
-                <X size={22} />
-              </button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-lg"
+                className="adm-menu-btn"
+                aria-label={t('bo_close')}
+                onClick={() => setDrawerOpen(false)}
+              >
+                <X />
+              </Button>
             </div>
             {sidebar}
           </div>
@@ -257,24 +276,32 @@ export function AdminShell({
               const Icon = item.icon;
               const active = pathname.startsWith(item.href);
               return (
-                <Button key={item.id} variant={active ? 'secondary' : 'ghost'} className="justify-start min-h-12" asChild>
+                <Button
+                  key={item.id}
+                  variant={active ? 'secondary' : 'ghost'}
+                  className="w-full justify-start"
+                  leadingIcon={Icon}
+                  asChild
+                >
                   <Link href={item.href} onClick={() => setMoreOpen(false)}>
-                    <Icon size={18} />
                     {t(item.labelKey as I18nKey)}
                   </Link>
                 </Button>
               );
             })}
             {platformLink && (
-              <Button variant="ghost" className="justify-start min-h-12" asChild>
+              <Button variant="ghost" className="w-full justify-start" leadingIcon={ExternalLink} asChild>
                 <Link href="/platform/" onClick={() => setMoreOpen(false)}>
-                  <ExternalLink size={18} />
                   {t('platform_nav_console')}
                 </Link>
               </Button>
             )}
-            <Button variant="ghost" className="justify-start min-h-12 text-destructive" onClick={() => logout()}>
-              <LogOut size={18} />
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-destructive"
+              leadingIcon={LogOut}
+              onClick={() => logout()}
+            >
               {t('logout')}
             </Button>
           </div>

@@ -259,7 +259,7 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <Card className="shadow-sm">
+      <Card className="shadow-1">
         <CardHeader className="space-y-3 pb-3">
           <CardTitle className="text-base">{t('bo_compose')}</CardTitle>
           <Tabs value={pickKind} onValueChange={(v) => setPickKind(v as 'dish' | 'combo')}>
@@ -279,7 +279,7 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <ScrollArea className="rounded-md border border-border" viewportClassName="max-h-48">
+          <ScrollArea className="overflow-hidden rounded-md shadow-1" viewportClassName="max-h-48">
             <div className="divide-y divide-border">
             {pickKind === 'dish'
               ? filteredDishes.map((m) => (
@@ -289,7 +289,7 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
                     variant="ghost"
                     className={cn(
                       'flex h-auto w-full items-center justify-between gap-2 rounded-none px-3 py-2.5 text-left text-sm font-normal',
-                      selectedDishId === m.id && 'bg-accent text-accent-foreground',
+                      selectedDishId === m.id && 'bg-active text-foreground',
                     )}
                     onClick={() => selectDish(m.id)}
                   >
@@ -304,7 +304,7 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
                     variant="ghost"
                     className={cn(
                       'flex h-auto w-full items-center justify-between gap-2 rounded-none px-3 py-2.5 text-left text-sm font-normal',
-                      selectedComboId === c.id && 'bg-accent text-accent-foreground',
+                      selectedComboId === c.id && 'bg-active text-foreground',
                     )}
                     onClick={() => selectCombo(c.id)}
                   >
@@ -322,7 +322,7 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
           </ScrollArea>
 
           {(selectedDishId || selectedComboId) && selectedItemLabel ? (
-            <div className="space-y-3 rounded-md bg-muted/20 p-3">
+            <div className="space-y-3 rounded-md p-3 shadow-1">
               <p className="text-sm font-medium">{selectedItemLabel}</p>
 
               {selectedDishId && dishGroups && dishGroups.length > 0 ? (
@@ -342,7 +342,7 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
                         key={p}
                         type="button"
                         size="sm"
-                        variant={draftPortion === p ? 'default' : 'outline'}
+                        variant={draftPortion === p ? 'primary' : 'tertiary'}
                         onClick={() => setDraftPortion(p)}
                       >
                         {p}
@@ -386,7 +386,7 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm lg:sticky lg:top-[calc(var(--adm-topbar-h)+16px)] lg:self-start">
+      <Card className="shadow-1 lg:sticky lg:top-[calc(var(--adm-topbar-h)+16px)] lg:self-start">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-base">{t('bo_cart_preview')}</CardTitle>
           <span className="text-sm font-semibold tabular-nums">
@@ -405,11 +405,11 @@ export function ProductComposer({ lines, onLinesChange, menu, combos, footer }: 
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
-                  className="size-8 shrink-0"
+                  size="icon-sm"
+                  aria-label={t('adm_delete')}
                   onClick={() => onLinesChange(lines.filter((_, i) => i !== idx))}
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 />
                 </Button>
               </div>
             ))

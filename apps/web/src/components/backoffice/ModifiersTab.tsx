@@ -72,7 +72,7 @@ function SegmentButtons<T extends string>({
         <Button
           key={opt.value}
           type="button"
-          variant={value === opt.value ? 'default' : 'outline'}
+          variant={value === opt.value ? 'primary' : 'tertiary'}
           size="sm"
           onClick={() => onChange(opt.value)}
         >
@@ -190,8 +190,7 @@ export function ModifiersTab() {
       <PageHeader
         title={t('bo_modifiers')}
         actions={
-          <Button type="button" onClick={() => setEditing({ id: null, body: emptyGroup() })}>
-            <Plus className="size-4" />
+          <Button type="button" leadingIcon={Plus} onClick={() => setEditing({ id: null, body: emptyGroup() })}>
             {t('bo_mod_new_group')}
           </Button>
         }
@@ -205,9 +204,8 @@ export function ModifiersTab() {
         actions={(g) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
-                <MoreHorizontal className="size-4" />
-                <span className="sr-only">{t('adm_edit')}</span>
+              <Button variant="ghost" size="icon-sm" aria-label={t('adm_edit')}>
+                <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -229,8 +227,7 @@ export function ModifiersTab() {
             icon={Layers}
             title={t('bo_modifiers_empty')}
             action={
-              <Button type="button" onClick={() => setEditing({ id: null, body: emptyGroup() })}>
-                <Plus className="size-4" />
+              <Button type="button" leadingIcon={Plus} onClick={() => setEditing({ id: null, body: emptyGroup() })}>
                 {t('bo_mod_new_group')}
               </Button>
             }
@@ -244,7 +241,7 @@ export function ModifiersTab() {
         title={editing?.id ? t('bo_mod_edit_group') : t('bo_mod_new_group')}
         footer={
           <div className="flex w-full gap-2 sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+            <Button type="button" variant="tertiary" onClick={() => setEditing(null)}>
               {t('detail_back')}
             </Button>
             <Button
@@ -451,8 +448,8 @@ function ModifierItemsSection({ group, lang }: { group: ModifierGroupRow; lang: 
           actions={(m) => (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-8">
-                  <MoreHorizontal className="size-4" />
+                <Button variant="ghost" size="icon-sm" aria-label={t('adm_edit')}>
+                  <MoreHorizontal />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -511,10 +508,10 @@ function ModifierItemsSection({ group, lang }: { group: ModifierGroupRow; lang: 
         <Button
           type="button"
           variant="secondary"
+          leadingIcon={Plus}
           disabled={createModifier.isPending || !nameRu.trim()}
           onClick={addModifier}
         >
-          <Plus className="size-4" />
           {t('bo_mod_add_item')}
         </Button>
       </div>

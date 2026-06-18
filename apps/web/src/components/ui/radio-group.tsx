@@ -30,9 +30,22 @@ interface RadioGroupContextValue {
 
 const RadioGroupContext = createContext<RadioGroupContextValue | null>(null);
 
+const radioGroupFallback: RadioGroupContextValue = {
+  registerItem: () => {},
+  activeIndex: null,
+  selectedIndex: null,
+  selectedValue: undefined,
+  onValueChange: undefined,
+};
+
 function useRadioGroupContext() {
   const ctx = useContext(RadioGroupContext);
-  if (!ctx) throw new Error("useRadioGroup must be used within a RadioGroup");
+  if (!ctx) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("useRadioGroup must be used within a RadioGroup");
+    }
+    return radioGroupFallback;
+  }
   return ctx;
 }
 

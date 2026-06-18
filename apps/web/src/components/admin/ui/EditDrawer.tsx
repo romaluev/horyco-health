@@ -36,7 +36,7 @@ export function EditDrawer({
         side="right"
         className={cn('flex w-full flex-col gap-0 p-0 sm:max-w-[var(--adm-drawer-w)]', className)}
       >
-        <SheetHeader className="shrink-0 border-b px-6 py-4 text-left">
+        <SheetHeader className="shrink-0 border-b border-border/60 px-6 py-4 text-left">
           <SheetTitle>{title}</SheetTitle>
           {description ? <SheetDescription>{description}</SheetDescription> : null}
         </SheetHeader>
@@ -44,7 +44,7 @@ export function EditDrawer({
           {children}
         </ScrollArea>
         {footer ? (
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+          <SheetFooter className="shrink-0 border-t border-border/60 px-6 py-4 sm:flex-row sm:justify-end">
             {footer}
           </SheetFooter>
         ) : null}

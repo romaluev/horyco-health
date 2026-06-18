@@ -31,9 +31,20 @@ interface DropdownContextValue {
 
 const DropdownContext = createContext<DropdownContextValue | null>(null);
 
+const dropdownFallback: DropdownContextValue = {
+  registerItem: () => {},
+  activeIndex: null,
+  checkedIndex: undefined,
+};
+
 export function useDropdown() {
   const ctx = useContext(DropdownContext);
-  if (!ctx) throw new Error("useDropdown must be used within a Dropdown");
+  if (!ctx) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("useDropdown called outside a Dropdown provider");
+    }
+    return dropdownFallback;
+  }
   return ctx;
 }
 

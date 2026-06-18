@@ -140,7 +140,7 @@ function ToggleButtons({
           key={opt.value}
           type="button"
           size="sm"
-          variant={value === opt.value ? 'default' : 'outline'}
+          variant={value === opt.value ? 'primary' : 'tertiary'}
           onClick={() => onChange(opt.value)}
         >
           {opt.label}
@@ -467,8 +467,7 @@ export function AdminMenu() {
       <PageHeader
         title={t('adm_menu')}
         actions={
-          <Button onClick={openNew}>
-            <Plus className="size-4" />
+          <Button leadingIcon={Plus} onClick={openNew}>
             {t('adm_add_dish')}
           </Button>
         }
@@ -489,28 +488,27 @@ export function AdminMenu() {
         actions={(it) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
-                <MoreHorizontal className="size-4" />
-                <span className="sr-only">{t('adm_edit')}</span>
+              <Button variant="ghost" size="icon-sm" aria-label={t('adm_edit')}>
+                <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => openEdit(it)}>
-                <Pencil className="size-4" />
+                <Pencil />
                 {t('adm_edit')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setActive.mutate({ id: it.id, isActive: !it.isActive })}
               >
-                {it.isActive ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {it.isActive ? <EyeOff /> : <Eye />}
                 {it.isActive ? t('adm_hide') : t('adm_show')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => copyLink(it.id)}>
-                <Link2 className="size-4" />
+                <Link2 />
                 {t('adm_copy_link')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setPostFor(it)}>
-                <Eye className="size-4" />
+                <Eye />
                 {t('adm_post_preview')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -518,7 +516,7 @@ export function AdminMenu() {
                 className="text-destructive focus:text-destructive"
                 onClick={() => del.mutate(it.id)}
               >
-                <Trash2 className="size-4" />
+                <Trash2 />
                 {t('adm_delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -532,8 +530,7 @@ export function AdminMenu() {
               icon={ChefHat}
               title={t('adm_add_dish')}
               action={
-                <Button onClick={openNew}>
-                  <Plus className="size-4" />
+                <Button leadingIcon={Plus} onClick={openNew}>
                   {t('adm_add_dish')}
                 </Button>
               }
@@ -549,7 +546,7 @@ export function AdminMenu() {
         description={isNew ? undefined : form.nameUz || undefined}
         footer={
           <>
-            <Button type="button" variant="outline" onClick={close}>
+            <Button type="button" variant="tertiary" onClick={close}>
               {t('act_cancel')}
             </Button>
             <Button type="button" disabled={saveDisabled} onClick={submit}>
@@ -618,10 +615,10 @@ export function AdminMenu() {
               <Button
                 className="w-full"
                 variant="secondary"
+                leadingIcon={Send}
                 disabled={publish.isPending}
                 onClick={() => onPublish(postItem.id)}
               >
-                <Send className="size-4" />
                 {publish.isPending ? t('adm_publishing') : t('adm_publish')}
               </Button>
             </div>
@@ -749,7 +746,7 @@ function DishForm({
                     key={day}
                     type="button"
                     size="sm"
-                    variant={on ? 'default' : 'outline'}
+                    variant={on ? 'primary' : 'tertiary'}
                     onClick={() => toggleDay(day)}
                   >
                     {t(key)}
@@ -792,7 +789,7 @@ function DishForm({
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="tertiary"
                 size="sm"
                 disabled={uploadPhotoPending}
                 onClick={() => fileRef.current?.click()}
@@ -802,7 +799,7 @@ function DishForm({
               {editing && hasPhoto ? (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="tertiary"
                   size="sm"
                   disabled={deletePhotoPending}
                   onClick={onRemovePhoto}
@@ -811,7 +808,7 @@ function DishForm({
                 </Button>
               ) : null}
               {!editing && pendingPhoto ? (
-                <Button type="button" variant="outline" size="sm" onClick={onClearPending}>
+                <Button type="button" variant="tertiary" size="sm" onClick={onClearPending}>
                   {t('adm_photo_remove')}
                 </Button>
               ) : null}
@@ -1086,13 +1083,12 @@ function DishForm({
                     value={row.section ?? ''}
                     onChange={(e) => setIng(i, { section: e.target.value || null })}
                   />
-                  <Button type="button" variant="outline" size="sm" onClick={() => removeIng(i)}>
+                  <Button type="button" variant="tertiary" size="sm" onClick={() => removeIng(i)}>
                     {t('adm_remove_row')}
                   </Button>
                 </div>
               ))}
-              <Button type="button" variant="outline" size="sm" onClick={addIng}>
-                <Plus className="size-4" />
+              <Button type="button" variant="tertiary" size="sm" leadingIcon={Plus} onClick={addIng}>
                 {t('adm_add_ingredient')}
               </Button>
             </div>
@@ -1101,7 +1097,7 @@ function DishForm({
           <Field label={t('adm_instructions')}>
             <div className="space-y-3">
               {steps.map((row, i) => (
-                <div key={i} className="space-y-2 rounded-lg border p-3">
+                <div key={i} className="space-y-2 rounded-lg p-3 shadow-1">
                   <p className="text-xs font-medium text-muted-foreground">
                     {t('adm_instruction_step')} {i + 1}
                   </p>
@@ -1119,13 +1115,12 @@ function DishForm({
                       rows={2}
                     />
                   </FormGrid>
-                  <Button type="button" variant="outline" size="sm" onClick={() => removeStep(i)}>
+                  <Button type="button" variant="tertiary" size="sm" onClick={() => removeStep(i)}>
                     {t('adm_remove_row')}
                   </Button>
                 </div>
               ))}
-              <Button type="button" variant="outline" size="sm" onClick={addStep}>
-                <Plus className="size-4" />
+              <Button type="button" variant="tertiary" size="sm" leadingIcon={Plus} onClick={addStep}>
                 {t('adm_add_step')}
               </Button>
             </div>
@@ -1205,7 +1200,7 @@ function ModifierGroupsField({
         const checked = value.includes(g.id);
         const inputId = `mod-group-${g.id}`;
         return (
-          <div key={g.id} className="flex items-center gap-3 rounded-lg border px-3 py-2">
+          <div key={g.id} className="flex items-center gap-3 rounded-lg px-3 py-2 shadow-1">
             <Checkbox id={inputId} checked={checked} onCheckedChange={() => toggle(g.id)} />
             <Label htmlFor={inputId} className="cursor-pointer text-sm font-normal">
               {pick(lang, g.nameRu, g.nameUz)}

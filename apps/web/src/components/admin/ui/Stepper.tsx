@@ -21,30 +21,30 @@ export function Stepper({
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1 rounded-md border border-input bg-background px-1 py-0.5 shadow-sm',
+        'inline-flex items-center gap-1 rounded-lg shadow-1 bg-background px-1 py-0.5',
         className,
       )}
     >
       <Button
         type="button"
         variant="ghost"
-        size="icon"
-        className="size-8"
+        size="icon-sm"
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={value <= min}
+        aria-label="Decrease"
       >
-        <Minus className="size-4" />
+        <Minus />
       </Button>
-      <span className="min-w-8 text-center text-sm font-medium tabular-nums">{value}</span>
+      <span className="min-w-8 text-center text-[13px] font-medium tabular-nums">{value}</span>
       <Button
         type="button"
         variant="ghost"
-        size="icon"
-        className="size-8"
+        size="icon-sm"
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
+        aria-label="Increase"
       >
-        <Plus className="size-4" />
+        <Plus />
       </Button>
     </div>
   );

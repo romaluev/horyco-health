@@ -5,7 +5,6 @@ import { useAuthStore } from '@/store/auth.store';
 import { formatMoney, pick } from '@/lib/format';
 import { Field } from '@/components/admin/ui';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 export interface ComboSlotOptionView {
   id: string;
@@ -56,8 +55,7 @@ export function SlotPicker({ slots, selections, onChange, variant = 'consumer' }
                     key={opt.id}
                     type="button"
                     size="sm"
-                    variant={active ? 'default' : 'outline'}
-                    className={cn('h-8', !active && 'bg-background')}
+                    variant={active ? 'primary' : 'tertiary'}
                     onClick={() => pickOption(slot.id, opt.menuItemId)}
                   >
                     {label}

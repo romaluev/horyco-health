@@ -91,7 +91,7 @@ export function DataList<T>({
         {rows.map((row) => (
           <Card
             key={keyFn(row)}
-            className={cn('overflow-hidden', onRowClick && 'cursor-pointer active:bg-muted/50')}
+            className={cn('overflow-hidden shadow-1', onRowClick && 'cursor-pointer active:bg-hover')}
             onClick={onRowClick ? () => onRowClick(row) : undefined}
           >
             <CardContent className="p-3">

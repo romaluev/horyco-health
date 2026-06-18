@@ -6,7 +6,6 @@ import { useT } from '@/lib/i18n';
 import { formatMoney, pick } from '@/lib/format';
 import { Field } from '@/components/admin/ui';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 export interface ModifierGroupOption {
   id: string;
@@ -108,8 +107,7 @@ export function ModifierPicker({
                       key={mod.id}
                       type="button"
                       size="sm"
-                      variant={active ? 'default' : 'outline'}
-                      className={cn('h-8', !active && 'bg-background')}
+                      variant={active ? 'primary' : 'tertiary'}
                       onClick={() => toggle(group, mod.id)}
                     >
                       {modLabel}
