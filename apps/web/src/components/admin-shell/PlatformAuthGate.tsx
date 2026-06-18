@@ -8,6 +8,7 @@ import { bootstrapStaffSession } from '@/lib/staff-auth';
 import { jwtKind } from '@/lib/jwt';
 import { api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
+import { Button } from '@/components/ui/button';
 import { StaffLoginCard } from './StaffLoginCard';
 
 interface PlatformAuthGateProps {
@@ -82,13 +83,13 @@ export function PlatformAuthGate({ children, allowSetup = false }: PlatformAuthG
             <p className="adm-muted mb-4">
               {client.name} — {t('platform_staff_logged_in')}
             </p>
-            <div className="adm-row-actions">
-              <Link href="/b/" className="adm-btn adm-btn-primary">
-                {t('platform_go_backoffice')}
-              </Link>
-              <button type="button" className="adm-btn" onClick={() => logoutStaff()}>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <Link href="/b/">{t('platform_go_backoffice')}</Link>
+              </Button>
+              <Button type="button" variant="outline" onClick={() => logoutStaff()}>
                 {t('platform_login_different')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -3,6 +3,9 @@
 import { Language } from '@eatfit/shared';
 import { useAuthStore } from '@/store/auth.store';
 import { formatMoney, pick } from '@/lib/format';
+import { Field } from '@/components/admin/ui';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export interface ComboSlotOptionView {
   id: string;
@@ -23,9 +26,10 @@ interface SlotPickerProps {
   slots: ComboSlotView[];
   selections: Record<string, string>;
   onChange: (selections: Record<string, string>) => void;
+  variant?: 'consumer' | 'admin';
 }
 
-export function SlotPicker({ slots, selections, onChange }: SlotPickerProps) {
+export function SlotPicker({ slots, selections, onChange, variant = 'consumer' }: SlotPickerProps) {
   const lang = useAuthStore((s) => s.client?.language ?? Language.Ru);
 
   const pickOption = (slotId: string, menuItemId: string) => {
@@ -33,6 +37,39 @@ export function SlotPicker({ slots, selections, onChange }: SlotPickerProps) {
   };
 
   if (slots.length === 0) return null;
+
+  if (variant === 'admin') {
+    return (
+      <div className="space-y-3">
+        {slots.map((slot) => (
+          <Field key={slot.id} label={pick(lang, slot.nameRu, slot.nameUz)} compact>
+            <div className="flex flex-wrap gap-1.5">
+              {slot.options.map((opt) => {
+                const active = selections[slot.id] === opt.menuItemId;
+                const surcharge = Number(opt.priceOverride);
+                const name = opt.menuItem
+                  ? pick(lang, opt.menuItem.nameRu, opt.menuItem.nameUz)
+                  : opt.menuItemId;
+                const label = surcharge > 0 ? `${name} +${formatMoney(opt.priceOverride)}` : name;
+                return (
+                  <Button
+                    key={opt.id}
+                    type="button"
+                    size="sm"
+                    variant={active ? 'default' : 'outline'}
+                    className={cn('h-8', !active && 'bg-background')}
+                    onClick={() => pickOption(slot.id, opt.menuItemId)}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
+            </div>
+          </Field>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="mod-picker">
@@ -46,8 +83,7 @@ export function SlotPicker({ slots, selections, onChange }: SlotPickerProps) {
               const name = opt.menuItem
                 ? pick(lang, opt.menuItem.nameRu, opt.menuItem.nameUz)
                 : opt.menuItemId;
-              const label =
-                surcharge > 0 ? `${name} +${formatMoney(opt.priceOverride)}` : name;
+              const label = surcharge > 0 ? `${name} +${formatMoney(opt.priceOverride)}` : name;
               return (
                 <button
                   key={opt.id}

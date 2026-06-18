@@ -7,3 +7,4 @@ export { DataList, type DataListColumn } from './DataList';
 export { AdminEmptyState } from './EmptyState';
 export { Toolbar } from './Toolbar';
 export { CommandPalette, useCommandPalette } from './CommandPalette';
+export { Stepper } from './Stepper';
