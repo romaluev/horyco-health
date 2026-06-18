@@ -1,7 +1,6 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -48,11 +47,10 @@ export function DataList<T>({
 
   return (
     <div className={cn('w-full', className)}>
-      {/* Desktop table */}
-      <div className="hidden md:block">
+      <div className="hidden md:block overflow-hidden rounded-lg border">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-muted hover:bg-muted">
               {columns.map((col) => (
                 <TableHead key={col.key} className={col.className}>
                   {col.header}
@@ -62,10 +60,9 @@ export function DataList<T>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row, rowIndex) => (
+            {rows.map((row) => (
               <TableRow
                 key={keyFn(row)}
-                index={rowIndex}
                 className={onRowClick ? 'cursor-pointer' : undefined}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
@@ -85,41 +82,40 @@ export function DataList<T>({
         </Table>
       </div>
 
-      {/* Mobile cards */}
-      <ScrollArea className="md:hidden" viewportClassName="max-h-[70vh]">
+      <ScrollArea className="max-h-[70vh] md:hidden">
         <div className="flex flex-col gap-2 pr-2">
-        {rows.map((row) => (
-          <Card
-            key={keyFn(row)}
-            className={cn('overflow-hidden shadow-1', onRowClick && 'cursor-pointer active:bg-hover')}
-            onClick={onRowClick ? () => onRowClick(row) : undefined}
-          >
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1 space-y-1">
-                  {primaryCols.map((col) => (
-                    <div key={col.key}>{col.render(row)}</div>
-                  ))}
-                  {secondaryCols.length > 0 ? (
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      {secondaryCols.map((col) => (
-                        <span key={col.key}>
-                          <span className="font-medium">{col.header}: </span>
-                          {col.render(row)}
-                        </span>
-                      ))}
+          {rows.map((row) => (
+            <Card
+              key={keyFn(row)}
+              className={cn('overflow-hidden', onRowClick && 'cursor-pointer')}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+            >
+              <CardContent className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    {primaryCols.map((col) => (
+                      <div key={col.key}>{col.render(row)}</div>
+                    ))}
+                    {secondaryCols.length > 0 ? (
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {secondaryCols.map((col) => (
+                          <span key={col.key}>
+                            <span className="font-medium">{col.header}: </span>
+                            {col.render(row)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                  {actions ? (
+                    <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {actions(row)}
                     </div>
                   ) : null}
                 </div>
-                {actions ? (
-                  <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {actions(row)}
-                  </div>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </ScrollArea>
     </div>

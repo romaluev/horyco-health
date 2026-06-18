@@ -47,7 +47,7 @@ function BusinessViewInner() {
         title={business.name}
         description={`${business.slug} · ${business.status}`}
         actions={
-          <Button variant="tertiary" size="sm" asChild>
+          <Button variant="outline" size="sm" asChild>
             <Link href="/platform/businesses/">{t('platform_back_list')}</Link>
           </Button>
         }
@@ -87,7 +87,7 @@ function BusinessViewInner() {
             </Field>
           </FormGrid>
           <Button
-            variant="primary"
+            variant="default"
             disabled={update.isPending}
             onClick={() => update.mutate({ id, name, tzOffsetHours: tz, dailyReportHour: hour })}
           >

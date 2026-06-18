@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -215,7 +215,7 @@ export function OffersTab() {
                   key={s.id}
                   type="button"
                   size="sm"
-                  variant={step === s.id ? 'primary' : 'tertiary'}
+                  variant={step === s.id ? 'default' : 'outline'}
                   disabled={
                     (s.id === 'recipients' && composition.length === 0) ||
                     (s.id === 'review' && selected.size === 0)
@@ -237,8 +237,9 @@ export function OffersTab() {
               menu={menu}
               combos={combos}
               footer={
-                <Button className="w-full" trailingIcon={ChevronRight} disabled={composition.length === 0} onClick={() => setStep('recipients')}>
+                <Button className="w-full" disabled={composition.length === 0} onClick={() => setStep('recipients')}>
                   {t('bo_next')}
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               }
             />
@@ -263,48 +264,47 @@ export function OffersTab() {
                   ))}
                 </div>
                 <Toolbar className="mb-0">
-                  <Button type="button" variant="tertiary" size="sm" onClick={toggleAll}>
+                  <Button type="button" variant="outline" size="sm" onClick={toggleAll}>
                     {t('bo_select_all')}
                   </Button>
                   <Badge variant="secondary">
                     {selected.size} {t('bo_recipients')}
                   </Badge>
                 </Toolbar>
-                <ScrollArea viewportClassName="max-h-64">
-                  <CheckboxGroup
-                    className="divide-y divide-border"
-                    checkedIndices={
-                      new Set(
-                        (users ?? [])
-                          .map((u, i) => (selected.has(u.id) ? i : -1))
-                          .filter((i) => i >= 0),
-                      )
-                    }
-                  >
-                    {users?.map((u, i) => (
-                      <CheckboxItem
+                <ScrollArea className="max-h-64">
+                  <div className="divide-y divide-border pr-2">
+                    {users?.map((u) => (
+                      <label
                         key={u.id}
-                        index={i}
-                        label={`${u.name}${u.phone ? ` · ${u.phone}` : ''}`}
-                        checked={selected.has(u.id)}
-                        onToggle={() => {
-                          setSelected((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(u.id)) next.delete(u.id);
-                            else next.add(u.id);
-                            return next;
-                          });
-                        }}
-                      />
+                        className="flex cursor-pointer items-center gap-3 rounded-sm px-2 py-2 hover:bg-accent"
+                      >
+                        <Checkbox
+                          checked={selected.has(u.id)}
+                          onCheckedChange={() => {
+                            setSelected((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(u.id)) next.delete(u.id);
+                              else next.add(u.id);
+                              return next;
+                            });
+                          }}
+                        />
+                        <span className="text-sm">
+                          {u.name}
+                          {u.phone ? ` · ${u.phone}` : ''}
+                        </span>
+                      </label>
                     ))}
-                  </CheckboxGroup>
+                  </div>
                 </ScrollArea>
                 <div className="flex gap-2">
-                  <Button variant="tertiary" leadingIcon={ChevronLeft} className="flex-1" onClick={() => setStep('build')}>
+                  <Button variant="outline" className="flex-1" onClick={() => setStep('build')}>
+                    <ChevronLeft className="h-4 w-4" />
                     {t('bo_back')}
                   </Button>
-                  <Button className="flex-1" trailingIcon={ChevronRight} disabled={selected.size === 0} onClick={() => setStep('review')}>
+                  <Button className="flex-1" disabled={selected.size === 0} onClick={() => setStep('review')}>
                     {t('bo_next')}
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>
@@ -332,7 +332,7 @@ export function OffersTab() {
                   {selected.size} {t('bo_recipients')}
                 </p>
                 <div className="flex gap-2">
-                  <Button variant="tertiary" className="flex-1" onClick={() => setStep('recipients')}>
+                  <Button variant="outline" className="flex-1" onClick={() => setStep('recipients')}>
                     {t('bo_back')}
                   </Button>
                   <Button className="flex-1" disabled={send.isPending || selected.size === 0} onClick={() => void doSend()}>

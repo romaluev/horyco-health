@@ -18,6 +18,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 
@@ -113,7 +114,9 @@ export function StaffTab() {
               value={inviteForm.role}
               onValueChange={(v) => setInviteForm({ ...inviteForm, role: v as MemberRole })}
             >
-              <SelectTrigger placeholder={roleLabel(t, inviteForm.role)} />
+              <SelectTrigger>
+                <SelectValue placeholder={roleLabel(t, inviteForm.role)} />
+              </SelectTrigger>
               <SelectContent>
                 {ROLE_OPTIONS.map((role) => (
                   <SelectItem key={role} value={role}>
@@ -151,7 +154,7 @@ export function StaffTab() {
             {m.inviteLink ? (
               <Button
                 variant="ghost"
-                size="icon-sm"
+                size="icon"
                 aria-label={t('bo_invite_link')}
                 onClick={() => void navigator.clipboard.writeText(m.inviteLink!)}
               >
@@ -160,7 +163,7 @@ export function StaffTab() {
             ) : null}
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon"
               className="text-destructive hover:text-destructive"
               aria-label={t('adm_delete')}
               disabled={remove.isPending}

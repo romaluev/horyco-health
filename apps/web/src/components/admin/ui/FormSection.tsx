@@ -24,7 +24,7 @@ export function FormSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <section className={cn('rounded-lg shadow-1 bg-card', className)}>
+    <section className={cn('rounded-lg border bg-card', className)}>
       {collapsible ? (
         <Button
           type="button"
@@ -35,12 +35,12 @@ export function FormSection({
           )}
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          trailingIcon={ChevronDown}
         >
           <div>
             <h3 className="text-sm font-semibold text-foreground">{title}</h3>
             {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
           </div>
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </Button>
       ) : (
         <div className="px-4 py-3">

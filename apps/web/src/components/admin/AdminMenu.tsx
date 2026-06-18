@@ -140,7 +140,7 @@ function ToggleButtons({
           key={opt.value}
           type="button"
           size="sm"
-          variant={value === opt.value ? 'primary' : 'tertiary'}
+          variant={value === opt.value ? 'default' : 'outline'}
           onClick={() => onChange(opt.value)}
         >
           {opt.label}
@@ -467,7 +467,8 @@ export function AdminMenu() {
       <PageHeader
         title={t('adm_menu')}
         actions={
-          <Button leadingIcon={Plus} onClick={openNew}>
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4" />
             {t('adm_add_dish')}
           </Button>
         }
@@ -488,7 +489,7 @@ export function AdminMenu() {
         actions={(it) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label={t('adm_edit')}>
+              <Button variant="ghost" size="icon" aria-label={t('adm_edit')}>
                 <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
@@ -530,7 +531,8 @@ export function AdminMenu() {
               icon={ChefHat}
               title={t('adm_add_dish')}
               action={
-                <Button leadingIcon={Plus} onClick={openNew}>
+                <Button onClick={openNew}>
+                  <Plus className="h-4 w-4" />
                   {t('adm_add_dish')}
                 </Button>
               }
@@ -546,7 +548,7 @@ export function AdminMenu() {
         description={isNew ? undefined : form.nameUz || undefined}
         footer={
           <>
-            <Button type="button" variant="tertiary" onClick={close}>
+            <Button type="button" variant="outline" onClick={close}>
               {t('act_cancel')}
             </Button>
             <Button type="button" disabled={saveDisabled} onClick={submit}>
@@ -615,10 +617,10 @@ export function AdminMenu() {
               <Button
                 className="w-full"
                 variant="secondary"
-                leadingIcon={Send}
                 disabled={publish.isPending}
                 onClick={() => onPublish(postItem.id)}
               >
+                <Send className="h-4 w-4" />
                 {publish.isPending ? t('adm_publishing') : t('adm_publish')}
               </Button>
             </div>
@@ -746,7 +748,7 @@ function DishForm({
                     key={day}
                     type="button"
                     size="sm"
-                    variant={on ? 'primary' : 'tertiary'}
+                    variant={on ? 'default' : 'outline'}
                     onClick={() => toggleDay(day)}
                   >
                     {t(key)}
@@ -789,7 +791,7 @@ function DishForm({
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
-                variant="tertiary"
+                variant="outline"
                 size="sm"
                 disabled={uploadPhotoPending}
                 onClick={() => fileRef.current?.click()}
@@ -799,7 +801,7 @@ function DishForm({
               {editing && hasPhoto ? (
                 <Button
                   type="button"
-                  variant="tertiary"
+                  variant="outline"
                   size="sm"
                   disabled={deletePhotoPending}
                   onClick={onRemovePhoto}
@@ -808,7 +810,7 @@ function DishForm({
                 </Button>
               ) : null}
               {!editing && pendingPhoto ? (
-                <Button type="button" variant="tertiary" size="sm" onClick={onClearPending}>
+                <Button type="button" variant="outline" size="sm" onClick={onClearPending}>
                   {t('adm_photo_remove')}
                 </Button>
               ) : null}
@@ -1083,12 +1085,13 @@ function DishForm({
                     value={row.section ?? ''}
                     onChange={(e) => setIng(i, { section: e.target.value || null })}
                   />
-                  <Button type="button" variant="tertiary" size="sm" onClick={() => removeIng(i)}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => removeIng(i)}>
                     {t('adm_remove_row')}
                   </Button>
                 </div>
               ))}
-              <Button type="button" variant="tertiary" size="sm" leadingIcon={Plus} onClick={addIng}>
+              <Button type="button" variant="outline" size="sm" onClick={addIng}>
+                <Plus className="h-4 w-4" />
                 {t('adm_add_ingredient')}
               </Button>
             </div>
@@ -1097,7 +1100,7 @@ function DishForm({
           <Field label={t('adm_instructions')}>
             <div className="space-y-3">
               {steps.map((row, i) => (
-                <div key={i} className="space-y-2 rounded-lg p-3 shadow-1">
+                <div key={i} className="space-y-2 rounded-lg p-3">
                   <p className="text-xs font-medium text-muted-foreground">
                     {t('adm_instruction_step')} {i + 1}
                   </p>
@@ -1115,12 +1118,13 @@ function DishForm({
                       rows={2}
                     />
                   </FormGrid>
-                  <Button type="button" variant="tertiary" size="sm" onClick={() => removeStep(i)}>
+                  <Button type="button" variant="outline" size="sm" onClick={() => removeStep(i)}>
                     {t('adm_remove_row')}
                   </Button>
                 </div>
               ))}
-              <Button type="button" variant="tertiary" size="sm" leadingIcon={Plus} onClick={addStep}>
+              <Button type="button" variant="outline" size="sm" onClick={addStep}>
+                <Plus className="h-4 w-4" />
                 {t('adm_add_step')}
               </Button>
             </div>
@@ -1200,7 +1204,7 @@ function ModifierGroupsField({
         const checked = value.includes(g.id);
         const inputId = `mod-group-${g.id}`;
         return (
-          <div key={g.id} className="flex items-center gap-3 rounded-lg px-3 py-2 shadow-1">
+          <div key={g.id} className="flex items-center gap-3 rounded-lg px-3 py-2">
             <Checkbox id={inputId} checked={checked} onCheckedChange={() => toggle(g.id)} />
             <Label htmlFor={inputId} className="cursor-pointer text-sm font-normal">
               {pick(lang, g.nameRu, g.nameUz)}

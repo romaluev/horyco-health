@@ -82,11 +82,11 @@ export function OnboardingWizardPage() {
                   <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{cmd}</code>
                   <Button
                     type="button"
-                    variant="tertiary"
+                    variant="outline"
                     size="sm"
-                    leadingIcon={Copy}
                     onClick={() => void copyCmd(cmd)}
                   >
+                    <Copy className="h-4 w-4" />
                     {copied === cmd ? t('bo_copied') : t('bo_bind_copy')}
                   </Button>
                   {bound ? (
@@ -130,7 +130,7 @@ export function OnboardingWizardPage() {
                 {s.inviteLink}
               </p>
             ))}
-          <Button variant="tertiary" size="sm" asChild>
+          <Button variant="outline" size="sm" asChild>
             <Link href="/b/settings/">{t('bo_go_settings')}</Link>
           </Button>
         </>
@@ -143,7 +143,7 @@ export function OnboardingWizardPage() {
       body: (
         <>
           {checklist?.ready ? (
-            <div className="rounded-lg shadow-1 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
+            <div className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
               {t('bo_ready')}
             </div>
           ) : (
@@ -179,7 +179,7 @@ export function OnboardingWizardPage() {
   };
 
   return (
-    <div className="rounded-lg shadow-1 bg-card p-4 md:p-6">
+    <div className="rounded-lg bg-card p-4 md:p-6">
       <h3 className="text-lg font-semibold">{t('bo_onboarding')}</h3>
       {settings?.botUsername ? <p className="text-sm text-muted-foreground">@{settings.botUsername}</p> : null}
 
@@ -197,7 +197,6 @@ export function OnboardingWizardPage() {
                 <Button
                   type="button"
                   variant="ghost"
-                  trailingIcon={ChevronDown}
                   className={cn(
                     'flex h-auto w-full items-center justify-between gap-2 px-0 text-left hover:bg-transparent',
                     isExpanded && '[&_svg:last-child]:rotate-180 [&_svg:last-child]:transition-transform',
@@ -206,6 +205,7 @@ export function OnboardingWizardPage() {
                   aria-expanded={isExpanded}
                 >
                   <h4 className="text-sm font-semibold">{step.title}</h4>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </Button>
                 {step.done && !isExpanded ? (
                   <p className="text-xs text-emerald-600">{t('bo_onboarding_step_complete')}</p>

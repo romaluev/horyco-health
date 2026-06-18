@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { CommandPalette, useCommandPalette } from '@/components/admin/ui/CommandPalette';
-import { FluidProviders } from './FluidProviders';
 import { cn } from '@/lib/utils';
 
 interface AdminShellProps {
@@ -99,15 +98,14 @@ function BottomNav({
               key={item.id}
               type="button"
               variant="ghost"
-              leadingIcon={Icon}
               className={cn(
                 'adm-bottom-nav-link !inline-flex !h-auto !min-h-[56px] !flex-col !items-center !justify-center !gap-0.5 !p-[6px_4px] !text-[11px] font-medium',
-                '[&>span:last-child]:flex [&>span:last-child]:flex-col [&>span:last-child]:items-center [&>span:last-child]:gap-0.5',
                 secondaryActive && 'active',
               )}
               onClick={onMore}
               aria-label={t('bo_nav_more')}
             >
+              <Icon size={20} aria-hidden />
               {t(item.labelKey as I18nKey)}
             </Button>
           );
@@ -194,9 +192,9 @@ export function AdminShell({
           type="button"
           variant="ghost"
           className="adm-nav-link adm-sidebar-logout !h-auto !min-h-[var(--adm-control-h)] !justify-start !gap-[10px] !px-[10px] !py-[6px] !text-[13px] font-medium"
-          leadingIcon={LogOut}
           onClick={() => logout()}
         >
+          <LogOut className="h-4 w-4" />
           {t('logout')}
         </Button>
       </div>
@@ -204,7 +202,6 @@ export function AdminShell({
   );
 
   return (
-    <FluidProviders>
     <div className="adm-root">
       <div className="adm-layout">
         <aside className="adm-sidebar">{sidebar}</aside>
@@ -214,7 +211,7 @@ export function AdminShell({
             <Button
               type="button"
               variant="ghost"
-              size="icon-lg"
+              size="icon"
               className="adm-menu-btn lg:hidden"
               aria-label={t('adm_open_menu')}
               onClick={() => setDrawerOpen(true)}
@@ -223,7 +220,7 @@ export function AdminShell({
             </Button>
             <h1 className="adm-topbar-title">{t(titleKey)}</h1>
             <div className="adm-topbar-actions adm-switcher">
-              <Button variant="tertiary" size="sm" className="hidden md:inline-flex" onClick={() => setCmdOpen(true)}>
+              <Button variant="outline" size="sm" className="hidden md:inline-flex" onClick={() => setCmdOpen(true)}>
                 {t('cmd_palette_placeholder').slice(0, 12)}…
                 <kbd className="adm-kbd">{t('adm_cmd_hint')}</kbd>
               </Button>
@@ -253,7 +250,7 @@ export function AdminShell({
               <Button
                 type="button"
                 variant="ghost"
-                size="icon-lg"
+                size="icon"
                 className="adm-menu-btn"
                 aria-label={t('bo_close')}
                 onClick={() => setDrawerOpen(false)}
@@ -280,18 +277,19 @@ export function AdminShell({
                   key={item.id}
                   variant={active ? 'secondary' : 'ghost'}
                   className="w-full justify-start"
-                  leadingIcon={Icon}
                   asChild
                 >
                   <Link href={item.href} onClick={() => setMoreOpen(false)}>
+                    <Icon className="h-4 w-4" />
                     {t(item.labelKey as I18nKey)}
                   </Link>
                 </Button>
               );
             })}
             {platformLink && (
-              <Button variant="ghost" className="w-full justify-start" leadingIcon={ExternalLink} asChild>
+              <Button variant="ghost" className="w-full justify-start" asChild>
                 <Link href="/platform/" onClick={() => setMoreOpen(false)}>
+                  <ExternalLink className="h-4 w-4" />
                   {t('platform_nav_console')}
                 </Link>
               </Button>
@@ -299,9 +297,9 @@ export function AdminShell({
             <Button
               variant="ghost"
               className="w-full justify-start text-destructive"
-              leadingIcon={LogOut}
               onClick={() => logout()}
             >
+              <LogOut className="h-4 w-4" />
               {t('logout')}
             </Button>
           </div>
@@ -310,6 +308,5 @@ export function AdminShell({
 
       <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} navItems={visibleNav} />
     </div>
-    </FluidProviders>
   );
 }

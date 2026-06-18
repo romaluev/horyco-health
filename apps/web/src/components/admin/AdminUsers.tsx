@@ -141,7 +141,7 @@ function UserDetailDrawer({
             </p>
           )}
 
-          <div className="space-y-3 rounded-lg shadow-1 bg-card p-4">
+          <div className="space-y-3 rounded-lg bg-card p-4">
             <p className="font-medium">{t('balance')}</p>
             <div className="flex flex-wrap gap-2">
               {[50000, 100000, 200000].map((v) => (
@@ -161,7 +161,7 @@ function UserDetailDrawer({
               <Button disabled={deposit.isPending || !Number(amount)} onClick={doDeposit}>
                 {t('adm_deposit')}
               </Button>
-              <Button variant="tertiary" disabled={withdraw.isPending || !Number(amount)} onClick={doWithdraw}>
+              <Button variant="outline" disabled={withdraw.isPending || !Number(amount)} onClick={doWithdraw}>
                 {t('adm_withdraw')}
               </Button>
             </div>
@@ -305,7 +305,7 @@ export function AdminUsers() {
         actions={(u) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label={t('crm_view_profile')}>
+              <Button variant="ghost" size="icon" aria-label={t('crm_view_profile')}>
                 <MoreHorizontal />
                 <span className="sr-only">{t('crm_view_profile')}</span>
               </Button>

@@ -107,7 +107,7 @@ export function ModifierPicker({
                       key={mod.id}
                       type="button"
                       size="sm"
-                      variant={active ? 'primary' : 'tertiary'}
+                      variant={active ? 'default' : 'outline'}
                       onClick={() => toggle(group, mod.id)}
                     >
                       {modLabel}

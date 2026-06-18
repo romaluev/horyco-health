@@ -84,10 +84,10 @@ export function PlatformAuthGate({ children, allowSetup = false }: PlatformAuthG
               {client.name} — {t('platform_staff_logged_in')}
             </p>
             <div className="flex flex-wrap gap-2">
-              <Button variant="primary" asChild>
+              <Button variant="default" asChild>
                 <Link href="/b/">{t('platform_go_backoffice')}</Link>
               </Button>
-              <Button type="button" variant="tertiary" onClick={() => logoutStaff()}>
+              <Button type="button" variant="outline" onClick={() => logoutStaff()}>
                 {t('platform_login_different')}
               </Button>
             </div>

@@ -40,8 +40,8 @@ export function EditDrawer({
           <SheetTitle>{title}</SheetTitle>
           {description ? <SheetDescription>{description}</SheetDescription> : null}
         </SheetHeader>
-        <ScrollArea className="flex-1" viewportClassName="px-6 py-4">
-          {children}
+        <ScrollArea className="flex-1">
+          <div className="px-6 py-4">{children}</div>
         </ScrollArea>
         {footer ? (
           <SheetFooter className="shrink-0 border-t border-border/60 px-6 py-4 sm:flex-row sm:justify-end">

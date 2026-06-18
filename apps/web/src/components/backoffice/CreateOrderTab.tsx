@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -114,7 +114,7 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon-sm" asChild>
+        <Button variant="ghost" size="icon" asChild>
           <Link href="/b/orders/">
             <ChevronLeft />
           </Link>
@@ -139,30 +139,28 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
         <TabsContent value="clients" className="space-y-3">
           <Input placeholder={t('adm_search_user')} value={userQuery} onChange={(e) => setUserQuery(e.target.value)} />
           <Badge variant="secondary">{selected.size} {t('bo_recipients')}</Badge>
-          <ScrollArea viewportClassName="max-h-[60vh]">
-            <CheckboxGroup
-              className="divide-y divide-border"
-              checkedIndices={
-                new Set(
-                  (users ?? [])
-                    .map((u, i) => (selected.has(u.id) ? i : -1))
-                    .filter((i) => i >= 0),
-                )
-              }
-            >
-              {users?.map((u, i) => (
-                <CheckboxItem
+          <ScrollArea className="max-h-[60vh]">
+            <div className="divide-y divide-border pr-2">
+              {users?.map((u) => (
+                <label
                   key={u.id}
-                  index={i}
-                  label={`${u.name}${u.phone ? ` · ${u.phone}` : ''}`}
-                  checked={selected.has(u.id)}
-                  onToggle={() => toggleClient(u.id)}
-                />
+                  className="flex cursor-pointer items-center gap-3 rounded-sm px-2 py-2 hover:bg-accent"
+                >
+                  <Checkbox
+                    checked={selected.has(u.id)}
+                    onCheckedChange={() => toggleClient(u.id)}
+                  />
+                  <span className="text-sm">
+                    {u.name}
+                    {u.phone ? ` · ${u.phone}` : ''}
+                  </span>
+                </label>
               ))}
-            </CheckboxGroup>
+            </div>
           </ScrollArea>
-          <Button className="w-full" trailingIcon={ChevronRight} disabled={selected.size === 0} onClick={() => setStep('basket')}>
+          <Button className="w-full" disabled={selected.size === 0} onClick={() => setStep('basket')}>
             {t('bo_next')}
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </TabsContent>
 
@@ -173,8 +171,9 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
             menu={menu}
             combos={combos}
             footer={
-              <Button className="w-full" trailingIcon={ChevronRight} disabled={composition.length === 0} onClick={() => setStep('confirm')}>
+              <Button className="w-full" disabled={composition.length === 0} onClick={() => setStep('confirm')}>
                 {t('bo_next')}
+                <ChevronRight className="h-4 w-4" />
               </Button>
             }
           />
@@ -191,24 +190,24 @@ export function CreateOrderTab({ initialClientIds = [] }: Props) {
               <div className="flex gap-2">
                 <Button
                   size="sm"
-                  variant={paymentMethod === PaymentMethod.OnDelivery ? 'primary' : 'tertiary'}
+                  variant={paymentMethod === PaymentMethod.OnDelivery ? 'default' : 'outline'}
                   onClick={() => setPaymentMethod(PaymentMethod.OnDelivery)}
                 >
                   {t('pay_cash')}
                 </Button>
                 <Button
                   size="sm"
-                  variant={paymentMethod === PaymentMethod.Balance ? 'primary' : 'tertiary'}
+                  variant={paymentMethod === PaymentMethod.Balance ? 'default' : 'outline'}
                   onClick={() => setPaymentMethod(PaymentMethod.Balance)}
                 >
                   {t('pay_balance')}
                 </Button>
               </div>
               <Input placeholder={t('comment_ph')} value={comment} onChange={(e) => setComment(e.target.value)} />
-              <ScrollArea viewportClassName="max-h-64">
-                <div className="space-y-2 text-sm pr-2">
+              <ScrollArea className="max-h-64">
+                <div className="space-y-2 pr-2 text-sm">
                 {selectedUsers.map((u) => (
-                  <div key={u.id} className="rounded-lg bg-card px-3 py-2 shadow-1">
+                  <div key={u.id} className="rounded-lg border bg-card px-3 py-2">
                     <strong>{u.name}</strong>
                     <p className="text-muted-foreground">{u.phone ?? '—'}</p>
                     <p className="text-muted-foreground">{u.address || '—'}</p>

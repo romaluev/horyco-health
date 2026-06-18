@@ -16,13 +16,15 @@ export function AdminEmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30 px-6 py-12 text-center">
-      <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <Icon size={24} strokeWidth={1.75} />
-      </div>
-      <h3 className="text-base font-semibold text-foreground">{title}</h3>
-      {description ? <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p> : null}
-      {action ? <div className="mt-4">{action}</div> : null}
+    <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8 text-center">
+      {Icon ? (
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <Icon className="h-5 w-5" strokeWidth={1.75} />
+        </div>
+      ) : null}
+      <h3 className="text-lg font-medium text-muted-foreground">{title}</h3>
+      {description ? <p className="max-w-sm text-sm text-muted-foreground">{description}</p> : null}
+      {action ? <div>{action}</div> : null}
     </div>
   );
 }

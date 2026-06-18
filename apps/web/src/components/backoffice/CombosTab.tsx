@@ -37,6 +37,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import {
   DropdownMenu,
@@ -195,14 +196,15 @@ export function CombosTab() {
         title={t('bo_combos')}
         description={t('bo_combos_manage_hint')}
         actions={
-          <Button type="button" leadingIcon={Plus} onClick={openNew}>
+          <Button type="button" onClick={openNew}>
+            <Plus className="h-4 w-4" />
             {t('bo_combo_new')}
           </Button>
         }
       />
 
       {msg ? (
-        <div className="rounded-lg bg-card px-4 py-3 text-sm shadow-1">{msg}</div>
+        <div className="rounded-lg bg-card px-4 py-3 text-sm">{msg}</div>
       ) : null}
 
       <DataList
@@ -213,7 +215,7 @@ export function CombosTab() {
         actions={(c) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm">
+              <Button variant="ghost" size="icon">
                 <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
@@ -233,7 +235,8 @@ export function CombosTab() {
             icon={Layers}
             title={t('bo_combos_empty')}
             action={
-              <Button type="button" leadingIcon={Plus} onClick={openNew}>
+              <Button type="button" onClick={openNew}>
+                <Plus className="h-4 w-4" />
                 {t('bo_combo_new')}
               </Button>
             }
@@ -247,7 +250,7 @@ export function CombosTab() {
         title={editingId ? t('bo_combo_edit') : t('bo_combo_new')}
         footer={
           <div className="flex w-full gap-2 sm:justify-end">
-            <Button type="button" variant="tertiary" onClick={close}>
+            <Button type="button" variant="outline" onClick={close}>
               {t('detail_back')}
             </Button>
             <Button type="button" disabled={create.isPending || update.isPending} onClick={save}>
@@ -400,7 +403,8 @@ function ComboEditor({
               <div className="space-y-4">
                 <div className="flex items-center justify-end">
                   {(form.slots?.length ?? 0) > 1 ? (
-                    <Button type="button" variant="ghost" size="sm" leadingIcon={Trash2} onClick={() => removeSlot(sIdx)}>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeSlot(sIdx)}>
+                      <Trash2 className="h-4 w-4" />
                       {t('adm_delete')}
                     </Button>
                   ) : null}
@@ -427,7 +431,7 @@ function ComboEditor({
                   {slot.options.map((opt, oIdx) => (
                     <div
                       key={oIdx}
-                      className="flex flex-col gap-3 rounded-lg bg-card p-3 shadow-1 sm:flex-row sm:items-end"
+                      className="flex flex-col gap-3 rounded-lg bg-card p-3 sm:flex-row sm:items-end"
                     >
                       <Field label={t('adm_menu')} className="min-w-0 flex-1">
                         <Select
@@ -441,7 +445,9 @@ function ComboEditor({
                             updateSlot(sIdx, { options });
                           }}
                         >
-                          <SelectTrigger placeholder="—" />
+                          <SelectTrigger>
+                            <SelectValue placeholder="—" />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__none__">—</SelectItem>
                             {menu?.map((m) => (
@@ -487,7 +493,7 @@ function ComboEditor({
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon-sm"
+                          size="icon"
                           className="shrink-0"
                           onClick={() => {
                             const options = slot.options.filter((_, i) => i !== oIdx);
@@ -503,9 +509,8 @@ function ComboEditor({
 
                 <Button
                   type="button"
-                  variant="tertiary"
+                  variant="outline"
                   size="sm"
-                  leadingIcon={Plus}
                   onClick={() => {
                     const options = [
                       ...slot.options,
@@ -514,13 +519,15 @@ function ComboEditor({
                     updateSlot(sIdx, { options });
                   }}
                 >
+                  <Plus className="h-4 w-4" />
                   {t('bo_combo_add_option')}
                 </Button>
               </div>
             </FormSection>
           ))}
 
-          <Button type="button" variant="secondary" leadingIcon={Plus} onClick={addSlot}>
+          <Button type="button" variant="secondary" onClick={addSlot}>
+            <Plus className="h-4 w-4" />
             {t('bo_combo_add_slot')}
           </Button>
         </div>

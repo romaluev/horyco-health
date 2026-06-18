@@ -10,7 +10,7 @@ import { formatMoney } from '@/lib/format';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TabsSubtle, TabsSubtleItem } from '@/components/ui/tabs-subtle';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -212,7 +212,7 @@ function OrderDetailDrawer({
             <DialogDescription>#{order.number}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="tertiary" onClick={() => setCancelOpen(false)}>
+            <Button variant="outline" onClick={() => setCancelOpen(false)}>
               {t('bo_cancel_confirm_no')}
             </Button>
             <Button
@@ -375,15 +375,19 @@ export function AdminOrders() {
       />
 
       <Toolbar>
-        <TabsSubtle
-          selectedIndex={Math.max(0, filterTabs.findIndex((tab) => tab.key === filter))}
-          onSelect={(i) => setFilter(filterTabs[i]?.key ?? 'active')}
-          className="w-full overflow-x-auto"
+        <Tabs
+          value={filter}
+          onValueChange={(v) => setFilter(v as typeof filter)}
+          className="w-full"
         >
-          {filterTabs.map((tab, i) => (
-            <TabsSubtleItem key={tab.key} index={i} label={tab.label} />
-          ))}
-        </TabsSubtle>
+          <TabsList className="w-full justify-start overflow-x-auto">
+            {filterTabs.map((tab) => (
+              <TabsTrigger key={tab.key} value={tab.key}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </Toolbar>
 
       <DataList

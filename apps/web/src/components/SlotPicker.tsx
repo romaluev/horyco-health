@@ -55,7 +55,7 @@ export function SlotPicker({ slots, selections, onChange, variant = 'consumer' }
                     key={opt.id}
                     type="button"
                     size="sm"
-                    variant={active ? 'primary' : 'tertiary'}
+                    variant={active ? 'default' : 'outline'}
                     onClick={() => pickOption(slot.id, opt.menuItemId)}
                   >
                     {label}

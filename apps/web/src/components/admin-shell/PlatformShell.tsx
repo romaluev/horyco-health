@@ -10,7 +10,6 @@ import { PLATFORM_NAV, type PlatformNavItem } from '@/lib/admin-nav';
 import { PlatformAuthGate } from './PlatformAuthGate';
 import { Button } from '@/components/ui/button';
 import { CommandPalette, useCommandPalette } from '@/components/admin/ui/CommandPalette';
-import { FluidProviders } from './FluidProviders';
 import { cn } from '@/lib/utils';
 
 interface PlatformShellProps {
@@ -80,9 +79,9 @@ export function PlatformShell({ children, titleKey }: PlatformShellProps) {
           type="button"
           variant="ghost"
           className="adm-nav-link adm-sidebar-logout !h-auto !min-h-[var(--adm-control-h)] !justify-start !gap-[10px] !px-[10px] !py-[6px] !text-[13px] font-medium"
-          leadingIcon={LogOut}
           onClick={() => logout()}
         >
+          <LogOut className="h-4 w-4" />
           {t('logout')}
         </Button>
       </div>
@@ -98,7 +97,6 @@ export function PlatformShell({ children, titleKey }: PlatformShellProps) {
 
   return (
     <PlatformAuthGate>
-      <FluidProviders>
       <div className="adm-root">
         <div className="adm-layout">
           <aside className="adm-sidebar">{sidebar}</aside>
@@ -107,7 +105,7 @@ export function PlatformShell({ children, titleKey }: PlatformShellProps) {
               <Button
                 type="button"
                 variant="ghost"
-                size="icon-lg"
+                size="icon"
                 className="adm-menu-btn lg:hidden"
                 aria-label={t('adm_open_menu')}
                 onClick={() => setDrawerOpen(true)}
@@ -116,7 +114,7 @@ export function PlatformShell({ children, titleKey }: PlatformShellProps) {
               </Button>
               <h1 className="adm-topbar-title">{t(titleKey)}</h1>
               <div className="adm-topbar-actions adm-switcher">
-                <Button variant="tertiary" size="sm" className="hidden md:inline-flex" onClick={() => setCmdOpen(true)}>
+                <Button variant="outline" size="sm" className="hidden md:inline-flex" onClick={() => setCmdOpen(true)}>
                   {t('cmd_palette_placeholder').slice(0, 12)}…
                   <kbd className="adm-kbd">{t('adm_cmd_hint')}</kbd>
                 </Button>
@@ -143,7 +141,7 @@ export function PlatformShell({ children, titleKey }: PlatformShellProps) {
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon-lg"
+                  size="icon"
                   className="adm-menu-btn"
                   aria-label={t('bo_close')}
                   onClick={() => setDrawerOpen(false)}
@@ -158,7 +156,6 @@ export function PlatformShell({ children, titleKey }: PlatformShellProps) {
 
         <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} navItems={cmdNav} />
       </div>
-      </FluidProviders>
     </PlatformAuthGate>
   );
 }

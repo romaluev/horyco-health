@@ -21,14 +21,14 @@ export function Stepper({
   return (
     <div
       className={cn(
-        'inline-flex items-center gap-1 rounded-lg shadow-1 bg-background px-1 py-0.5',
+        'inline-flex items-center gap-1 rounded-lg border bg-background px-1 py-0.5',
         className,
       )}
     >
       <Button
         type="button"
         variant="ghost"
-        size="icon-sm"
+        size="icon"
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={value <= min}
         aria-label="Decrease"
@@ -39,7 +39,7 @@ export function Stepper({
       <Button
         type="button"
         variant="ghost"
-        size="icon-sm"
+        size="icon"
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
         aria-label="Increase"

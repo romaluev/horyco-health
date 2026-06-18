@@ -75,10 +75,10 @@ export default function PlatformCreateBusinessPage() {
             </a>
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="tertiary" asChild>
+            <Button variant="outline" asChild>
               <Link href="/platform/businesses/">{t('platform_back_list')}</Link>
             </Button>
-            <Button variant="primary" onClick={() => setSuccess(null)}>
+            <Button variant="default" onClick={() => setSuccess(null)}>
               {t('platform_create_btn')}
             </Button>
           </div>
@@ -144,7 +144,7 @@ export default function PlatformCreateBusinessPage() {
               />
             </Field>
           </FormGrid>
-          <Button variant="primary" disabled={create.isPending} onClick={submit}>
+          <Button variant="default" disabled={create.isPending} onClick={submit}>
             {t('platform_create_btn')}
           </Button>
         </div>
